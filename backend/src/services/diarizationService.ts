@@ -1,0 +1,71 @@
+import fs from "node:fs/promises";
+import path from "node:path";
+import { config } from "../config.js";
+import { TranscriptSegment } from "../types.js";
+import { ensureDir, readJsonFile } from "../utils/fs.js";
+import { parseArgs, runCommand } from "../utils/process.js";
+
+type SpeakerSlice = {
+  start: number;
+  end: number;
+  speaker: string;
+};
+
+function pickSpeaker(segment: TranscriptSegment, speakers: SpeakerSlice[]): string | undefined {
+  let bestSpeaker: string | undefined;
+  let bestOverlap = 0;
+
+  for (const speakerSlice of speakers) {
+    const overlap = Math.min(segment.end, speakerSlice.end) - Math.max(segment.start, speakerSlice.start);
+    if (overlap > bestOverlap) {
+      bestOverlap = overlap;
+      bestSpeaker = speakerSlice.speaker;
+    }
+  }
+
+  return bestSpeaker;
+}
+
+export async function applyOptionalDiarization(
+  audioPath: string,
+  workDir: string,
+  segments: TranscriptSegment[]
+): Promise<{ warnings: string[]; segments: TranscriptSegment[] }> {
+  if (!config.diarizationCommand) {
+    return {
+      warnings: ["Speaker labels were skipped because no diarization command is configured."],
+      segments
+    };
+  }
+
+  await ensureDir(workDir);
+  const outputFile = path.join(workDir, "diarization.json");
+  const args = parseArgs(config.diarizationArgs, {
+    input: audioPath,
+    outputFile
+  });
+
+  try {
+    await runCommand(config.diarizationCommand, args, workDir);
+    const payload = await readJsonFile<{ segments?: SpeakerSlice[] } | SpeakerSlice[]>(outputFile);
+    const speakerSlices = Array.isArray(payload) ? payload : payload.segments ?? [];
+
+    return {
+      warnings: [],
+      segments: segments.map((segment) => ({
+        ...segment,
+        speaker: pickSpeaker(segment, speakerSlices)
+      }))
+    };
+  } catch (error) {
+    await fs.rm(outputFile, { force: true }).catch(() => undefined);
+    return {
+      warnings: [
+        error instanceof Error
+          ? `Speaker labels were skipped because diarization failed: ${error.message}`
+          : "Speaker labels were skipped because diarization failed."
+      ],
+      segments
+    };
+  }
+}
