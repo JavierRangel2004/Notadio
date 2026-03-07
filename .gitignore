@@ -44,3 +44,6 @@ Desktop.ini
 .cursor/*
 !.cursor/rules/
 !.cursor/rules/**
+.claude-flow/
+.cursor/
+.swarm/

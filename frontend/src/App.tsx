@@ -2,7 +2,9 @@ import { FormEvent, useEffect, useRef, useState } from "react";
 import {
   getExportUrl,
   getJob,
+  JobProcessingProfile,
   getTranscript,
+  JobProgress,
   JobPayload,
   TranscriptPayload,
   uploadMedia
@@ -31,6 +33,7 @@ export function App() {
   const [isUploading, setIsUploading] = useState(false);
   const [selectedVariant, setSelectedVariant] = useState<"source" | "english">("source");
   const pollRef = useRef<number | null>(null);
+  const logPanelRef = useRef<HTMLPreElement | null>(null);
 
   useEffect(() => {
     return () => {
@@ -72,6 +75,14 @@ export function App() {
       });
   }, [job]);
 
+  useEffect(() => {
+    if (!logPanelRef.current) {
+      return;
+    }
+
+    logPanelRef.current.scrollTop = logPanelRef.current.scrollHeight;
+  }, [job?.logs]);
+
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
@@ -98,6 +109,23 @@ export function App() {
 
   const visibleTranscript =
     selectedVariant === "english" && transcript?.english ? transcript.english : transcript?.source;
+  const progress: JobProgress = job?.progress ?? {
+    stageKey: job?.status ?? "queued",
+    overallPct: job?.status === "completed" ? 100 : 0,
+    stagePct: job?.status === "completed" ? 100 : 0,
+    elapsedSeconds: 0
+  };
+  const processing: JobProcessingProfile = job?.processing ?? {
+    profile: "pending",
+    deviceSummary: "Waiting for telemetry",
+    threads: 0,
+    translationEnabled: true
+  };
+  const logs = job?.logs ?? [];
+  const runtimeWarnings = processing.capabilityWarnings ?? [];
+  const hasVisibleTranscriptContent = Boolean(
+    visibleTranscript && (visibleTranscript.text.trim().length > 0 || visibleTranscript.segments.length > 0)
+  );
 
   return (
     <main className="page-shell">
@@ -138,6 +166,15 @@ export function App() {
             <div className={`pill ${job.status}`}>{job.status}</div>
             <h2>{job.sourceMedia?.originalName ?? "Processing upload"}</h2>
             <p>{job.stage}</p>
+            <div className="progress-shell" aria-label="Job progress">
+              <div className="progress-track">
+                <div className="progress-fill" style={{ width: `${progress.overallPct}%` }} />
+              </div>
+              <div className="progress-meta">
+                <strong>{Math.round(progress.overallPct)}%</strong>
+                <span>{progress.stageKey}</span>
+              </div>
+            </div>
             <dl>
               <div>
                 <dt>Language</dt>
@@ -147,8 +184,44 @@ export function App() {
                 <dt>Duration</dt>
                 <dd>{job.durationSeconds ? formatTime(job.durationSeconds) : "Pending"}</dd>
               </div>
+              <div>
+                <dt>Elapsed</dt>
+                <dd>{formatTime(progress.elapsedSeconds)}</dd>
+              </div>
+              <div>
+                <dt>ETA</dt>
+                <dd>{progress.etaSeconds !== undefined ? formatTime(progress.etaSeconds) : "Estimating"}</dd>
+              </div>
             </dl>
             {job.error ? <p className="inline-error">{job.error}</p> : null}
+          </article>
+
+          <article className="status-card">
+            <p className="eyebrow">PROCESSING</p>
+            <h2>{processing.profile}</h2>
+            <p>{processing.deviceSummary}</p>
+            <dl>
+              <div>
+                <dt>Threads</dt>
+                <dd>{processing.threads > 0 ? processing.threads : "Auto"}</dd>
+              </div>
+              <div>
+                <dt>Translation</dt>
+                <dd>{processing.translationEnabled ? "Enabled" : "Skipped"}</dd>
+              </div>
+              <div>
+                <dt>Runtime</dt>
+                <dd>{processing.runtimeBackend ?? "Pending"}</dd>
+              </div>
+            </dl>
+            <p>{processing.runtimeSummary ?? "Waiting for runtime summary"}</p>
+            {runtimeWarnings.length > 0 ? (
+              <ul className="warning-list">
+                {runtimeWarnings.map((warning) => (
+                  <li key={warning}>{warning}</li>
+                ))}
+              </ul>
+            ) : null}
           </article>
 
           <article className="status-card">
@@ -163,10 +236,17 @@ export function App() {
               <p>No warnings.</p>
             )}
           </article>
+
+          <article className="status-card log-card">
+            <p className="eyebrow">LIVE LOGS</p>
+            <pre className="log-console" ref={logPanelRef}>
+              {logs.length > 0 ? logs.join("\n") : "Waiting for process output..."}
+            </pre>
+          </article>
         </section>
       ) : null}
 
-      {transcript && visibleTranscript ? (
+      {transcript ? (
         <section className="transcript-shell">
           <div className="transcript-toolbar">
             <div>
@@ -205,22 +285,35 @@ export function App() {
             </div>
           </div>
 
-          <article className="transcript-card">
-            <p className="transcript-text">{visibleTranscript.text}</p>
-          </article>
-
-          <div className="segments-grid">
-            {visibleTranscript.segments.map((segment, index) => (
-              <article className="segment-card" key={`${segment.start}-${segment.end}-${index}`}>
-                <header>
-                  <span>{formatTime(segment.start)}</span>
-                  <span>{formatTime(segment.end)}</span>
-                </header>
-                {segment.speaker ? <p className="speaker-tag">{segment.speaker}</p> : null}
-                <p>{segment.text}</p>
+          {visibleTranscript && hasVisibleTranscriptContent ? (
+            <>
+              <article className="transcript-card">
+                <p className="transcript-text">{visibleTranscript.text}</p>
               </article>
-            ))}
-          </div>
+
+              <div className="segments-grid">
+                {visibleTranscript.segments.map((segment, index) => (
+                  <article className="segment-card" key={`${segment.start}-${segment.end}-${index}`}>
+                    <header>
+                      <span>{formatTime(segment.start)}</span>
+                      <span>{formatTime(segment.end)}</span>
+                    </header>
+                    {segment.speaker ? <p className="speaker-tag">{segment.speaker}</p> : null}
+                    <p>{segment.text}</p>
+                  </article>
+                ))}
+              </div>
+            </>
+          ) : (
+            <article className="transcript-card invalid-transcript">
+              <p className="eyebrow">INVALID RESULT</p>
+              <h2>Transcript output is empty.</h2>
+              <p className="transcript-text">
+                The job completed, but the transcript payload contains no usable text or segments. Check the live logs
+                and backend runtime summary for parser or Whisper runtime issues.
+              </p>
+            </article>
+          )}
         </section>
       ) : null}
     </main>

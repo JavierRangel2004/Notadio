@@ -1,0 +1,267 @@
+JOB STATUS
+
+completed
+2025-09-25-13-33-26.mp4
+Transcript ready
+
+100%
+export
+Language
+es
+Duration
+00:37
+Elapsed
+01:27
+ETA
+00:00
+PROCESSING
+
+speed
+win32 | x64 | 16 logical cores | NVIDIA GPU detected
+
+Threads
+15
+Translation
+Enabled
+WARNINGS
+
+Speaker labels were skipped because no diarization command is configured.
+LIVE LOGS
+
+Upload stored. Waiting for worker start.
+Detected processing profile: speed (win32 | x64 | 16 logical cores | NVIDIA GPU detected)
+ffmpeg version 7.1-essentials_build-www.gyan.dev Copyright (c) 2000-2024 the FFmpeg developers
+built with gcc 14.2.0 (Rev1, Built by MSYS2 project)
+configuration: --enable-gpl --enable-version3 --enable-static --disable-w32threads --disable-autodetect --enable-fontconfig --enable-iconv --enable-gnutls --enable-libxml2 --enable-gmp --enable-bzlib --enable-lzma --enable-zlib --enable-libsrt --enable-libssh --enable-libzmq --enable-avisynth --enable-sdl2 --enable-libwebp --enable-libx264 --enable-libx265 --enable-libxvid --enable-libaom --enable-libopenjpeg --enable-libvpx --enable-mediafoundation --enable-libass --enable-libfreetype --enable-libfribidi --enable-libharfbuzz --enable-libvidstab --enable-libvmaf --enable-libzimg --enable-amf --enable-cuda-llvm --enable-cuvid --enable-dxva2 --enable-d3d11va --enable-d3d12va --enable-ffnvcodec --enable-libvpl --enable-nvdec --enable-nvenc --enable-vaapi --enable-libgme --enable-libopenmpt --enable-libopencore-amrwb --enable-libmp3lame --enable-libtheora --enable-libvo-amrwbenc --enable-libgsm --enable-libopencore-amrnb --enable-libopus --enable-libspeex --enable-libvorbis --enable-librubberband
+libavutil      59. 39.100 / 59. 39.100
+libavcodec     61. 19.100 / 61. 19.100
+libavformat    61.  7.100 / 61.  7.100
+libavdevice    61.  3.100 / 61.  3.100
+libavfilter    10.  4.100 / 10.  4.100
+libswscale      8.  3.100 /  8.  3.100
+libswresample   5.  3.100 /  5.  3.100
+libpostproc    58.  3.100 / 58.  3.100
+Input #0, mov,mp4,m4a,3gp,3g2,mj2, from 'C:\Users\javar\GITHUB\Notadio\backend\data\jobs\193fffe9-e4f2-4a07-81e0-a58942f59a56\uploads\source.mp4':
+Metadata:
+major_brand     : isom
+minor_version   : 512
+compatible_brands: isomiso2avc1mp41
+encoder         : Lavf58.76.100
+Duration: 00:00:37.07, start: 0.000000, bitrate: 798 kb/s
+Stream #0:0[0x1](und): Video: h264 (High) (avc1 / 0x31637661), yuv420p(tv, bt709, progressive), 1920x1080 [SAR 1:1 DAR 16:9], 664 kb/s, 30 fps, 30 tbr, 15360 tbn (default)
+Metadata:
+handler_name    : VideoHandler
+vendor_id       : [0][0][0][0]
+Stream #0:1[0x2](und): Audio: aac (LC) (mp4a / 0x6134706D), 48000 Hz, stereo, fltp, 124 kb/s (default)
+Metadata:
+handler_name    : SoundHandler
+vendor_id       : [0][0][0][0]
+Stream mapping:
+Stream #0:1 -> #0:0 (aac (native) -> pcm_s16le (native))
+Press [q] to stop, [?] for help
+Output #0, wav, to 'C:\Users\javar\GITHUB\Notadio\backend\data\jobs\193fffe9-e4f2-4a07-81e0-a58942f59a56\working\normalized.wav':
+Metadata:
+major_brand     : isom
+minor_version   : 512
+compatible_brands: isomiso2avc1mp41
+ISFT            : Lavf61.7.100
+Stream #0:0(und): Audio: pcm_s16le ([1][0][0][0] / 0x0001), 16000 Hz, mono, s16, 256 kb/s (default)
+Metadata:
+handler_name    : SoundHandler
+vendor_id       : [0][0][0][0]
+encoder         : Lavc61.19.100 pcm_s16le
+[out#0/wav @ 00000116ee7ad380] video:0KiB audio:1155KiB subtitle:0KiB other streams:0KiB global headers:0KiB muxing overhead: 0.006593%
+size=    1155KiB time=00:00:36.97 bitrate= 256.0kbits/s speed=1.34e+03x
+Whisper thread recommendation: 15
+whisper_init_from_file_with_params_no_state: loading model from 'C:/Users/javar/GITHUB/whisper.cpp/ggml-large-v3.bin'
+whisper_init_with_params_no_state: use gpu    = 1
+whisper_init_with_params_no_state: flash attn = 1
+whisper_init_with_params_no_state: gpu_device = 0
+whisper_init_with_params_no_state: dtw        = 0
+whisper_init_with_params_no_state: devices    = 1
+whisper_init_with_params_no_state: backends   = 1
+whisper_model_load: loading model
+whisper_model_load: n_vocab       = 51866
+whisper_model_load: n_audio_ctx   = 1500
+whisper_model_load: n_audio_state = 1280
+whisper_model_load: n_audio_head  = 20
+whisper_model_load: n_audio_layer = 32
+whisper_model_load: n_text_ctx    = 448
+whisper_model_load: n_text_state  = 1280
+whisper_model_load: n_text_head   = 20
+whisper_model_load: n_text_layer  = 32
+whisper_model_load: n_mels        = 128
+whisper_model_load: ftype         = 1
+whisper_model_load: qntvr         = 0
+whisper_model_load: type          = 5 (large v3)
+whisper_model_load: adding 1609 extra tokens
+whisper_model_load: n_langs       = 100
+whisper_model_load:          CPU total size =  3094.36 MB
+whisper_model_load: model size    = 3094.36 MB
+whisper_backend_init_gpu: device 0: CPU (type: 0)
+whisper_backend_init_gpu: no GPU found
+whisper_init_state: kv self size  =   83.89 MB
+whisper_init_state: kv cross size =  251.66 MB
+whisper_init_state: kv pad  size  =    7.86 MB
+whisper_init_state: compute buffer (conv)   =   36.15 MB
+whisper_init_state: compute buffer (encode) =   55.35 MB
+whisper_init_state: compute buffer (cross)  =    9.27 MB
+whisper_init_state: compute buffer (decode) =   99.12 MB
+system_info: n_threads = 15 / 16 | WHISPER : COREML = 0 | OPENVINO = 0 | CPU : SSE3 = 1 | SSSE3 = 1 | AVX = 1 | AVX2 = 1 | F16C = 1 | FMA = 1 | OPENMP = 1 | REPACK = 1 |
+main: processing 'C:\Users\javar\GITHUB\Notadio\backend\data\jobs\193fffe9-e4f2-4a07-81e0-a58942f59a56\working\normalized.wav' (591531 samples, 37.0 sec), 15 threads, 1 processors, 5 beams + best of 5, lang = auto, task = transcribe, timestamps = 1 ...
+whisper_full_with_state: auto-detected language: es (p = 0.999789)
+[00:00:00.400 --> 00:00:09.880]   La comunicación serial sincrona es común en la electrónica y los sistemas envidios, microcontroladores, para la comunicación a corta distancia y alta velocidad.
+[00:00:09.880 --> 00:00:18.240]   SPI, Serial Peripheral Interface, utilizado para la comunicación de alta velocidad entre un dispositivo maestro y uno o varios clavos.
+[00:00:18.240 --> 00:00:28.000]   I2C, Inter-Integrated Circuit, un bus de dos cables, uno para datos, otro para el reloj, que soporta múltiples maestros y esclavos.
+[00:00:28.000 --> 00:00:35.440]   Y USB, Universal Serial Bus, aunque complejo, internamente utiliza principios síncronos y asíncronos.
+output_srt: saving output to 'C:\Users\javar\GITHUB\Notadio\backend\data\jobs\193fffe9-e4f2-4a07-81e0-a58942f59a56\working\whisper\source.srt'
+output_json: saving output to 'C:\Users\javar\GITHUB\Notadio\backend\data\jobs\193fffe9-e4f2-4a07-81e0-a58942f59a56\working\whisper\source.json'
+whisper_print_timings:     load time =  8615.60 ms
+whisper_print_timings:     fallbacks =   0 p /   0 h
+whisper_print_timings:      mel time =    15.99 ms
+whisper_print_timings:   sample time =   591.18 ms /   799 runs (     0.74 ms per run)
+whisper_print_timings:   encode time = 22339.46 ms /     3 runs (  7446.49 ms per run)
+whisper_print_timings:   decode time =    83.87 ms /     1 runs (    83.87 ms per run)
+whisper_print_timings:   batchd time = 16864.22 ms /   792 runs (    21.29 ms per run)
+whisper_print_timings:   prompt time =   893.79 ms /   130 runs (     6.88 ms per run)
+whisper_print_timings:    total time = 49711.62 ms
+whisper_init_from_file_with_params_no_state: loading model from 'C:/Users/javar/GITHUB/whisper.cpp/ggml-large-v3.bin'
+whisper_init_with_params_no_state: use gpu    = 1
+whisper_init_with_params_no_state: flash attn = 1
+whisper_init_with_params_no_state: gpu_device = 0
+whisper_init_with_params_no_state: dtw        = 0
+whisper_init_with_params_no_state: devices    = 1
+whisper_init_with_params_no_state: backends   = 1
+whisper_model_load: loading model
+whisper_model_load: n_vocab       = 51866
+whisper_model_load: n_audio_ctx   = 1500
+whisper_model_load: n_audio_state = 1280
+whisper_model_load: n_audio_head  = 20
+whisper_model_load: n_audio_layer = 32
+whisper_model_load: n_text_ctx    = 448
+whisper_model_load: n_text_state  = 1280
+whisper_model_load: n_text_head   = 20
+whisper_model_load: n_text_layer  = 32
+whisper_model_load: n_mels        = 128
+whisper_model_load: ftype         = 1
+whisper_model_load: qntvr         = 0
+whisper_model_load: type          = 5 (large v3)
+whisper_model_load: adding 1609 extra tokens
+whisper_model_load: n_langs       = 100
+whisper_model_load:          CPU total size =  3094.36 MB
+whisper_model_load: model size    = 3094.36 MB
+whisper_backend_init_gpu: device 0: CPU (type: 0)
+whisper_backend_init_gpu: no GPU found
+whisper_init_state: kv self size  =   83.89 MB
+whisper_init_state: kv cross size =  251.66 MB
+whisper_init_state: kv pad  size  =    7.86 MB
+whisper_init_state: compute buffer (conv)   =   36.15 MB
+whisper_init_state: compute buffer (encode) =   55.35 MB
+whisper_init_state: compute buffer (cross)  =    9.27 MB
+whisper_init_state: compute buffer (decode) =   99.12 MB
+system_info: n_threads = 15 / 16 | WHISPER : COREML = 0 | OPENVINO = 0 | CPU : SSE3 = 1 | SSSE3 = 1 | AVX = 1 | AVX2 = 1 | F16C = 1 | FMA = 1 | OPENMP = 1 | REPACK = 1 |
+main: processing 'C:\Users\javar\GITHUB\Notadio\backend\data\jobs\193fffe9-e4f2-4a07-81e0-a58942f59a56\working\normalized.wav' (591531 samples, 37.0 sec), 15 threads, 1 processors, 5 beams + best of 5, lang = auto, task = translate, timestamps = 1 ...
+whisper_full_with_state: auto-detected language: es (p = 0.999789)
+[00:00:00.000 --> 00:00:10.000]   Synchronous communication is common in electronics and embedded systems for short-distance and high-speed communication.
+[00:00:10.000 --> 00:00:18.000]   SPI is used for high-speed communication between a master device and one or several slaves.
+[00:00:18.000 --> 00:00:28.000]   I2C is a two-wire bus, one for data, one for the clock, which supports multiple masters and slaves.
+[00:00:28.000 --> 00:00:36.000]   And USB Universal Serial Bus, although complex, internally uses synchronous and asynchronous principles.
+output_json: saving output to 'C:\Users\javar\GITHUB\Notadio\backend\data\jobs\193fffe9-e4f2-4a07-81e0-a58942f59a56\working\whisper\english.json'
+whisper_print_timings:     load time =  4263.27 ms
+whisper_print_timings:     fallbacks =   0 p /   0 h
+whisper_print_timings:      mel time =    15.15 ms
+whisper_print_timings:   sample time =   294.51 ms /   338 runs (     0.87 ms per run)
+whisper_print_timings:   encode time = 22301.22 ms /     3 runs (  7433.74 ms per run)
+whisper_print_timings:   decode time =   147.66 ms /     2 runs (    73.83 ms per run)
+whisper_print_timings:   batchd time =  8612.69 ms /   330 runs (    26.10 ms per run)
+whisper_print_timings:   prompt time =   516.15 ms /    78 runs (     6.62 ms per run)
+whisper_print_timings:    total time = 36346.05 ms
+Transcript artifacts written successfully.
+
+TRANSCRIPT
+
+Source transcript
+Source
+English
+TXT
+SRT
+JSON
+
+
+You’re right on both symptoms, and the log shows **two separate issues**:
+
+- GPU was **not** used.
+- Transcript generation ran, but your app ended up with empty transcript data.
+
+### What `firstrun.txt` proves
+
+- Whisper actually transcribed and translated audio (you can see recognized lines in logs).
+- But Whisper backend says:
+  - `whisper_backend_init_gpu: device 0: CPU`
+  - `whisper_backend_init_gpu: no GPU found`
+- So runtime fell back to CPU despite “NVIDIA GPU detected” in the profile banner.
+
+Also, job finished successfully (`Transcript ready`, `100%`), so this is not a pipeline crash.
+
+### Why you got “nothing” in UI
+
+Your parser in `backend/src/services/transcriptionService.ts` only reads `segments` or `transcript.segments`, but your Whisper JSON file uses `transcription` with `offsets.from/to`.
+
+Current extractor logic:
+
+```46:55:backend/src/services/transcriptionService.ts
+function extractSegments(payload: WhisperOutput): TranscriptSegment[] {
+  if (Array.isArray(payload.segments)) {
+    return normalizeSegments(payload.segments);
+  }
+
+  if (Array.isArray(payload.transcript?.segments)) {
+    return normalizeSegments(payload.transcript.segments);
+  }
+
+  return [];
+}
+```
+
+Actual Whisper JSON shape in `working/whisper/source.json`:
+
+```30:40:backend/data/jobs/193fffe9-e4f2-4a07-81e0-a58942f59a56/working/whisper/source.json
+"transcription": [
+  {
+    "timestamps": { "from": "00:00:00,400", "to": "00:00:09,880" },
+    "offsets": { "from": 400, "to": 9880 },
+    "text": " La comunicación serial sincrona ..."
+  },
+```
+
+That mismatch explains why `transcript.json` ends with empty `source.text` and empty `segments`.
+
+### Why GPU detection is misleading right now
+
+`backend/src/services/deviceProfileService.ts` marks GPU availability by only checking `nvidia-smi`, which confirms host GPU presence, not Whisper CUDA backend readiness:
+
+```10:16:backend/src/services/deviceProfileService.ts
+function hasNvidiaGpu(): boolean {
+  try {
+    const result = spawnSync("nvidia-smi", ["--query-gpu=name", "--format=csv,noheader"], {
+      stdio: ["ignore", "pipe", "ignore"]
+    });
+```
+
+So:
+- **Host-level GPU exists** (banner says detected),
+- but the `whisper-cli` binary you run likely has no usable CUDA backend (or wrong binary/driver linkage), so inference runs on CPU.
+
+### Practical next steps
+
+1. **Fix parser compatibility** in transcription service:
+   - Add support for `payload.transcription[]`.
+   - Map `offsets.from/to` (ms) to `start/end` (seconds).
+   - Build `text` by joining mapped segment text.
+2. **Fix runtime GPU path**:
+   - Verify which binary is used by `WHISPER_COMMAND`.
+   - Ensure it is a CUDA-enabled `whisper.cpp` build and that CUDA runtime/driver is accessible.
+3. **Reduce false confidence in UI**:
+   - Optionally enrich processing summary with actual runtime backend (CPU vs GPU) from whisper logs, not just `nvidia-smi`.
+
+If you want, I can give you the exact patch for `transcriptionService.ts` (and a small telemetry tweak) so this works with current Whisper JSON and clearly reports CPU/GPU reality.

@@ -118,13 +118,15 @@ input {
 .segmented,
 .status-grid,
 .segments-grid,
-.status-card dl {
+.status-card dl,
+.progress-meta {
   display: flex;
 }
 
 .file-meta,
 .toolbar-actions,
-.status-card dl {
+.status-card dl,
+.progress-meta {
   justify-content: space-between;
 }
 
@@ -188,6 +190,7 @@ button:disabled {
 .status-card dl {
   margin: 20px 0 0;
   gap: 16px;
+  flex-wrap: wrap;
 }
 
 .status-card dt {
@@ -232,8 +235,54 @@ button:disabled {
   color: var(--muted);
 }
 
+.progress-shell {
+  margin-top: 18px;
+}
+
+.progress-track {
+  overflow: hidden;
+  height: 12px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.progress-fill {
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, var(--accent) 0%, var(--accent-cool) 100%);
+  transition: width 220ms ease;
+}
+
+.progress-meta {
+  margin-top: 10px;
+  gap: 12px;
+  color: var(--muted);
+  font: 500 0.82rem/1 "IBM Plex Mono", monospace;
+  text-transform: uppercase;
+}
+
 .inline-error {
   color: var(--danger);
+}
+
+.invalid-transcript h2 {
+  margin: 0 0 12px;
+}
+
+.log-card {
+  min-height: 280px;
+}
+
+.log-console {
+  margin: 0;
+  max-height: 240px;
+  overflow: auto;
+  padding: 16px;
+  border-radius: 16px;
+  background: rgba(0, 0, 0, 0.34);
+  color: #d8f8d8;
+  font: 0.82rem/1.5 "IBM Plex Mono", monospace;
+  white-space: pre-wrap;
 }
 
 .transcript-shell {

@@ -29,7 +29,11 @@ function pickSpeaker(segment: TranscriptSegment, speakers: SpeakerSlice[]): stri
 export async function applyOptionalDiarization(
   audioPath: string,
   workDir: string,
-  segments: TranscriptSegment[]
+  segments: TranscriptSegment[],
+  callbacks: {
+    onLog?: (line: string) => void;
+    onProgress?: (stagePct: number) => void;
+  } = {}
 ): Promise<{ warnings: string[]; segments: TranscriptSegment[] }> {
   if (!config.diarizationCommand) {
     return {
@@ -46,9 +50,25 @@ export async function applyOptionalDiarization(
   });
 
   try {
-    await runCommand(config.diarizationCommand, args, workDir);
+    let progress = 0;
+    const heartbeat = setInterval(() => {
+      progress = Math.min(95, progress + 8);
+      callbacks.onProgress?.(progress);
+    }, 2000);
+
+    try {
+      await runCommand(config.diarizationCommand, args, {
+        cwd: workDir,
+        onStdoutLine: (line) => callbacks.onLog?.(line),
+        onStderrLine: (line) => callbacks.onLog?.(line)
+      });
+    } finally {
+      clearInterval(heartbeat);
+    }
+
     const payload = await readJsonFile<{ segments?: SpeakerSlice[] } | SpeakerSlice[]>(outputFile);
     const speakerSlices = Array.isArray(payload) ? payload : payload.segments ?? [];
+    callbacks.onProgress?.(100);
 
     return {
       warnings: [],

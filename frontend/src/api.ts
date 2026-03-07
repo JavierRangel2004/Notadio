@@ -27,6 +27,25 @@ export type TranscriptPayload = {
   english?: TranscriptVariant;
 };
 
+export type JobProgress = {
+  stageKey: string;
+  overallPct: number;
+  stagePct: number;
+  etaSeconds?: number;
+  startedAt?: string;
+  elapsedSeconds: number;
+};
+
+export type JobProcessingProfile = {
+  profile: string;
+  deviceSummary: string;
+  threads: number;
+  translationEnabled: boolean;
+  runtimeBackend?: string;
+  runtimeSummary?: string;
+  capabilityWarnings?: string[];
+};
+
 export type JobPayload = {
   id: string;
   status: JobStatus;
@@ -42,6 +61,9 @@ export type JobPayload = {
   durationSeconds?: number;
   warnings: string[];
   error?: string;
+  progress?: JobProgress;
+  processing?: JobProcessingProfile;
+  logs?: string[];
   artifacts: {
     source: string[];
     english: string[];

@@ -9,17 +9,47 @@ export function parseArgs(template: string, replacements: Record<string, string>
   return matches.map((token) => token.replace(/^['"]|['"]$/g, ""));
 }
 
-export function runCommand(command: string, args: string[], cwd?: string): Promise<void> {
+type RunCommandOptions = {
+  cwd?: string;
+  onStdoutLine?: (line: string) => void;
+  onStderrLine?: (line: string) => void;
+};
+
+function flushBufferedLines(buffer: string, onLine?: (line: string) => void): string {
+  const normalized = buffer.replace(/\r/g, "\n");
+  const lines = normalized.split("\n");
+
+  for (const line of lines.slice(0, -1)) {
+    const trimmed = line.trim();
+    if (trimmed && onLine) {
+      onLine(trimmed);
+    }
+  }
+
+  return lines.at(-1) ?? "";
+}
+
+export function runCommand(command: string, args: string[], options: RunCommandOptions = {}): Promise<void> {
   return new Promise((resolve, reject) => {
     const child = spawn(command, args, {
-      cwd,
+      cwd: options.cwd,
       stdio: ["ignore", "pipe", "pipe"]
     });
 
     let stderr = "";
+    let stdoutBuffer = "";
+    let stderrBuffer = "";
+
+    child.stdout.on("data", (chunk) => {
+      stdoutBuffer += chunk.toString();
+      stdoutBuffer = flushBufferedLines(stdoutBuffer, options.onStdoutLine);
+    });
 
     child.stderr.on("data", (chunk) => {
-      stderr += chunk.toString();
+      const text = chunk.toString();
+      stderr += text;
+      stderrBuffer += text;
+      stderrBuffer = flushBufferedLines(stderrBuffer, options.onStderrLine);
     });
 
     child.on("error", (error) => {
@@ -27,6 +57,16 @@ export function runCommand(command: string, args: string[], cwd?: string): Promi
     });
 
     child.on("close", (code) => {
+      const stdoutTail = stdoutBuffer.trim();
+      if (stdoutTail && options.onStdoutLine) {
+        options.onStdoutLine(stdoutTail);
+      }
+
+      const stderrTail = stderrBuffer.trim();
+      if (stderrTail && options.onStderrLine) {
+        options.onStderrLine(stderrTail);
+      }
+
       if (code === 0) {
         resolve();
         return;
