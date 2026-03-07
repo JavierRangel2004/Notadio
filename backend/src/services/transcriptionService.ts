@@ -6,6 +6,13 @@ import { JobProcessingProfile, TranscriptSegment, TranscriptVariant } from "../t
 import { ensureDir, readJsonFile } from "../utils/fs.js";
 import { parseArgs, runCommand } from "../utils/process.js";
 
+type TranscribeResult = {
+  source: TranscriptVariant;
+  english?: TranscriptVariant;
+  warnings: string[];
+  processing: JobProcessingProfile;
+};
+
 type WhisperTranscriptionEntry = {
   text?: unknown;
   start?: unknown;
@@ -227,31 +234,59 @@ export async function transcribeAudio(
     onTranslationLog?: (line: string) => void;
     onTranslationProgress?: (stagePct: number) => void;
   } = {}
-): Promise<{
-  source: TranscriptVariant;
-  english?: TranscriptVariant;
-  warnings: string[];
-  processing: JobProcessingProfile;
-}> {
+): Promise<TranscribeResult> {
   await ensureDir(workDir);
   const warnings: string[] = [];
   const processing = options.processingProfile ?? detectProcessingProfile();
-  const source = await runWhisperTask(inputPath, path.join(workDir, "source"), "transcribe", {
+
+  const sourceTaskOptions: WhisperTaskOptions = {
     durationSeconds: options.durationSeconds,
     processingProfile: processing,
     onLog: options.onSourceLog,
     onProgress: options.onSourceProgress
-  });
+  };
+
+  const translateTaskOptions: WhisperTaskOptions = {
+    durationSeconds: options.durationSeconds,
+    processingProfile: processing,
+    onLog: options.onTranslationLog,
+    onProgress: options.onTranslationProgress,
+    allowEmpty: true
+  };
+
+  // Parallel mode: run transcription and translation concurrently
+  if (processing.translationEnabled && config.whisperParallel) {
+    const [sourceResult, translationResult] = await Promise.allSettled([
+      runWhisperTask(inputPath, path.join(workDir, "source"), "transcribe", sourceTaskOptions),
+      runWhisperTask(inputPath, path.join(workDir, "english"), "translate", translateTaskOptions)
+    ]);
+
+    if (sourceResult.status === "rejected") {
+      throw sourceResult.reason;
+    }
+
+    let english: TranscriptVariant | undefined;
+    if (translationResult.status === "fulfilled") {
+      english = translationResult.value;
+    } else {
+      const message =
+        translationResult.reason instanceof Error
+          ? `English translation export was skipped: ${translationResult.reason.message}`
+          : "English translation export was skipped.";
+      warnings.push(message);
+      await fs.writeFile(path.join(workDir, "english.error.txt"), message, "utf-8");
+    }
+
+    return { source: sourceResult.value, english, warnings, processing };
+  }
+
+  // Sequential mode (default): run transcription first, then translation
+  const source = await runWhisperTask(inputPath, path.join(workDir, "source"), "transcribe", sourceTaskOptions);
 
   let english: TranscriptVariant | undefined;
   if (processing.translationEnabled) {
     try {
-      english = await runWhisperTask(inputPath, path.join(workDir, "english"), "translate", {
-        durationSeconds: options.durationSeconds,
-        processingProfile: processing,
-        onLog: options.onTranslationLog,
-        onProgress: options.onTranslationProgress
-      });
+      english = await runWhisperTask(inputPath, path.join(workDir, "english"), "translate", translateTaskOptions);
     } catch (error) {
       const message =
         error instanceof Error

@@ -7,7 +7,8 @@ import {
   JobProgress,
   JobPayload,
   TranscriptPayload,
-  uploadMedia
+  uploadMedia,
+  subscribeToJob
 } from "./api";
 
 const ACCEPTED_TYPES = "audio/*,video/*";
@@ -32,38 +33,39 @@ export function App() {
   const [error, setError] = useState<string | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [selectedVariant, setSelectedVariant] = useState<"source" | "english">("source");
-  const pollRef = useRef<number | null>(null);
   const logPanelRef = useRef<HTMLPreElement | null>(null);
 
-  useEffect(() => {
-    return () => {
-      if (pollRef.current !== null) {
-        window.clearTimeout(pollRef.current);
-      }
-    };
-  }, []);
-
+  // SSE subscription for real-time job updates (replaces polling)
   useEffect(() => {
     if (!job || (job.status !== "queued" && job.status !== "processing")) {
       return;
     }
 
-    pollRef.current = window.setTimeout(async () => {
-      try {
-        const nextJob = await getJob(job.id);
-        setJob(nextJob);
-      } catch (pollError) {
-        setError(pollError instanceof Error ? pollError.message : "Failed to refresh job");
+    const unsubscribe = subscribeToJob(
+      job.id,
+      (updatedJob) => setJob(updatedJob),
+      () => {
+        // SSE connection error — fall back to a single poll
+        void getJob(job.id)
+          .then((nextJob) => setJob(nextJob))
+          .catch((pollError) => {
+            setError(pollError instanceof Error ? pollError.message : "Failed to refresh job");
+          });
       }
-    }, 1500);
-  }, [job]);
+    );
 
+    return unsubscribe;
+  }, [job?.id, job?.status]);
+
+  // Fetch transcript when job completes
   useEffect(() => {
     if (!job || job.status !== "completed") {
       return;
     }
 
-    void getTranscript(job.id)
+    const controller = new AbortController();
+
+    void getTranscript(job.id, controller.signal)
       .then((payload) => {
         setTranscript(payload);
         if (!payload.english) {
@@ -71,10 +73,14 @@ export function App() {
         }
       })
       .catch((loadError) => {
+        if (controller.signal.aborted) return;
         setError(loadError instanceof Error ? loadError.message : "Failed to load transcript");
       });
-  }, [job]);
 
+    return () => controller.abort();
+  }, [job?.id, job?.status]);
+
+  // Auto-scroll log panel
   useEffect(() => {
     if (!logPanelRef.current) {
       return;

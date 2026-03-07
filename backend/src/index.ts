@@ -14,10 +14,12 @@ import { transcribeAudio } from "./services/transcriptionService.js";
 import { jobStore } from "./store/jobStore.js";
 import { ensureDir, readJsonFile, writeJsonFile } from "./utils/fs.js";
 import { JobManifest, JobProcessingProfile, JobProgress, TranscriptRecord } from "./types.js";
+import { JobQueue } from "./utils/jobQueue.js";
 
 const app = express();
 const upload = multer({ dest: path.join(config.storageRoot, ".tmp") });
 const uploadSingle = upload.single("media") as unknown as RequestHandler;
+const jobQueue = new JobQueue(config.maxConcurrentJobs);
 
 type PipelineStageKey = "queued" | "normalize" | "transcribe" | "translate" | "diarize" | "export";
 
@@ -101,16 +103,33 @@ function makeJobResponse(job: JobManifest) {
   };
 }
 
-async function updateJob(jobId: string, updater: (job: JobManifest) => JobManifest): Promise<JobManifest> {
+/**
+ * Update job in-memory with debounced disk persistence.
+ * For progress-only telemetry updates — avoids disk I/O on every tick.
+ */
+function updateJobDebounced(jobId: string, updater: (job: JobManifest) => void): void {
+  const current = jobStore.get(jobId);
+  if (!current) return;
+
+  updater(current);
+  current.updatedAt = new Date().toISOString();
+  jobStore.debouncedPersist(current);
+}
+
+/**
+ * Update job with immediate disk persistence.
+ * For critical state transitions (status changes, final writes).
+ */
+async function updateJobImmediate(jobId: string, updater: (job: JobManifest) => void): Promise<JobManifest> {
   const current = jobStore.get(jobId);
   if (!current) {
     throw new Error(`Job ${jobId} not found`);
   }
 
-  const next = updater(cloneJob(current));
-  next.updatedAt = new Date().toISOString();
-  await jobStore.save(next);
-  return next;
+  updater(current);
+  current.updatedAt = new Date().toISOString();
+  await jobStore.persist(current);
+  return current;
 }
 
 function buildTelemetryContext(processing: JobProcessingProfile): TelemetryContext {
@@ -153,13 +172,21 @@ function calculateOverallPct(context: TelemetryContext, stageKey: PipelineStageK
   return clampPct(QUEUE_BASELINE_PCT + (weightedPct / totalWeight) * (100 - QUEUE_BASELINE_PCT));
 }
 
+/** Append log line in-place, trimming to limit. */
 function appendLog(job: JobManifest, line: string): void {
   const trimmed = line.trim();
   if (!trimmed) {
     return;
   }
 
-  job.logs = [...(job.logs ?? []), trimmed].slice(-config.jobLogLimit);
+  if (!job.logs) {
+    job.logs = [];
+  }
+  job.logs.push(trimmed);
+  const excess = job.logs.length - config.jobLogLimit;
+  if (excess > 0) {
+    job.logs.splice(0, excess);
+  }
 }
 
 function updateProgress(job: JobManifest, context: TelemetryContext, stageKey: PipelineStageKey, stagePct: number): void {
@@ -180,7 +207,11 @@ function updateProgress(job: JobManifest, context: TelemetryContext, stageKey: P
   };
 }
 
-async function applyTelemetryUpdate(
+/**
+ * Apply a telemetry update. Uses debounced persistence for progress-only updates,
+ * and immediate persistence for status transitions.
+ */
+function applyTelemetryUpdate(
   jobId: string,
   context: TelemetryContext,
   patch: {
@@ -192,8 +223,10 @@ async function applyTelemetryUpdate(
     error?: string;
     processing?: Partial<JobProcessingProfile>;
   }
-): Promise<void> {
-  await updateJob(jobId, (job) => {
+): void {
+  const isStatusChange = patch.status !== undefined;
+
+  const updater = (job: JobManifest) => {
     if (patch.status) {
       job.status = patch.status;
     }
@@ -265,9 +298,15 @@ async function applyTelemetryUpdate(
     if (patch.error) {
       job.error = patch.error;
     }
+  };
 
-    return job;
-  });
+  if (isStatusChange) {
+    // Status transitions are critical — persist immediately (fire and forget)
+    void updateJobImmediate(jobId, updater);
+  } else {
+    // Progress-only updates — debounce disk writes
+    updateJobDebounced(jobId, updater);
+  }
 }
 
 async function processJob(jobId: string): Promise<void> {
@@ -286,7 +325,7 @@ async function processJob(jobId: string): Promise<void> {
     await ensureDir(workingDir);
     await ensureDir(artifactDir);
 
-    await applyTelemetryUpdate(jobId, telemetry, {
+    applyTelemetryUpdate(jobId, telemetry, {
       status: "processing",
       stage: "Normalizing media for transcription",
       stageKey: "queued",
@@ -295,30 +334,28 @@ async function processJob(jobId: string): Promise<void> {
       logLine: `Detected processing profile: ${processingProfile.profile} (${processingProfile.deviceSummary})`
     });
 
-    await applyTelemetryUpdate(jobId, telemetry, {
-      status: "processing",
+    applyTelemetryUpdate(jobId, telemetry, {
       stage: "Normalizing media for transcription",
       stageKey: "normalize",
       stagePct: 0
     });
 
     const normalization = await normalizeMediaToWav(job.sourceMedia.storedPath, workingDir, {
-      onLog: (line) => void applyTelemetryUpdate(jobId, telemetry, { stageKey: "normalize", logLine: line }),
+      onLog: (line) => applyTelemetryUpdate(jobId, telemetry, { stageKey: "normalize", logLine: line }),
       onProgress: (stagePct) =>
-        void applyTelemetryUpdate(jobId, telemetry, {
+        applyTelemetryUpdate(jobId, telemetry, {
           stage: "Normalizing media for transcription",
           stageKey: "normalize",
           stagePct
         })
     });
 
-    await updateJob(jobId, (current) => {
+    await updateJobImmediate(jobId, (current) => {
       current.normalizedAudioPath = normalization.outputPath;
       current.durationSeconds = normalization.durationSeconds;
-      return current;
     });
 
-    await applyTelemetryUpdate(jobId, telemetry, {
+    applyTelemetryUpdate(jobId, telemetry, {
       stage: "Running local Whisper transcription",
       stageKey: "transcribe",
       stagePct: 0,
@@ -329,32 +366,32 @@ async function processJob(jobId: string): Promise<void> {
       durationSeconds: normalization.durationSeconds,
       processingProfile,
       onSourceLog: (line: string) =>
-        void applyTelemetryUpdate(jobId, telemetry, {
+        applyTelemetryUpdate(jobId, telemetry, {
           stage: "Running local Whisper transcription",
           stageKey: "transcribe",
           logLine: line
         }),
       onSourceProgress: (stagePct: number) =>
-        void applyTelemetryUpdate(jobId, telemetry, {
+        applyTelemetryUpdate(jobId, telemetry, {
           stage: "Running local Whisper transcription",
           stageKey: "transcribe",
           stagePct
         }),
       onTranslationLog: (line: string) =>
-        void applyTelemetryUpdate(jobId, telemetry, {
+        applyTelemetryUpdate(jobId, telemetry, {
           stage: "Generating English translation",
           stageKey: "translate",
           logLine: line
         }),
       onTranslationProgress: (stagePct: number) =>
-        void applyTelemetryUpdate(jobId, telemetry, {
+        applyTelemetryUpdate(jobId, telemetry, {
           stage: "Generating English translation",
           stageKey: "translate",
           stagePct
         })
     });
 
-    await applyTelemetryUpdate(jobId, telemetry, {
+    applyTelemetryUpdate(jobId, telemetry, {
       stage: config.diarizationCommand ? "Applying speaker diarization" : "Writing transcript artifacts",
       stageKey: config.diarizationCommand ? "diarize" : "export",
       stagePct: 0,
@@ -367,13 +404,13 @@ async function processJob(jobId: string): Promise<void> {
       transcriptVariants.source.segments,
       {
         onLog: (line) =>
-          void applyTelemetryUpdate(jobId, telemetry, {
+          applyTelemetryUpdate(jobId, telemetry, {
             stage: "Applying speaker diarization",
             stageKey: "diarize",
             logLine: line
           }),
         onProgress: (stagePct) =>
-          void applyTelemetryUpdate(jobId, telemetry, {
+          applyTelemetryUpdate(jobId, telemetry, {
             stage: "Applying speaker diarization",
             stageKey: "diarize",
             stagePct
@@ -417,7 +454,10 @@ async function processJob(jobId: string): Promise<void> {
     const transcriptPath = path.join(jobDir, "transcript.json");
     await writeJsonFile(transcriptPath, transcriptRecord);
 
-    await applyTelemetryUpdate(jobId, telemetry, {
+    // Cache transcript in memory for instant reads
+    jobStore.setTranscript(jobId, transcriptRecord);
+
+    applyTelemetryUpdate(jobId, telemetry, {
       stage: "Writing transcript artifacts",
       stageKey: "export",
       stagePct: 20
@@ -425,7 +465,7 @@ async function processJob(jobId: string): Promise<void> {
 
     const artifacts = await writeArtifacts(transcriptRecord, artifactDir);
 
-    await updateJob(jobId, (current) => {
+    await updateJobImmediate(jobId, (current) => {
       current.status = "completed";
       current.stage = "Transcript ready";
       current.transcriptPath = transcriptPath;
@@ -453,15 +493,13 @@ async function processJob(jobId: string): Promise<void> {
         runtimeSummary:
           current.processing?.runtimeSummary ?? "Transcription finished with captured runtime telemetry"
       };
-      return current;
     });
   } catch (error) {
-    await updateJob(jobId, (current) => {
+    await updateJobImmediate(jobId, (current) => {
       current.status = "failed";
       current.stage = "Processing failed";
       current.error = error instanceof Error ? error.message : "Unknown processing error";
       appendLog(current, current.error);
-      return current;
     });
   }
 }
@@ -508,7 +546,7 @@ app.post("/api/uploads", uploadSingle, async (req, res) => {
   };
 
   await jobStore.save(job);
-  void processJob(jobId);
+  jobQueue.enqueue(() => processJob(jobId));
 
   res.status(202).json({ jobId });
 });
@@ -523,14 +561,54 @@ app.get("/api/jobs/:jobId", async (req, res) => {
   res.json(makeJobResponse(job));
 });
 
+// --- SSE endpoint for real-time job updates ---
+app.get("/api/jobs/:jobId/events", (req, res) => {
+  const jobId = req.params.jobId;
+  const job = jobStore.get(jobId);
+  if (!job) {
+    res.status(404).send("Job not found.");
+    return;
+  }
+
+  res.writeHead(200, {
+    "Content-Type": "text/event-stream",
+    "Cache-Control": "no-cache",
+    Connection: "keep-alive"
+  });
+
+  // Send current state immediately
+  res.write(`data: ${JSON.stringify(makeJobResponse(job))}\n\n`);
+
+  // Push updates as they happen
+  const listener = (updatedJob: JobManifest) => {
+    res.write(`data: ${JSON.stringify(makeJobResponse(updatedJob))}\n\n`);
+  };
+  jobStore.addListener(jobId, listener);
+
+  // Clean up when client disconnects
+  req.on("close", () => {
+    jobStore.removeListener(jobId, listener);
+  });
+});
+
 app.get("/api/jobs/:jobId/transcript", async (req, res) => {
-  const job = jobStore.get(req.params.jobId);
+  const jobId = req.params.jobId;
+  const job = jobStore.get(jobId);
   if (!job?.transcriptPath) {
     res.status(404).send("Transcript not ready.");
     return;
   }
 
+  // Check in-memory cache first
+  const cached = jobStore.getTranscript(jobId);
+  if (cached) {
+    res.json(cached);
+    return;
+  }
+
+  // Fall back to disk, then cache
   const transcript = await readJsonFile<TranscriptRecord>(job.transcriptPath);
+  jobStore.setTranscript(jobId, transcript);
   res.json(transcript);
 });
 
@@ -572,6 +650,14 @@ async function main(): Promise<void> {
   app.listen(config.port, () => {
     console.log(`Notadio backend listening on http://localhost:${config.port}`);
   });
+
+  // Flush pending writes on graceful shutdown
+  for (const signal of ["SIGINT", "SIGTERM"] as const) {
+    process.on(signal, async () => {
+      await jobStore.flushAll();
+      process.exit(0);
+    });
+  }
 }
 
 void main();

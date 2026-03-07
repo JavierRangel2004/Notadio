@@ -88,8 +88,8 @@ export async function uploadMedia(file: File): Promise<{ jobId: string }> {
   return response.json();
 }
 
-export async function getJob(jobId: string): Promise<JobPayload> {
-  const response = await fetch(`${API_BASE}/jobs/${jobId}`);
+export async function getJob(jobId: string, signal?: AbortSignal): Promise<JobPayload> {
+  const response = await fetch(`${API_BASE}/jobs/${jobId}`, { signal });
   if (!response.ok) {
     throw new Error(await response.text());
   }
@@ -97,8 +97,8 @@ export async function getJob(jobId: string): Promise<JobPayload> {
   return response.json();
 }
 
-export async function getTranscript(jobId: string): Promise<TranscriptPayload> {
-  const response = await fetch(`${API_BASE}/jobs/${jobId}/transcript`);
+export async function getTranscript(jobId: string, signal?: AbortSignal): Promise<TranscriptPayload> {
+  const response = await fetch(`${API_BASE}/jobs/${jobId}/transcript`, { signal });
   if (!response.ok) {
     throw new Error(await response.text());
   }
@@ -112,4 +112,31 @@ export function getExportUrl(
   variant: "source" | "english"
 ): string {
   return `${API_BASE}/jobs/${jobId}/export?format=${format}&variant=${variant}`;
+}
+
+/**
+ * Subscribe to real-time job updates via Server-Sent Events.
+ * Returns an unsubscribe function to close the connection.
+ */
+export function subscribeToJob(
+  jobId: string,
+  onUpdate: (job: JobPayload) => void,
+  onError?: (err: Event) => void
+): () => void {
+  const source = new EventSource(`${API_BASE}/jobs/${jobId}/events`);
+
+  source.onmessage = (event) => {
+    try {
+      const job: JobPayload = JSON.parse(event.data);
+      onUpdate(job);
+    } catch {
+      // Ignore parse errors
+    }
+  };
+
+  source.onerror = (err) => {
+    onError?.(err);
+  };
+
+  return () => source.close();
 }

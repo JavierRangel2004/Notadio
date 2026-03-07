@@ -30,5 +30,7 @@ export const config = {
   enableEnglishTranslation: readBoolean(process.env.ENABLE_ENGLISH_TRANSLATION, true),
   jobLogLimit: Number(process.env.JOB_LOG_LIMIT ?? "300"),
   diarizationCommand: process.env.DIARIZATION_COMMAND ?? "",
-  diarizationArgs: process.env.DIARIZATION_ARGS ?? '--input "{input}" --output "{outputFile}"'
+  diarizationArgs: process.env.DIARIZATION_ARGS ?? '--input "{input}" --output "{outputFile}"',
+  whisperParallel: readBoolean(process.env.WHISPER_PARALLEL, false),
+  maxConcurrentJobs: Number(process.env.MAX_CONCURRENT_JOBS ?? "1")
 };
