@@ -1,15 +1,20 @@
-import { FormEvent, useEffect, useRef, useState } from "react";
+import { FormEvent, useEffect, useRef, useState, forwardRef, useImperativeHandle } from "react";
 import {
   getExportUrl,
   getJob,
   getSummary,
   getTranscript,
+  getJobs,
+  deleteJob,
+  getAudioUrl,
   JobPayload,
   JobProcessingProfile,
   JobProgress,
   MeetingSummary,
   retryDiarize,
   retrySummarize,
+  StageTiming,
+  SummaryDiagnostics,
   subscribeToJob,
   TranscriptPayload,
   TranscriptSegment,
@@ -55,6 +60,65 @@ function formatBytes(bytes?: number): string {
   }
 
   return `${value.toFixed(unitIndex === 0 ? 0 : 1)} ${units[unitIndex]}`;
+}
+
+function formatDurationValue(durationMs?: number): string {
+  if (durationMs === undefined || durationMs < 0) {
+    return "n/a";
+  }
+
+  if (durationMs < 1000) {
+    return `${durationMs} ms`;
+  }
+
+  return `${(durationMs / 1000).toFixed(durationMs >= 10000 ? 1 : 2)} s`;
+}
+
+function describeSummaryStrategy(summaryDiagnostics?: SummaryDiagnostics): string {
+  if (!summaryDiagnostics) {
+    return "No diagnostics captured";
+  }
+
+  if (summaryDiagnostics.mode === "direct") {
+    return "Direct single-pass summary";
+  }
+
+  return `Chunked summary (${summaryDiagnostics.chunkCount} chunks, concurrency ${summaryDiagnostics.chunkConcurrency})`;
+}
+
+const STAGE_ORDER = ["queued", "normalize", "transcribe", "translate", "diarize", "summarize", "export"];
+
+function formatStageLabel(stageKey: string): string {
+  switch (stageKey) {
+    case "queued":
+      return "Queued";
+    case "normalize":
+      return "Normalize";
+    case "transcribe":
+      return "Transcribe";
+    case "translate":
+      return "Translate";
+    case "diarize":
+      return "Diarize";
+    case "summarize":
+      return "Summarize";
+    case "export":
+      return "Export";
+    default:
+      return stageKey;
+  }
+}
+
+function getOrderedStageTimings(stageTimings?: Record<string, StageTiming>): StageTiming[] {
+  if (!stageTimings) {
+    return [];
+  }
+
+  return Object.values(stageTimings).sort((left, right) => {
+    const leftIndex = STAGE_ORDER.indexOf(left.key);
+    const rightIndex = STAGE_ORDER.indexOf(right.key);
+    return (leftIndex === -1 ? Number.MAX_SAFE_INTEGER : leftIndex) - (rightIndex === -1 ? Number.MAX_SAFE_INTEGER : rightIndex);
+  });
 }
 
 function scoreTextCandidate(value: string): number {
@@ -122,6 +186,180 @@ function groupSegments(segments: TranscriptSegment[]): SegmentGroup[] {
   return groups;
 }
 
+function hasUsableSummary(summary: MeetingSummary | null | undefined): summary is MeetingSummary {
+  if (!summary) {
+    return false;
+  }
+
+  return Boolean(
+    summary.headline ||
+      summary.overview ||
+      summary.sections.length > 0 ||
+      summary.keyDecisions.length > 0 ||
+      summary.actionItems.length > 0 ||
+      summary.followUps.length > 0 ||
+      summary.risks.length > 0 ||
+      summary.operationalNotes.length > 0 ||
+      summary.openQuestions.length > 0 ||
+      (summary.brief && summary.brief !== "No brief generated.")
+  );
+}
+
+function WorkspaceView({ onSelectJob }: { onSelectJob: (job: JobPayload) => void }) {
+  const [jobs, setJobs] = useState<JobPayload[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  async function loadJobs() {
+    try {
+      setLoading(true);
+      const data = await getJobs();
+      setJobs(data);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    loadJobs();
+  }, []);
+
+  async function handleDelete(id: string, e: React.MouseEvent) {
+    e.stopPropagation();
+    if (!confirm("Delete this job permanently?")) return;
+    try {
+      await deleteJob(id);
+      loadJobs();
+    } catch (err) {
+      alert("Failed to delete job");
+    }
+  }
+
+  if (loading) return <div style={{ padding: '2rem' }}>Loading workspace...</div>;
+  if (jobs.length === 0) return <div style={{ padding: '2rem' }}>No jobs found in your workspace.</div>;
+
+  return (
+    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '1.5rem', padding: '1rem 0' }}>
+      {jobs.map(job => (
+        <div key={job.id} onClick={() => onSelectJob(job)} className="glass-panel" style={{ cursor: 'pointer', transition: 'transform 0.1s', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+            <strong style={{ fontSize: '1.1rem' }}>{job.sourceMedia?.originalName || 'Untitled Session'}</strong>
+            <button onClick={(e) => handleDelete(job.id, e)} style={{ background: 'transparent', border: 'none', color: 'var(--danger)', cursor: 'pointer', padding: '4px' }}>×</button>
+          </div>
+          <div style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>
+            {new Date(job.createdAt).toLocaleString()}
+          </div>
+          <div style={{ display: 'flex', gap: '0.5rem', marginTop: 'auto', paddingTop: '1rem', flexWrap: 'wrap' }}>
+            <span className="tag-outline" style={{ fontSize: '0.75rem', padding: '0.1rem 0.5rem' }}>{job.status}</span>
+            {job.detectedLanguage && <span className="tag-outline" style={{ fontSize: '0.75rem', padding: '0.1rem 0.5rem' }}>{job.detectedLanguage}</span>}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+const AudioPlayer = forwardRef<{ seek: (t: number) => void }, { jobId: string; duration?: number }>(
+  ({ jobId, duration }, ref) => {
+    const audioRef = useRef<HTMLAudioElement>(null);
+    const [playing, setPlaying] = useState(false);
+    const [time, setTime] = useState(0);
+
+    useImperativeHandle(ref, () => ({
+      seek(t: number) {
+        if (audioRef.current) {
+          audioRef.current.currentTime = t;
+          if (!playing) {
+            audioRef.current.play().catch(() => { });
+            setPlaying(true);
+          }
+        }
+      }
+    }));
+
+    useEffect(() => {
+      const audio = audioRef.current;
+      if (!audio) return;
+      const onTimeUpdate = () => setTime(audio.currentTime);
+      const onEnded = () => setPlaying(false);
+      audio.addEventListener("timeupdate", onTimeUpdate);
+      audio.addEventListener("ended", onEnded);
+      return () => {
+        audio.removeEventListener("timeupdate", onTimeUpdate);
+        audio.removeEventListener("ended", onEnded);
+      };
+    }, []);
+
+    const togglePlay = () => {
+      if (audioRef.current) {
+        if (playing) {
+          audioRef.current.pause();
+          setPlaying(false);
+        } else {
+          audioRef.current.play();
+          setPlaying(true);
+        }
+      }
+    };
+
+    const onSeek = (e: React.ChangeEvent<HTMLInputElement>) => {
+      const t = Number(e.target.value);
+      if (audioRef.current) {
+        audioRef.current.currentTime = t;
+        setTime(t);
+      }
+    };
+
+    if (!duration) return null;
+
+    return (
+      <div className="audio-player-mock">
+        <audio ref={audioRef} src={getAudioUrl(jobId)} preload="metadata" />
+        <div className="audio-controls">
+          <button
+            type="button"
+            className={`audio-control-button ${playing ? "pause" : "play"}`}
+            aria-label={playing ? "Pause audio" : "Play audio"}
+            onClick={togglePlay}
+          >
+            {playing ? (
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                <rect x="6" y="4" width="4" height="16" />
+                <rect x="14" y="4" width="4" height="16" />
+              </svg>
+            ) : (
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                <polygon points="5 3 19 12 5 21 5 3" />
+              </svg>
+            )}
+          </button>
+          <div className="audio-control-copy">
+            <strong>Session audio</strong>
+            <span>Use transcript timestamps to jump to the recording.</span>
+          </div>
+        </div>
+        <div className="audio-timeline">
+          <span className="audio-time">{formatTime(time)}</span>
+          <label className="sr-only" htmlFor={`audio-seek-${jobId}`}>Seek through uploaded audio</label>
+          <input
+            id={`audio-seek-${jobId}`}
+            type="range"
+            min="0"
+            max={duration}
+            step="0.1"
+            value={time}
+            onChange={onSeek}
+          />
+          <span className="audio-time">{formatTime(duration)}</span>
+        </div>
+      </div>
+    );
+  }
+);
+
+AudioPlayer.displayName = "AudioPlayer";
+
 export function App() {
   const [file, setFile] = useState<File | null>(null);
   const [job, setJob] = useState<JobPayload | null>(null);
@@ -134,7 +372,9 @@ export function App() {
   const [copiedState, setCopiedState] = useState<"summary" | "transcript" | null>(null);
   const [liveMessage, setLiveMessage] = useState("");
   const [isDragOver, setIsDragOver] = useState(false);
+  const [view, setView] = useState<"upload" | "processing" | "results" | "workspace">("upload");
   const logPanelRef = useRef<HTMLDivElement | null>(null);
+  const audioPlayerRef = useRef<{ seek: (t: number) => void }>(null);
 
   useEffect(() => {
     if (!job || (job.status !== "queued" && job.status !== "processing")) return;
@@ -161,15 +401,16 @@ export function App() {
     ])
       .then(([transcriptPayload, summaryPayload]) => {
         setTranscript(transcriptPayload);
-        setSummary(summaryPayload);
+        setSummary(summaryPayload ?? transcriptPayload.summary ?? null);
         if (!transcriptPayload.english) setSelectedVariant("source");
+        if (view === "processing") setView("results");
       })
       .catch((loadError) => {
         if (controller.signal.aborted) return;
         setError(loadError instanceof Error ? loadError.message : "Failed to load transcript");
       });
     return () => controller.abort();
-  }, [job?.id, job?.status]);
+  }, [job?.id, job?.status, view]);
 
   useEffect(() => {
     if (!logPanelRef.current) return;
@@ -199,6 +440,7 @@ export function App() {
       const { jobId } = await uploadMedia(file);
       const createdJob = await getJob(jobId);
       setJob(createdJob);
+      setView("processing");
     } catch (uploadError) {
       setError(uploadError instanceof Error ? uploadError.message : "Upload failed");
     } finally {
@@ -210,8 +452,19 @@ export function App() {
     if (!job) return;
     setRetryingStage("summarize");
     try {
-      const newSummary = await retrySummarize(job.id);
-      setSummary(newSummary);
+      const result = await retrySummarize(job.id);
+      const refreshedJob = await getJob(job.id);
+      setJob(refreshedJob);
+      setSummary(result.summary);
+      setTranscript((current) =>
+        current
+          ? {
+            ...current,
+            summary: result.summary ?? undefined,
+            summaryDiagnostics: result.summaryDiagnostics
+          }
+          : current
+      );
     } catch (err) {
       setError(err instanceof Error ? err.message : "Retry failed");
     } finally {
@@ -248,10 +501,13 @@ export function App() {
     translationEnabled: true
   };
   const logs = job?.logs ?? [];
+  const summaryDiagnostics = transcript?.summaryDiagnostics ?? job?.summaryDiagnostics;
+  const stageTimings = getOrderedStageTimings(job?.stageTimings);
   const visibleSegments = visibleTranscript?.segments ?? [];
   const groupedSegments = groupSegments(visibleSegments);
   const displayUploadName = getDisplayName(file?.name);
-  
+  const displaySummary = hasUsableSummary(summary) ? summary : null;
+
   const isProcessing = job?.status === "processing" || job?.status === "queued";
   const isCompleted = job?.status === "completed";
 
@@ -261,385 +517,484 @@ export function App() {
   }
 
   return (
-    <div className="app-shell">
+    <div className="app-shell" style={{ padding: '2rem', maxWidth: '1400px', margin: '0 auto', width: '100%' }}>
       <div className="sr-only" aria-live="polite">{liveMessage}</div>
 
-      <div className="brand-board">
-        {/* LEFT COLUMN: BRAND & TYPOGRAPHY & MOTION */}
-        <aside className="board-col board-col-left">
-          <div className="board-module">
-            <h3 className="module-title module-title-light">Brand Concepts</h3>
-            <div className="logo-display">NOTADIO</div>
-          </div>
-          
-          <div className="board-module grid-2">
-            <div>
-              <h3 className="module-title module-title-light">Logo</h3>
-              <div className="logo-lockup">
-                <div className="brand-icon">
-                  <span/><span/><span/>
-                </div>
-                NOTADIO
-              </div>
+      <div className="main-app-container">
+        <nav className="app-nav">
+          <div className="app-nav-logo" onClick={() => setView("upload")} style={{ cursor: "pointer" }}>
+            <div className="brand-icon">
+              <span /><span /><span />
             </div>
-            <div>
-              <h3 className="module-title module-title-light">Icon</h3>
-              <div className="brand-icon" style={{transform: 'scale(1.5)', transformOrigin: 'left center'}}>
-                  <span/><span/><span/>
-              </div>
+            NOTADIO
+          </div>
+          <div className="app-nav-links">
+            <span onClick={() => { setView("workspace"); setJob(null); setFile(null); }} style={{ fontWeight: view === 'workspace' ? 600 : 400 }}>Workspace</span>
+            <span onClick={() => { setView("upload"); setJob(null); setFile(null); }}>Upload New &uarr;</span>
+          </div>
+        </nav>
+
+        <div className="app-content">
+          {error && (
+            <div style={{ background: 'var(--danger)', color: '#fff', padding: '1rem', borderRadius: '8px', marginBottom: '1rem', display: 'flex', justifyContent: 'space-between' }}>
+              {error}
+              <button onClick={() => setError(null)} style={{ background: 'transparent', border: 'none', color: '#fff', cursor: 'pointer' }}>Close</button>
             </div>
-          </div>
+          )}
 
-          <div className="board-module typo-showcase">
-            <h3 className="module-title module-title-light">Typography Direction</h3>
-            <h1>AI-Powered Productivity</h1>
-            <h2>Heading</h2>
-            <p className="t-sub">Sample subheading</p>
-            <p className="t-body">Body text</p>
-            <p className="t-body" style={{marginTop: '1rem'}}>
-              Seamless meeting summaries, instant translation, and accurate audio diarization.
-            </p>
-          </div>
+          {/* WORKSPACE STATE */}
+          {view === "workspace" && (
+            <WorkspaceView
+              onSelectJob={(selectedJob) => {
+                setJob(selectedJob);
+                if (selectedJob.status === "completed" || selectedJob.status === "failed") {
+                  setView("results");
+                } else {
+                  setView("processing");
+                }
+              }}
+            />
+          )}
 
-          <div className="board-module">
-            <h3 className="module-title module-title-light">Motion & Interaction Inspiration</h3>
-            <div className="motion-grid">
-              <div className="motion-card">
-                <div className="circle-pulse"></div>
-                <span>Smooth real-time AI processing animations</span>
-              </div>
-              <div className="motion-card">
-                <div className="mic-icon">
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"></path><path d="M19 10v2a7 7 0 0 1-14 0v-2"></path><line x1="12" y1="19" x2="12" y2="22"></line></svg>
-                </div>
-                <span>Active audio effect recording</span>
-              </div>
-            </div>
-          </div>
-        </aside>
+          {/* IDLE / UPLOAD STATE */}
+          {view === "upload" && !job && (
+            <div className="hero-upload">
+              <h2>Transform Your Meetings with Intelligent AI</h2>
+              <p style={{ color: 'var(--text-muted)' }}>Upload your audio to extract speaker-aware transcripts, task summaries, and decisions.</p>
 
-        {/* CENTER COLUMN: MAIN APP WORKSPACE */}
-        <main className="board-col board-col-center">
-          <div className="board-module">
-            <h3 className="module-title module-title-light">Color Palette</h3>
-            <div className="palette-grid">
-               <div className="swatch" style={{background: '#0A0510'}}>#0A0510</div>
-               <div className="swatch" style={{background: '#1A0B2E'}}>#1A0B2E</div>
-               <div className="swatch" style={{background: '#F8F9FA', color: '#0A0510'}}>#F8F9FA</div>
-               <div className="swatch" style={{background: '#A09DB0', color: '#0A0510'}}>#A09DB0</div>
-               <div className="swatch" style={{background: '#9E1B32'}}>#9E1B32</div>
-               <div className="swatch" style={{background: '#5D2A7A'}}>#5D2A7A</div>
-            </div>
-          </div>
+              <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2rem', width: '100%', maxWidth: '600px' }}>
+                <div
+                  className={`upload-dropzone ${isDragOver ? 'drag-over' : ''}`}
+                  onDragOver={(e) => { e.preventDefault(); setIsDragOver(true); }}
+                  onDragLeave={() => setIsDragOver(false)}
+                  onDrop={(e) => {
+                    e.preventDefault();
+                    setIsDragOver(false);
+                    const dropped = e.dataTransfer.files?.[0];
+                    if (dropped) setFile(dropped);
+                  }}
+                  style={{ width: '100%' }}
+                >
+                  <input
+                    type="file"
+                    accept={ACCEPTED_TYPES}
+                    className="upload-input"
+                    onChange={(e) => setFile(e.target.files?.[0] ?? null)}
+                  />
+                  <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="var(--accent-primary)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
 
-          <div className="board-module" style={{ flex: 1 }}>
-            <h3 className="module-title module-title-light">Website UI Concepts</h3>
-            
-            <div className="main-app-container">
-              <nav className="app-nav">
-                <div className="app-nav-logo">
-                  <div className="brand-icon">
-                    <span/><span/><span/>
-                  </div>
-                  NOTADIO
-                </div>
-                <div className="app-nav-links">
-                  <span>Summaries</span>
-                  <span>Translation</span>
-                  <span>Diarization</span>
-                </div>
-              </nav>
-
-              <div className="app-content">
-                {error && (
-                  <div style={{ background: 'var(--danger)', color: '#fff', padding: '1rem', borderRadius: '8px', marginBottom: '1rem', display: 'flex', justifyContent: 'space-between' }}>
-                    {error}
-                    <button onClick={() => setError(null)} style={{background: 'transparent', border:'none', color:'#fff', cursor:'pointer'}}>Close</button>
-                  </div>
-                )}
-
-                {/* IDLE / UPLOAD STATE */}
-                {!job && (
-                  <div className="hero-upload">
-                    <h2>Transform Your Meetings with Intelligent AI</h2>
-                    <p style={{color: 'var(--text-muted)'}}>Upload your audio to extract speaker-aware transcripts, task summaries, and decisions.</p>
-                    
-                    <form 
-                      className={`upload-dropzone ${isDragOver ? 'drag-over' : ''}`}
-                      onSubmit={handleSubmit}
-                      onDragOver={(e) => { e.preventDefault(); setIsDragOver(true); }}
-                      onDragLeave={() => setIsDragOver(false)}
-                      onDrop={(e) => {
-                        e.preventDefault();
-                        setIsDragOver(false);
-                        const dropped = e.dataTransfer.files?.[0];
-                        if (dropped) setFile(dropped);
-                      }}
-                    >
-                      <input 
-                        type="file" 
-                        accept={ACCEPTED_TYPES}
-                        className="upload-input"
-                        onChange={(e) => setFile(e.target.files?.[0] ?? null)}
-                      />
-                      <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="var(--accent-primary)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
-                      
-                      {file ? (
-                        <div style={{textAlign: 'center'}}>
-                          <strong>{displayUploadName}</strong>
-                          <p style={{fontSize: '0.85rem', color: 'var(--text-muted)'}}>{formatBytes(file.size)}</p>
-                        </div>
-                      ) : (
-                        <div style={{textAlign: 'center'}}>
-                          <strong>Select a file</strong>
-                          <p style={{fontSize: '0.85rem', color: 'var(--text-muted)'}}>or drag and drop here</p>
-                        </div>
-                      )}
-
-                      <button className="btn-primary" type="submit" disabled={!file || isUploading}>
-                        {isUploading ? "Uploading..." : "Start Transcription"}
-                      </button>
-                    </form>
-
-                    <div className="feature-cards">
-                      <div className="feature-card">
-                        <h4>Summaries</h4>
-                        <p style={{color: 'var(--text-muted)', fontSize: '0.9rem'}}>Action items and meeting overview</p>
-                      </div>
-                      <div className="feature-card">
-                        <h4>Translation</h4>
-                        <p style={{color: 'var(--text-muted)', fontSize: '0.9rem'}}>Translate to English in real-time</p>
-                      </div>
-                      <div className="feature-card">
-                        <h4>Diarization</h4>
-                        <p style={{color: 'var(--text-muted)', fontSize: '0.9rem'}}>Accurate speaker identification</p>
-                      </div>
+                  {file ? (
+                    <div style={{ textAlign: 'center' }}>
+                      <strong>{displayUploadName}</strong>
+                      <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>{formatBytes(file.size)}</p>
                     </div>
-                  </div>
-                )}
-
-                {/* PROCESSING STATE */}
-                {job && isProcessing && (
-                  <div className="processing-dash">
-                    <div className="glass-panel highlight">
-                      <div className="status-header">
-                        <h3>{job.sourceMedia?.originalName || 'Processing File...'}</h3>
-                        <span style={{color: 'var(--accent-primary)', fontWeight: 600}}>{job.stage}</span>
-                      </div>
-                      
-                      <div className="progress-track">
-                        <div className="progress-fill" style={{ width: `${progress.overallPct}%` }} />
-                      </div>
-                      <div className="progress-meta">
-                        <span>{Math.round(progress.overallPct)}% Complete</span>
-                        <span>{progress.stageKey}</span>
-                      </div>
-
-                      <div className="stats-row" style={{marginTop: '2rem'}}>
-                        <div className="stat-block">
-                          <span>Elapsed</span>
-                          <strong>{formatTime(progress.elapsedSeconds)}</strong>
-                        </div>
-                        <div className="stat-block">
-                          <span>Threads</span>
-                          <strong>{processing.threads}</strong>
-                        </div>
-                        <div className="stat-block">
-                          <span>Profile</span>
-                          <strong>{processing.profile}</strong>
-                        </div>
-                      </div>
+                  ) : (
+                    <div style={{ textAlign: 'center' }}>
+                      <strong>Select a file</strong>
+                      <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>or drag and drop here</p>
                     </div>
+                  )}
+                </div>
 
+                <button className="btn-primary" type="submit" disabled={!file || isUploading} style={{ width: '100%' }}>
+                  {isUploading ? "Uploading..." : "Start Transcription"}
+                </button>
+              </form>
+
+              <div className="feature-cards">
+                <div className="feature-card">
+                  <h4>Summaries</h4>
+                  <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>Action items and meeting overview</p>
+                </div>
+                <div className="feature-card">
+                  <h4>Translation</h4>
+                  <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>Translate to English in real-time</p>
+                </div>
+                <div className="feature-card">
+                  <h4>Diarization</h4>
+                  <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>Accurate speaker identification</p>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* PROCESSING STATE */}
+          {view === "processing" && job && isProcessing && (
+            <div className="processing-dash">
+              <div className="glass-panel highlight">
+                <div className="status-header">
+                  <h3>{job.sourceMedia?.originalName || 'Processing File...'}</h3>
+                  <span style={{ color: 'var(--accent-primary)', fontWeight: 600 }}>{job.stage}</span>
+                </div>
+
+                <div className="progress-track">
+                  <div className="progress-fill" style={{ width: `${progress.overallPct}%` }} />
+                </div>
+                <div className="progress-meta">
+                  <span>{Math.round(progress.overallPct)}% Complete</span>
+                  <span>{progress.stageKey}</span>
+                </div>
+
+                <div className="stats-row" style={{ marginTop: '2rem' }}>
+                  <div className="stat-block">
+                    <span>Source</span>
+                    <strong>{job.durationSeconds ? formatTime(job.durationSeconds) : "--:--"}</strong>
+                  </div>
+                  <div className="stat-block">
+                    <span>Elapsed</span>
+                    <strong>{formatTime(progress.elapsedSeconds)}</strong>
+                  </div>
+                  <div className="stat-block">
+                    <span>ETA</span>
+                    <strong>{progress.etaSeconds !== undefined ? formatTime(progress.etaSeconds) : "Calculating"}</strong>
+                  </div>
+                  <div className="stat-block">
+                    <span>Threads</span>
+                    <strong>{processing.threads}</strong>
+                  </div>
+                  <div className="stat-block">
+                    <span>Profile</span>
+                    <strong>{processing.profile}</strong>
+                  </div>
+                </div>
+              </div>
+
+              <div className="glass-panel">
+                <h4 style={{ marginBottom: '1rem' }}>Live Logs</h4>
+                <div className="log-box" ref={logPanelRef}>
+                  {logs.join('\n')}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* FAILED STATE */}
+          {view === "results" && job && job.status === "failed" && (
+            <div className="processing-dash">
+              <div className="glass-panel" style={{ borderLeft: '4px solid var(--danger)' }}>
+                <h3 style={{ color: 'var(--danger)', marginBottom: '1rem' }}>Processing Failed</h3>
+                <p style={{ marginBottom: '1rem' }}>{job.error}</p>
+                <button className="btn-secondary" onClick={() => { setView("upload"); setJob(null); setFile(null); }}>Try Again</button>
+              </div>
+              {logs.length > 0 && (
+                <div className="glass-panel">
+                  <h4 style={{ marginBottom: '1rem' }}>Logs</h4>
+                  <div className="log-box" ref={logPanelRef}>
+                    {logs.join('\n')}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* RESULTS STATE */}
+          {view === "results" && job && isCompleted && transcript && (
+            <div className="results-workspace">
+
+              <div className="glass-panel results-overview-card" style={{ gridColumn: '1 / -1', display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', padding: '1rem', alignItems: 'center' }}>
+                <div style={{ fontWeight: 600, fontSize: '1.1rem' }}>
+                  {job.sourceMedia?.originalName}
+                </div>
+                <div style={{ display: 'flex', gap: '1.5rem', fontSize: '0.9rem' }}>
+                  {job.sourceMedia?.sizeBytes && <span><span style={{ color: 'var(--text-muted)', marginRight: '4px' }}>Size:</span>{formatBytes(job.sourceMedia?.sizeBytes)}</span>}
+                  <span><span style={{ color: 'var(--text-muted)', marginRight: '4px' }}>Duration:</span>{formatTime(job.durationSeconds || 0)}</span>
+                  <span><span style={{ color: 'var(--text-muted)', marginRight: '4px' }}>Language:</span>{job.detectedLanguage || 'auto'}</span>
+                </div>
+              </div>
+
+              <aside className="summary-rail">
+                <div className="glass-panel" style={{ padding: '1rem' }}>
+                  <button className="btn-secondary" style={{ width: '100%' }} onClick={() => {
+                    setJob(null); setFile(null); setTranscript(null); setSummary(null);
+                  }}>
+                    Process New File
+                  </button>
+                </div>
+
+                {displaySummary ? (
+                  <>
                     <div className="glass-panel">
-                      <h4 style={{marginBottom: '1rem'}}>Live Logs</h4>
-                      <div className="log-box" ref={logPanelRef}>
-                        {logs.join('\n')}
-                      </div>
+                      <h4 style={{ marginBottom: '0.5rem', color: 'var(--text-muted)', fontSize: '0.85rem', textTransform: 'uppercase' }}>Overview</h4>
+                      <p style={{ fontSize: '1.1rem', marginBottom: '1rem' }}>{displaySummary.headline}</p>
+                      <p style={{ color: 'var(--text-muted)' }}>{displaySummary.brief}</p>
                     </div>
-                  </div>
-                )}
 
-                {/* RESULTS STATE */}
-                {job && isCompleted && transcript && (
-                  <div className="results-workspace">
-                    
-                    <aside className="summary-rail">
-                      <div className="glass-panel" style={{padding: '1rem'}}>
-                        <button className="btn-secondary" style={{width: '100%'}} onClick={() => {
-                          setJob(null); setFile(null); setTranscript(null); setSummary(null);
-                        }}>
-                          Process New File
-                        </button>
+                    {displaySummary.keyDecisions && displaySummary.keyDecisions.length > 0 && (
+                      <div className="glass-panel">
+                        <h4 style={{ marginBottom: '1rem', color: 'var(--text-muted)', fontSize: '0.85rem', textTransform: 'uppercase' }}>Key Decisions</h4>
+                        <ul style={{ margin: 0, paddingLeft: '1.2rem', color: 'rgba(255,255,255,0.9)' }}>
+                          {displaySummary.keyDecisions.map((dec, i) => <li key={i} style={{ marginBottom: '0.5rem' }}>{dec}</li>)}
+                        </ul>
                       </div>
+                    )}
 
-                      {summary ? (
-                        <>
-                          <div className="glass-panel">
-                            <h4 style={{marginBottom: '0.5rem', color: 'var(--text-muted)', fontSize: '0.85rem', textTransform: 'uppercase'}}>Overview</h4>
-                            <p style={{fontSize: '1.1rem', marginBottom: '1rem'}}>{summary.headline}</p>
-                            <p style={{color: 'var(--text-muted)'}}>{summary.brief}</p>
-                          </div>
-
-                          {summary.actionItems && summary.actionItems.length > 0 && (
-                            <div className="glass-panel">
-                              <h4 style={{marginBottom: '1rem', color: 'var(--text-muted)', fontSize: '0.85rem', textTransform: 'uppercase'}}>Action Items</h4>
-                              {summary.actionItems.map((item, i) => (
-                                <div className="task-card" key={i}>
-                                  <p>{item.task}</p>
-                                  <div className="task-meta">
-                                    {item.assignee && <span>@{item.assignee}</span>}
-                                    {item.status && <span style={{color: 'var(--accent-primary)'}}>{item.status}</span>}
-                                  </div>
-                                </div>
-                              ))}
-                            </div>
-                          )}
-
-                          <div className="glass-panel">
-                            <div style={{display: 'flex', flexDirection: 'column', gap: '0.5rem'}}>
-                              <button className="btn-secondary" onClick={handleRetrySummarize} disabled={retryingStage !== null}>
-                                {retryingStage === 'summarize' ? 'Regenerating...' : 'Regenerate Summary'}
-                              </button>
-                              <button className="btn-secondary" onClick={handleRetryDiarize} disabled={retryingStage !== null}>
-                                {retryingStage === 'diarize' ? 'Running ID...' : 'Re-run Speaker ID'}
-                              </button>
-                            </div>
-                          </div>
-                        </>
-                      ) : (
-                        <div className="glass-panel">
-                          <p style={{color: 'var(--text-muted)'}}>No summary available.</p>
-                          <button className="btn-secondary" onClick={handleRetrySummarize} disabled={retryingStage !== null} style={{marginTop: '1rem', width: '100%'}}>
-                            Generate Summary
-                          </button>
-                        </div>
-                      )}
-                    </aside>
-
-                    <div className="transcript-area">
-                      <div className="transcript-header">
-                        <div className="control-strip">
-                          <button 
-                            className={`control-btn ${selectedVariant === 'source' ? 'active' : ''}`}
-                            onClick={() => setSelectedVariant('source')}
-                          >
-                            Source
-                          </button>
-                          <button 
-                            className={`control-btn ${selectedVariant === 'english' ? 'active' : ''}`}
-                            onClick={() => setSelectedVariant('english')}
-                            disabled={!transcript.english}
-                          >
-                            Translation
-                          </button>
-                        </div>
-
-                        <div className="control-strip">
-                          <a href={getExportUrl(job.id, "txt", selectedVariant)} target="_blank" rel="noreferrer" className="control-btn">TXT</a>
-                          <a href={getExportUrl(job.id, "srt", selectedVariant)} target="_blank" rel="noreferrer" className="control-btn">SRT</a>
-                        </div>
-                      </div>
-
-                      <div className="transcript-body">
-                        {groupedSegments.map((group, index) => (
-                          <div className="speaker-group" key={index}>
-                            <div className="speaker-meta">
-                              <span className={`speaker-tag ${getSpeakerColorClass(group.speaker)}`}>
-                                {group.speaker || 'Unknown'}
-                              </span>
-                              <span className="time-stamp">{formatTime(group.start)}</span>
-                            </div>
-                            <div className="utterances">
-                              {group.segments.map((seg, sIdx) => (
-                                <p key={sIdx} style={{margin: '0 0 0.5rem'}}>{seg.text}</p>
-                              ))}
+                    {displaySummary.actionItems && displaySummary.actionItems.length > 0 && (
+                      <div className="glass-panel">
+                        <h4 style={{ marginBottom: '1rem', color: 'var(--text-muted)', fontSize: '0.85rem', textTransform: 'uppercase' }}>Action Items</h4>
+                        {displaySummary.actionItems.map((item, i) => (
+                          <div className="task-card" key={i}>
+                            <p>{item.task}</p>
+                            <div className="task-meta">
+                              {item.assignee && <span>@{item.assignee}</span>}
+                              {item.status && <span style={{ color: 'var(--accent-primary)' }}>{item.status}</span>}
                             </div>
                           </div>
                         ))}
-                        {groupedSegments.length === 0 && (
-                          <p style={{color: 'var(--text-muted)'}}>No usable transcript text available.</p>
+                      </div>
+                    )}
+
+                    {displaySummary.sections && displaySummary.sections.length > 0 && displaySummary.sections.map((sec, i) => (
+                      <div className="glass-panel" key={i}>
+                        <h4 style={{ marginBottom: '0.5rem', color: 'var(--text-muted)', fontSize: '0.85rem', textTransform: 'uppercase' }}>{sec.title}</h4>
+                        <p style={{ color: 'rgba(255,255,255,0.9)', marginBottom: '0.5rem', fontSize: '0.95rem' }}>{sec.summary}</p>
+                        {sec.bullets && sec.bullets.length > 0 && (
+                          <ul style={{ margin: 0, paddingLeft: '1.2rem', color: 'rgba(255,255,255,0.9)', fontSize: '0.9rem' }}>
+                            {sec.bullets.map((b, bi) => <li key={bi} style={{ marginBottom: '0.3rem' }}>{b}</li>)}
+                          </ul>
+                        )}
+                      </div>
+                    ))}
+
+                    {displaySummary.openQuestions && displaySummary.openQuestions.length > 0 && (
+                      <div className="glass-panel">
+                        <h4 style={{ marginBottom: '0.5rem', color: 'var(--text-muted)', fontSize: '0.85rem', textTransform: 'uppercase' }}>Open Questions</h4>
+                        <ul style={{ margin: 0, paddingLeft: '1.2rem', color: 'rgba(255,255,255,0.9)', fontSize: '0.9rem' }}>
+                          {displaySummary.openQuestions.map((q, i) => <li key={i} style={{ marginBottom: '0.3rem' }}>{q}</li>)}
+                        </ul>
+                      </div>
+                    )}
+
+                    <div className="glass-panel">
+                      <h4 style={{ marginBottom: '1rem', color: 'var(--text-muted)', fontSize: '0.85rem', textTransform: 'uppercase' }}>Summary Diagnostics</h4>
+                      <div style={{ display: 'grid', gap: '0.75rem' }}>
+                        <div>
+                          <div style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>Strategy</div>
+                          <strong>{describeSummaryStrategy(summaryDiagnostics)}</strong>
+                        </div>
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: '0.75rem' }}>
+                          <div>
+                            <div style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>Total</div>
+                            <strong>{formatDurationValue(summaryDiagnostics?.totalDurationMs)}</strong>
+                          </div>
+                          <div>
+                            <div style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>LLM Calls</div>
+                            <strong>{summaryDiagnostics?.requestCount ?? 0}</strong>
+                          </div>
+                          <div>
+                            <div style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>Direct</div>
+                            <strong>{formatDurationValue(summaryDiagnostics?.directDurationMs)}</strong>
+                          </div>
+                          <div>
+                            <div style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>Reduce</div>
+                            <strong>{formatDurationValue(summaryDiagnostics?.reduceDurationMs)}</strong>
+                          </div>
+                          <div>
+                            <div style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>Local Merge</div>
+                            <strong>{formatDurationValue(summaryDiagnostics?.mergeDurationMs)}</strong>
+                          </div>
+                          <div>
+                            <div style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>Fallback</div>
+                            <strong>{formatDurationValue(summaryDiagnostics?.fallbackDurationMs)}</strong>
+                          </div>
+                        </div>
+                        {summaryDiagnostics && (
+                          <div style={{ color: 'var(--text-muted)', fontSize: '0.85rem', lineHeight: 1.5 }}>
+                            {summaryDiagnostics.usedFallback ? "Fallback summary was used. " : "Primary structured summary succeeded. "}
+                            {summaryDiagnostics.usedMergedPartials ? "Local merge path used. " : ""}
+                            {summaryDiagnostics.usedReduce ? "Final reduce request used. " : "Final reduce request skipped. "}
+                            {summaryDiagnostics.sampled ? "Transcript input was sampled before summarization." : "Full selected transcript blocks were used."}
+                          </div>
+                        )}
+                        {summaryDiagnostics?.chunks && summaryDiagnostics.chunks.length > 0 && (
+                          <details>
+                            <summary style={{ cursor: 'pointer', color: 'rgba(255,255,255,0.9)' }}>
+                              Chunk timing details ({summaryDiagnostics.chunks.length})
+                            </summary>
+                            <div style={{ display: 'grid', gap: '0.5rem', marginTop: '0.75rem' }}>
+                              {summaryDiagnostics.chunks.map((chunk) => (
+                                <div key={chunk.chunkIndex} className="task-card">
+                                  <div style={{ display: 'flex', justifyContent: 'space-between', gap: '0.75rem', flexWrap: 'wrap' }}>
+                                    <strong>Chunk {chunk.chunkIndex}</strong>
+                                    <span style={{ color: 'var(--text-muted)' }}>{formatDurationValue(chunk.durationMs)}</span>
+                                  </div>
+                                  <div className="task-meta">
+                                    <span>{chunk.status}</span>
+                                    <span>{chunk.inputChars} chars</span>
+                                    <span>{chunk.summarySections} sections</span>
+                                    <span>{chunk.actionItems} action items</span>
+                                  </div>
+                                  {chunk.error && <p style={{ marginTop: '0.5rem', color: 'var(--danger)' }}>{chunk.error}</p>}
+                                </div>
+                              ))}
+                            </div>
+                          </details>
                         )}
                       </div>
                     </div>
 
+                    {stageTimings.length > 0 && (
+                      <div className="glass-panel">
+                        <h4 style={{ marginBottom: '1rem', color: 'var(--text-muted)', fontSize: '0.85rem', textTransform: 'uppercase' }}>Pipeline Timings</h4>
+                        <div style={{ display: 'grid', gap: '0.5rem' }}>
+                          {stageTimings.map((stageTiming) => (
+                            <div key={stageTiming.key} className="task-card">
+                              <div style={{ display: 'flex', justifyContent: 'space-between', gap: '0.75rem', flexWrap: 'wrap' }}>
+                                <strong>{formatStageLabel(stageTiming.key)}</strong>
+                                <span style={{ color: 'var(--text-muted)' }}>{formatDurationValue(stageTiming.durationMs)}</span>
+                              </div>
+                              <div className="task-meta">
+                                <span>{stageTiming.label}</span>
+                                <span>{stageTiming.completedAt ? "completed" : "in progress"}</span>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    <div className="glass-panel">
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                        <button className="btn-secondary" onClick={() => {
+                          copyText(JSON.stringify(displaySummary, null, 2));
+                          setCopiedState("summary");
+                        }}>{copiedState === "summary" ? "Copied!" : "Copy Summary JSON"}</button>
+                        <button className="btn-secondary" onClick={handleRetrySummarize} disabled={retryingStage !== null}>
+                          {retryingStage === 'summarize' ? 'Regenerating...' : 'Regenerate Summary'}
+                        </button>
+                        <button className="btn-secondary" onClick={handleRetryDiarize} disabled={retryingStage !== null}>
+                          {retryingStage === 'diarize' ? 'Running ID...' : 'Re-run Speaker ID'}
+                        </button>
+                      </div>
+                    </div>
+                  </>
+                ) : (
+                  <div className="glass-panel">
+                    <p style={{ color: 'var(--text-muted)' }}>No summary available.</p>
+                    <button className="btn-secondary" onClick={handleRetrySummarize} disabled={retryingStage !== null} style={{ marginTop: '1rem', width: '100%' }}>
+                      Generate Summary
+                    </button>
                   </div>
                 )}
-              </div>
-            </div>
-          </div>
-        </main>
 
-        {/* RIGHT COLUMN: UI COMPONENTS & MOOD */}
-        <aside className="board-col board-col-right">
-          <div className="board-module">
-            <h3 className="module-title module-title-light">UI Components</h3>
-            <div className="ui-components-stack">
-              
-              <div>
-                <p style={{color: 'var(--text-muted)', fontSize: '0.8rem', marginBottom: '0.5rem'}}>Primary Actions</p>
-                <div className="ui-row">
-                  <button className="btn-primary" style={{flex: 1}}>Buy Now</button>
-                </div>
-                <div className="ui-row" style={{marginTop: '0.5rem'}}>
-                  <button className="tag-outline active">Primary Action</button>
-                  <button className="tag-outline">Translation</button>
-                  <button className="tag-outline">Diarization</button>
-                </div>
-              </div>
-
-              <div>
-                <p style={{color: 'var(--text-muted)', fontSize: '0.8rem', marginBottom: '0.5rem'}}>Audio Player Controls</p>
-                <div className="audio-player-mock">
-                  <div className="audio-timeline">
-                    <span>0:00</span>
-                    <div className="audio-bar"></div>
-                    <span>0:30</span>
+                {!displaySummary && summaryDiagnostics && (
+                  <div className="glass-panel">
+                    <h4 style={{ marginBottom: '1rem', color: 'var(--text-muted)', fontSize: '0.85rem', textTransform: 'uppercase' }}>Summary Diagnostics</h4>
+                    <div style={{ display: 'grid', gap: '0.75rem' }}>
+                      <div>
+                        <div style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>Strategy</div>
+                        <strong>{describeSummaryStrategy(summaryDiagnostics)}</strong>
+                      </div>
+                      <div style={{ color: 'var(--text-muted)', fontSize: '0.85rem', lineHeight: 1.5 }}>
+                        {summaryDiagnostics.usedFallback ? "Fallback summary was used. " : "Primary structured summary succeeded. "}
+                        {summaryDiagnostics.usedMergedPartials ? "Local merge path used. " : ""}
+                        {summaryDiagnostics.usedReduce ? "Final reduce request used. " : "Final reduce request skipped. "}
+                        {summaryDiagnostics.sampled ? "Transcript input was sampled before summarization." : "Full selected transcript blocks were used."}
+                      </div>
+                    </div>
                   </div>
-                  <div className="audio-controls">
-                    <span></span>
-                    <span className="play"></span>
-                    <span></span>
+                )}
+
+                {!displaySummary && stageTimings.length > 0 && (
+                  <div className="glass-panel">
+                    <h4 style={{ marginBottom: '1rem', color: 'var(--text-muted)', fontSize: '0.85rem', textTransform: 'uppercase' }}>Pipeline Timings</h4>
+                    <div style={{ display: 'grid', gap: '0.5rem' }}>
+                      {stageTimings.map((stageTiming) => (
+                        <div key={stageTiming.key} className="task-card">
+                          <div style={{ display: 'flex', justifyContent: 'space-between', gap: '0.75rem', flexWrap: 'wrap' }}>
+                            <strong>{formatStageLabel(stageTiming.key)}</strong>
+                            <span style={{ color: 'var(--text-muted)' }}>{formatDurationValue(stageTiming.durationMs)}</span>
+                          </div>
+                          <div className="task-meta">
+                            <span>{stageTiming.label}</span>
+                            <span>{stageTiming.completedAt ? "completed" : "in progress"}</span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </aside>
+
+                <div className="transcript-area">
+                  <div className="transcript-header">
+                    <div className="transcript-heading">
+                      <span className="transcript-kicker">
+                        {selectedVariant === "english" ? "Translated transcript" : "Source transcript"}
+                      </span>
+                      <h3>Transcript</h3>
+                    </div>
+                    <div className="transcript-toolbar">
+                      <div className="control-strip" role="tablist" aria-label="Transcript variant">
+                        <button
+                          className={`control-btn ${selectedVariant === 'source' ? 'active' : ''}`}
+                          onClick={() => setSelectedVariant('source')}
+                          type="button"
+                        >
+                          Source
+                        </button>
+                        <button
+                          className={`control-btn ${selectedVariant === 'english' ? 'active' : ''}`}
+                          onClick={() => setSelectedVariant('english')}
+                          disabled={!transcript.english}
+                          type="button"
+                        >
+                          Translation
+                        </button>
+                      </div>
+
+                      <div className="control-strip control-strip-actions" aria-label="Transcript actions">
+                        <button className="control-btn" type="button" onClick={() => {
+                          copyText(visibleSegments.map(s => `[${formatTime(s.start)}] ${s.speaker || 'Unknown'}: ${s.text}`).join('\n'));
+                          setCopiedState("transcript");
+                        }}>{copiedState === "transcript" ? "Copied!" : "Copy"}</button>
+                        <a href={getExportUrl(job.id, "txt", selectedVariant)} target="_blank" rel="noreferrer" className="control-btn">TXT</a>
+                        <a href={getExportUrl(job.id, "srt", selectedVariant)} target="_blank" rel="noreferrer" className="control-btn">SRT</a>
+                        <a href={getExportUrl(job.id, "json", selectedVariant)} target="_blank" rel="noreferrer" className="control-btn">JSON</a>
+                      </div>
+                    </div>
+                  </div>
+
+                  <AudioPlayer ref={audioPlayerRef} jobId={job.id} duration={job.durationSeconds} />
+
+                  <div className="transcript-body">
+                    {groupedSegments.map((group, index) => (
+                      <div className="speaker-group" key={index}>
+                        <div className="speaker-meta">
+                          <span className={`speaker-tag ${getSpeakerColorClass(group.speaker)}`}>
+                            {group.speaker || 'Unknown'}
+                          </span>
+                          <button
+                            type="button"
+                            className="time-stamp"
+                            onClick={() => audioPlayerRef.current?.seek(group.start)}
+                          >
+                            {formatTime(group.start)}
+                          </button>
+                        </div>
+                        <div className="utterances">
+                          {group.segments.map((seg, sIdx) => (
+                            <p key={sIdx} style={{ margin: '0 0 0.5rem' }}>{seg.text}</p>
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+                    {groupedSegments.length === 0 && (
+                      <p style={{ color: 'var(--text-muted)' }}>No usable transcript text available.</p>
+                    )}
                   </div>
                 </div>
-              </div>
 
-              <div>
-                <p style={{color: 'var(--text-muted)', fontSize: '0.8rem', marginBottom: '0.5rem'}}>Speaker Identification Tags</p>
-                <div className="speaker-tags-mock">
-                  <span className="spk-tag speaker-color-0">Speaker 1</span>
-                  <span className="spk-tag speaker-color-1">Speaker 2</span>
-                  <span className="spk-tag speaker-color-2">Speaker 3</span>
-                  <span className="spk-tag speaker-color-4">Speaker 4</span>
-                </div>
-              </div>
-
+                {logs.length > 0 && (
+                  <div className="glass-panel" style={{ marginTop: '1.5rem' }}>
+                    <h4 style={{ marginBottom: '1rem' }}>Processing Logs</h4>
+                    <div className="log-box">
+                      {logs.join('\n')}
+                    </div>
+                  </div>
+                )}
             </div>
-          </div>
-
-          <div className="board-module">
-            <h3 className="module-title module-title-light">Brand Keywords</h3>
-            <div className="keyword-cloud">
-              <span className="kw">Intelligent</span>
-              <span className="kw highlight">Seamless</span>
-              <span className="kw highlight">Powerful</span>
-              <span className="kw">Premium</span>
-              <span className="kw">Accurate</span>
-              <span className="kw highlight">Contemporary</span>
-              <span className="kw">Secure</span>
-            </div>
-          </div>
-
-          <div className="board-module">
-            <h3 className="module-title module-title-light">Product Mood References</h3>
-            <div className="mood-grid">
-              <div className="mood-card"></div>
-              <div className="mood-card"></div>
-              <div className="mood-card" style={{gridColumn: '1 / -1'}}></div>
-            </div>
-          </div>
-        </aside>
-
+          )}
+        </div>
       </div>
     </div>
   );

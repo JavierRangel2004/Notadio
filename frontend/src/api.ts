@@ -44,6 +44,54 @@ export type MeetingSummary = {
   openQuestions: string[];
 };
 
+export type SummaryChunkStatus = "completed" | "failed" | "skipped";
+
+export type SummaryChunkDiagnostic = {
+  chunkIndex: number;
+  inputChars: number;
+  durationMs: number;
+  status: SummaryChunkStatus;
+  startedAt: string;
+  completedAt: string;
+  summarySections: number;
+  actionItems: number;
+  error?: string;
+};
+
+export type SummaryDiagnostics = {
+  model: string;
+  mode: "direct" | "chunked";
+  inputChars: number;
+  transcriptBlocks: number;
+  sampled: boolean;
+  chunkCount: number;
+  chunkConcurrency: number;
+  requestCount: number;
+  partialCount: number;
+  skippedChunkCount: number;
+  failedChunkCount: number;
+  totalDurationMs: number;
+  directDurationMs?: number;
+  reduceDurationMs?: number;
+  mergeDurationMs?: number;
+  fallbackDurationMs?: number;
+  usedReduce: boolean;
+  usedMergedPartials: boolean;
+  usedFallback: boolean;
+  fallbackReason?: string;
+  startedAt: string;
+  completedAt: string;
+  chunks: SummaryChunkDiagnostic[];
+};
+
+export type StageTiming = {
+  key: string;
+  label: string;
+  startedAt: string;
+  completedAt?: string;
+  durationMs?: number;
+};
+
 export type TranscriptPayload = {
   jobId: string;
   sourceMedia: {
@@ -57,6 +105,7 @@ export type TranscriptPayload = {
   source: TranscriptVariant;
   english?: TranscriptVariant;
   summary?: MeetingSummary;
+  summaryDiagnostics?: SummaryDiagnostics;
 };
 
 export type JobProgress = {
@@ -93,9 +142,11 @@ export type JobPayload = {
   durationSeconds?: number;
   warnings: string[];
   error?: string;
+  summaryDiagnostics?: SummaryDiagnostics;
   progress?: JobProgress;
   processing?: JobProcessingProfile;
   logs?: string[];
+  stageTimings?: Record<string, StageTiming>;
   artifacts: {
     source: string[];
     english: string[];
@@ -129,6 +180,24 @@ export async function getJob(jobId: string, signal?: AbortSignal): Promise<JobPa
   return response.json();
 }
 
+export async function getJobs(status?: string, signal?: AbortSignal): Promise<JobPayload[]> {
+  const url = status ? `${API_BASE}/jobs?status=${encodeURIComponent(status)}` : `${API_BASE}/jobs`;
+  const response = await fetch(url, { signal });
+  if (!response.ok) {
+    throw new Error(await response.text());
+  }
+  return response.json();
+}
+
+export async function deleteJob(jobId: string): Promise<void> {
+  const response = await fetch(`${API_BASE}/jobs/${jobId}`, {
+    method: "DELETE"
+  });
+  if (!response.ok) {
+    throw new Error(await response.text());
+  }
+}
+
 export async function getTranscript(jobId: string, signal?: AbortSignal): Promise<TranscriptPayload> {
   const response = await fetch(`${API_BASE}/jobs/${jobId}/transcript`, { signal });
   if (!response.ok) {
@@ -150,7 +219,9 @@ export async function getSummary(jobId: string, signal?: AbortSignal): Promise<M
   return response.json();
 }
 
-export async function retrySummarize(jobId: string): Promise<MeetingSummary | null> {
+export async function retrySummarize(
+  jobId: string
+): Promise<{ summary: MeetingSummary | null; summaryDiagnostics?: SummaryDiagnostics }> {
   const response = await fetch(`${API_BASE}/jobs/${jobId}/retry/summarize`, { method: "POST" });
   if (!response.ok) {
     const text = await response.text();
@@ -174,6 +245,10 @@ export function getExportUrl(
   variant: "source" | "english"
 ): string {
   return `${API_BASE}/jobs/${jobId}/export?format=${format}&variant=${variant}`;
+}
+
+export function getAudioUrl(jobId: string): string {
+  return `${API_BASE}/jobs/${jobId}/audio`;
 }
 
 /**
