@@ -66,6 +66,43 @@ function readBoolean(value: string | undefined, fallback: boolean): boolean {
   return ["1", "true", "yes", "on"].includes(value.toLowerCase());
 }
 
+function readNumber(value: string | undefined, fallback: number, options: { min?: number; max?: number } = {}): number {
+  if (value === undefined) {
+    return fallback;
+  }
+
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed)) {
+    return fallback;
+  }
+
+  if (options.min !== undefined && parsed < options.min) {
+    return options.min;
+  }
+
+  if (options.max !== undefined && parsed > options.max) {
+    return options.max;
+  }
+
+  return parsed;
+}
+
+function readOptionalNumber(
+  value: string | undefined,
+  options: { min?: number; max?: number } = {}
+): number | undefined {
+  if (value === undefined || value.trim() === "") {
+    return undefined;
+  }
+
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed)) {
+    return undefined;
+  }
+
+  return readNumber(value, parsed, options);
+}
+
 export const config = {
   backendRoot,
   projectRoot,
@@ -92,6 +129,15 @@ export const config = {
   ollamaBaseUrl: process.env.OLLAMA_BASE_URL ?? "http://localhost:11434",
   ollamaModel: process.env.OLLAMA_MODEL ?? "llama3.2",
   enableSummary: readBoolean(process.env.ENABLE_SUMMARY, true),
+  summaryChunkConcurrency: readNumber(process.env.SUMMARY_CHUNK_CONCURRENCY, 2, { min: 1, max: 8 }),
+  summaryReduceMinPartials: readNumber(process.env.SUMMARY_REDUCE_MIN_PARTIALS, 3, { min: 2, max: 12 }),
+  summaryDirectCharLimit: readNumber(process.env.SUMMARY_DIRECT_CHAR_LIMIT, 12000, { min: 2000, max: 120000 }),
+  summaryChunkCharLimit: readNumber(process.env.SUMMARY_CHUNK_CHAR_LIMIT, 8000, { min: 1000, max: 32000 }),
+  summaryMaxInputChars: readNumber(process.env.SUMMARY_MAX_INPUT_CHARS, 48000, { min: 4000, max: 160000 }),
+  summaryBlockMaxChars: readNumber(process.env.SUMMARY_BLOCK_MAX_CHARS, 420, { min: 120, max: 4000 }),
+  summaryOllamaNumPredict: readOptionalNumber(process.env.SUMMARY_OLLAMA_NUM_PREDICT, { min: 64, max: 4096 }),
+  summaryOllamaNumCtx: readOptionalNumber(process.env.SUMMARY_OLLAMA_NUM_CTX, { min: 512, max: 65536 }),
+  summaryOllamaKeepAlive: process.env.SUMMARY_OLLAMA_KEEP_ALIVE?.trim() || undefined,
   whisperParallel: readBoolean(process.env.WHISPER_PARALLEL, false),
   maxConcurrentJobs: Number(process.env.MAX_CONCURRENT_JOBS ?? "1")
 };

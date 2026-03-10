@@ -44,6 +44,54 @@ export type MeetingSummary = {
   openQuestions: string[];
 };
 
+export type SummaryChunkStatus = "completed" | "failed" | "skipped";
+
+export type SummaryChunkDiagnostic = {
+  chunkIndex: number;
+  inputChars: number;
+  durationMs: number;
+  status: SummaryChunkStatus;
+  startedAt: string;
+  completedAt: string;
+  summarySections: number;
+  actionItems: number;
+  error?: string;
+};
+
+export type SummaryDiagnostics = {
+  model: string;
+  mode: "direct" | "chunked";
+  inputChars: number;
+  transcriptBlocks: number;
+  sampled: boolean;
+  chunkCount: number;
+  chunkConcurrency: number;
+  requestCount: number;
+  partialCount: number;
+  skippedChunkCount: number;
+  failedChunkCount: number;
+  totalDurationMs: number;
+  directDurationMs?: number;
+  reduceDurationMs?: number;
+  mergeDurationMs?: number;
+  fallbackDurationMs?: number;
+  usedReduce: boolean;
+  usedMergedPartials: boolean;
+  usedFallback: boolean;
+  fallbackReason?: string;
+  startedAt: string;
+  completedAt: string;
+  chunks: SummaryChunkDiagnostic[];
+};
+
+export type StageTiming = {
+  key: string;
+  label: string;
+  startedAt: string;
+  completedAt?: string;
+  durationMs?: number;
+};
+
 export type TranscriptRecord = {
   jobId: string;
   sourceMedia: {
@@ -57,6 +105,7 @@ export type TranscriptRecord = {
   source: TranscriptVariant;
   english?: TranscriptVariant;
   summary?: MeetingSummary;
+  summaryDiagnostics?: SummaryDiagnostics;
 };
 
 export type JobProgress = {
@@ -97,9 +146,11 @@ export type JobManifest = {
   error?: string;
   transcriptPath?: string;
   summaryPath?: string;
+  summaryDiagnostics?: SummaryDiagnostics;
   progress?: JobProgress;
   processing?: JobProcessingProfile;
   logs?: string[];
+  stageTimings?: Record<string, StageTiming>;
   artifacts: {
     source: string[];
     english: string[];
