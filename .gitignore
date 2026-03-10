@@ -9,6 +9,7 @@ coverage/
 *.tsbuildinfo
 .vite/
 .local/
+logs/
 
 # Runtime/storage artifacts
 data/
