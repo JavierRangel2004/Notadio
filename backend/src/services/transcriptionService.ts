@@ -42,6 +42,8 @@ type WhisperTaskOptions = {
   allowEmpty?: boolean;
 } & WhisperCallbacks;
 
+const WHISPER_SEGMENT_LOG_PATTERN = /^\[\d{2}:\d{2}(?::\d{2})?\.\d+\s+-->\s+\d{2}:\d{2}(?::\d{2})?\.\d+\]/;
+
 function toNumber(value: unknown): number {
   return typeof value === "number" ? value : Number(value ?? 0);
 }
@@ -157,6 +159,10 @@ function parseProgressLine(line: string): number | undefined {
   return Number.isFinite(value) ? Math.max(0, Math.min(100, value)) : undefined;
 }
 
+function shouldSurfaceWhisperLogLine(line: string): boolean {
+  return !WHISPER_SEGMENT_LOG_PATTERN.test(line.trim());
+}
+
 async function runWhisperTask(
   inputPath: string,
   outputBase: string,
@@ -196,7 +202,9 @@ async function runWhisperTask(
   try {
     await runCommand(config.whisperCommand, args, {
       onStdoutLine: (line) => {
-        options.onLog?.(line);
+        if (shouldSurfaceWhisperLogLine(line)) {
+          options.onLog?.(line);
+        }
         const pct = parseProgressLine(line);
         if (pct !== undefined) {
           lastExplicitPct = pct;
@@ -204,7 +212,9 @@ async function runWhisperTask(
         }
       },
       onStderrLine: (line) => {
-        options.onLog?.(line);
+        if (shouldSurfaceWhisperLogLine(line)) {
+          options.onLog?.(line);
+        }
         const pct = parseProgressLine(line);
         if (pct !== undefined) {
           lastExplicitPct = pct;

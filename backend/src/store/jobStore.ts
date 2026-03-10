@@ -62,6 +62,23 @@ class JobStore {
     return this.jobs.get(jobId);
   }
 
+  getAll(): JobManifest[] {
+    return Array.from(this.jobs.values());
+  }
+
+  async delete(jobId: string): Promise<void> {
+    this.jobs.delete(jobId);
+    this.transcriptCache.delete(jobId);
+    this.clearPendingFlush(jobId);
+    this.listeners.delete(jobId);
+    const jobDir = this.getJobDir(jobId);
+    try {
+      await fs.rm(jobDir, { recursive: true, force: true });
+    } catch {
+      // Ignore errors if directory doesn't exist
+    }
+  }
+
   /** Update in-memory state and notify listeners. Does NOT write to disk. */
   update(job: JobManifest): void {
     this.jobs.set(job.id, job);

@@ -11,6 +11,11 @@ type SpeakerSlice = {
   speaker: string;
 };
 
+function estimateDiarizationStagePct(elapsedSeconds: number, durationSeconds: number | undefined): number {
+  const expectedRuntime = durationSeconds ? Math.max(45, durationSeconds * 0.15) : 120;
+  return Math.min(95, (elapsedSeconds / expectedRuntime) * 100);
+}
+
 function pickSpeaker(segment: TranscriptSegment, speakers: SpeakerSlice[]): string | undefined {
   let bestSpeaker: string | undefined;
   let bestOverlap = 0;
@@ -31,6 +36,7 @@ export async function applyOptionalDiarization(
   workDir: string,
   segments: TranscriptSegment[],
   callbacks: {
+    durationSeconds?: number;
     onLog?: (line: string) => void;
     onProgress?: (stagePct: number) => void;
   } = {}
@@ -51,10 +57,15 @@ export async function applyOptionalDiarization(
   });
 
   try {
-    let progress = 0;
+    const startedAt = Date.now();
+    let lastProgress = 0;
     const heartbeat = setInterval(() => {
-      progress = Math.min(95, progress + 8);
-      callbacks.onProgress?.(progress);
+      const elapsedSeconds = (Date.now() - startedAt) / 1000;
+      const progress = estimateDiarizationStagePct(elapsedSeconds, callbacks.durationSeconds);
+      if (progress > lastProgress) {
+        lastProgress = progress;
+        callbacks.onProgress?.(progress);
+      }
     }, 2000);
 
     try {
@@ -69,6 +80,7 @@ export async function applyOptionalDiarization(
 
     const payload = await readJsonFile<{ segments?: SpeakerSlice[] } | SpeakerSlice[]>(outputFile);
     const speakerSlices = Array.isArray(payload) ? payload : payload.segments ?? [];
+    callbacks.onLog?.(`Diarization complete. Found ${speakerSlices.length} segments.`);
     callbacks.onProgress?.(100);
 
     return {
