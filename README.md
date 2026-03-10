@@ -40,6 +40,8 @@ Notadio lets you upload audio or video files, transcribe them locally with Whisp
 - **ffmpeg** available in your `PATH`
 - **whisper-cli** (`whisper.cpp` binary) available in your `PATH` or configured via `.env`
 - A local Whisper model file (e.g. `ggml-large-v3.bin`)
+- **Python 3.9+** (required only if you want to enable local speaker diarization)
+- **Ollama** (required only if you want to enable local AI meeting summaries)
 
 ### 1) Clone and install
 
@@ -64,8 +66,10 @@ Copy-Item .env.example .env
 Open `.env` and set at minimum:
 
 ```env
-WHISPER_MODEL_PATH=/absolute/path/to/ggml-large-v3.bin
+WHISPER_MODEL_PATH=./.local/models/ggml-large-v3.bin
 ```
+
+Relative paths in `.env` are resolved from the project root, so `./.local/...` works on macOS, Linux, and Windows.
 
 Full config reference is at the end of this README.
 
@@ -116,7 +120,38 @@ wget https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-small.bin
 
 Set `WHISPER_MODEL_PATH` in `.env` to the absolute path of the downloaded file.
 
-### 4) Run the app
+### 4) (Optional) Enable Extensions
+
+Notadio supports fully local speaker diarization and meeting summaries.
+
+**Speaker Diarization:**
+Run the setup script to create a local Python environment for the `diarize` package:
+```bash
+bash scripts/setup-diarization.sh
+```
+*(The script will tell you what to put in your `.env` for `DIARIZATION_COMMAND`)*
+
+**AI Meeting Summaries:**
+Install [Ollama](https://ollama.com) and pull a model:
+```bash
+ollama pull llama3.2
+```
+If Ollama is not already running as a background service on your machine, start it in another terminal:
+```bash
+ollama serve
+```
+*(Ensure `OLLAMA_MODEL=llama3.2` and `ENABLE_SUMMARY=true` are set in `.env`)*
+
+### 5) Verify your runtime
+
+Run the built-in runtime doctor before starting the app:
+```bash
+npm run doctor
+```
+
+It checks your resolved `.env`, storage path, `ffmpeg`, `whisper-cli`, Whisper model path, optional diarization Python env, and Ollama connectivity/model availability.
+
+### 6) Run the app
 
 ```bash
 npm run dev
@@ -158,8 +193,8 @@ STORAGE_ROOT=./data
 FFMPEG_PATH=ffmpeg
 WHISPER_COMMAND=whisper-cli
 
-# Absolute path to the whisper GGML model file
-WHISPER_MODEL_PATH=/path/to/ggml-large-v3.bin
+# Whisper GGML model file. Relative paths resolve from the project root.
+WHISPER_MODEL_PATH=./.local/models/ggml-large-v3.bin
 
 # Whisper CLI argument templates ({model}, {input}, {outputBase} are substituted at runtime)
 WHISPER_ARGS=-m "{model}" -f "{input}" --output-json --output-srt --output-file "{outputBase}" --language auto
@@ -179,7 +214,12 @@ JOB_LOG_LIMIT=300
 
 # Optional diarization (speaker labeling) command
 DIARIZATION_COMMAND=
-DIARIZATION_ARGS=--input "{input}" --output "{outputFile}"
+DIARIZATION_ARGS="{projectRoot}/scripts/diarize_audio.py" --input "{input}" --output "{outputFile}"
+
+# Optional Ollama summary generation
+OLLAMA_BASE_URL=http://localhost:11434
+OLLAMA_MODEL=llama3.2
+ENABLE_SUMMARY=true
 
 # Concurrency controls
 WHISPER_PARALLEL=false
@@ -208,12 +248,16 @@ ENABLE_ENGLISH_TRANSLATION=false
 
 ## Optional: Speaker Diarization
 
-If you have a local diarization tool, configure:
+Notadio has built-in support for local speaker diarization using the `diarize` Python package. 
+Run the setup script (`bash scripts/setup-diarization.sh`) which will configure your environment and provide the necessary `.env` variables:
 
 ```env
-DIARIZATION_COMMAND=your-diarization-binary
-DIARIZATION_ARGS=--input "{input}" --output "{outputFile}"
+DIARIZATION_COMMAND=./.local/diarize-venv/bin/python
+DIARIZATION_ARGS="{projectRoot}/scripts/diarize_audio.py" --input "{input}" --output "{outputFile}"
 ```
+
+`DIARIZATION_COMMAND` and `WHISPER_MODEL_PATH` may be absolute paths or project-root-relative paths.
+`{projectRoot}` in `DIARIZATION_ARGS` is replaced automatically by the backend.
 
 The command must write JSON to `{outputFile}` in one of these formats:
 
