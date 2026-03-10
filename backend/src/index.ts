@@ -11,6 +11,7 @@ import { normalizeMediaToWav } from "./services/mediaService.js";
 import { writeArtifacts } from "./services/exportService.js";
 import { applyOptionalDiarization } from "./services/diarizationService.js";
 import { transcribeAudio } from "./services/transcriptionService.js";
+import { generateSummary } from "./services/summaryService.js";
 import { jobStore } from "./store/jobStore.js";
 import { ensureDir, readJsonFile, writeJsonFile } from "./utils/fs.js";
 import { JobManifest, JobProcessingProfile, JobProgress, TranscriptRecord } from "./types.js";
@@ -21,7 +22,7 @@ const upload = multer({ dest: path.join(config.storageRoot, ".tmp") });
 const uploadSingle = upload.single("media") as unknown as RequestHandler;
 const jobQueue = new JobQueue(config.maxConcurrentJobs);
 
-type PipelineStageKey = "queued" | "normalize" | "transcribe" | "translate" | "diarize" | "export";
+type PipelineStageKey = "queued" | "normalize" | "transcribe" | "translate" | "diarize" | "summarize" | "export";
 
 type StageDefinition = {
   key: PipelineStageKey;
@@ -39,6 +40,31 @@ app.use(express.json());
 
 function clampPct(value: number): number {
   return Math.max(0, Math.min(100, Number.isFinite(value) ? value : 0));
+}
+
+function getMojibakeScore(value: string): number {
+  const suspiciousMatches = value.match(/[ÃÂâðÌÒÓÕ]|[\u0080-\u009f]/g);
+  return suspiciousMatches?.length ?? 0;
+}
+
+function normalizeUploadFilename(value: string): string {
+  const trimmed = value.trim().replace(/[\\/]+/g, "/");
+  if (!trimmed) {
+    return "upload";
+  }
+
+  const normalized = path.basename(trimmed).normalize("NFC");
+
+  try {
+    const repaired = Buffer.from(normalized, "latin1").toString("utf8").normalize("NFC");
+    if (getMojibakeScore(repaired) < getMojibakeScore(normalized) && repaired.replace(/\s/g, "").length > 0) {
+      return repaired;
+    }
+  } catch {
+    // Ignore decode failures and fall back to the original filename.
+  }
+
+  return normalized;
 }
 
 function buildDefaultProgress(timestamp: string): JobProgress {
@@ -87,10 +113,10 @@ function makeJobResponse(job: JobManifest) {
     updatedAt: normalized.updatedAt,
     sourceMedia: normalized.sourceMedia
       ? {
-          originalName: normalized.sourceMedia.originalName,
-          mimeType: normalized.sourceMedia.mimeType,
-          sizeBytes: normalized.sourceMedia.sizeBytes
-        }
+        originalName: normalized.sourceMedia.originalName,
+        mimeType: normalized.sourceMedia.mimeType,
+        sizeBytes: normalized.sourceMedia.sizeBytes
+      }
       : undefined,
     detectedLanguage: normalized.detectedLanguage,
     durationSeconds: normalized.durationSeconds,
@@ -144,6 +170,10 @@ function buildTelemetryContext(processing: JobProcessingProfile): TelemetryConte
 
   if (config.diarizationCommand) {
     stages.push({ key: "diarize", weight: 5 });
+  }
+
+  if (config.enableSummary) {
+    stages.push({ key: "summarize", weight: 8 });
   }
 
   stages.push({ key: "export", weight: 3 });
@@ -451,6 +481,32 @@ async function processJob(jobId: string): Promise<void> {
       throw new Error("Transcript was generated but contains no source transcript content.");
     }
 
+    applyTelemetryUpdate(jobId, telemetry, {
+      stage: config.enableSummary ? "Generating AI meeting summary" : "Writing transcript artifacts",
+      stageKey: config.enableSummary ? "summarize" : "export",
+      stagePct: 0
+    });
+
+    const summaryResult = await generateSummary(transcriptRecord, {
+      onLog: (line) => applyTelemetryUpdate(jobId, telemetry, { stageKey: "summarize", logLine: line }),
+      onProgress: (stagePct) => applyTelemetryUpdate(jobId, telemetry, {
+        stage: "Generating AI meeting summary",
+        stageKey: "summarize",
+        stagePct
+      })
+    });
+
+    if (summaryResult.summary) {
+      transcriptRecord.summary = summaryResult.summary;
+      const summaryPath = path.join(jobDir, "summary.json");
+      await writeJsonFile(summaryPath, transcriptRecord.summary);
+      await updateJobImmediate(jobId, (current) => {
+        current.summaryPath = summaryPath;
+      });
+    }
+
+    warnings.push(...summaryResult.warnings);
+
     const transcriptPath = path.join(jobDir, "transcript.json");
     await writeJsonFile(transcriptPath, transcriptRecord);
 
@@ -512,13 +568,14 @@ app.post("/api/uploads", uploadSingle, async (req, res) => {
     return;
   }
 
+  const originalName = normalizeUploadFilename(uploadedFile.originalname);
   const jobId = uuidv4();
   const jobDir = jobStore.getJobDir(jobId);
   const uploadsDir = path.join(jobDir, "uploads");
   await ensureDir(uploadsDir);
 
   const extension =
-    path.extname(uploadedFile.originalname) || `.${mime.extension(uploadedFile.mimetype) || "bin"}`;
+    path.extname(originalName) || `.${mime.extension(uploadedFile.mimetype) || "bin"}`;
   const storedPath = path.join(uploadsDir, `source${extension}`);
   await fs.rename(uploadedFile.path, storedPath);
 
@@ -530,7 +587,7 @@ app.post("/api/uploads", uploadSingle, async (req, res) => {
     createdAt: now,
     updatedAt: now,
     sourceMedia: {
-      originalName: uploadedFile.originalname,
+      originalName,
       mimeType: uploadedFile.mimetype,
       sizeBytes: uploadedFile.size,
       storedPath
@@ -610,6 +667,130 @@ app.get("/api/jobs/:jobId/transcript", async (req, res) => {
   const transcript = await readJsonFile<TranscriptRecord>(job.transcriptPath);
   jobStore.setTranscript(jobId, transcript);
   res.json(transcript);
+});
+
+app.get("/api/jobs/:jobId/summary", async (req, res) => {
+  const jobId = req.params.jobId;
+  const job = jobStore.get(jobId);
+
+  if (!job) {
+    res.status(404).send("Job not found.");
+    return;
+  }
+
+  if (!job.summaryPath) {
+    // Check if job finished successfully but summary was skipped/failed
+    if (job.status === "completed") {
+      res.status(404).send("No summary generated for this job.");
+      return;
+    }
+    res.status(404).send("Summary not ready.");
+    return;
+  }
+
+  // Check in-memory cache first (attached to transcript record)
+  const cached = jobStore.getTranscript(jobId);
+  if (cached?.summary) {
+    res.json(cached.summary);
+    return;
+  }
+
+  // Fall back to disk
+  try {
+    const summary = await readJsonFile(job.summaryPath);
+    res.json(summary);
+  } catch (err) {
+    res.status(500).send("Failed to read summary data.");
+  }
+});
+
+// --- Retry endpoints (use cached transcript, skip re-transcription) ---
+
+app.post("/api/jobs/:jobId/retry/summarize", async (req, res) => {
+  const jobId = req.params.jobId;
+  const job = jobStore.get(jobId);
+
+  if (!job || job.status !== "completed") {
+    res.status(400).send("Job must be completed before retrying summarization.");
+    return;
+  }
+
+  if (!job.transcriptPath) {
+    res.status(400).send("No cached transcript available.");
+    return;
+  }
+
+  try {
+    const transcriptRecord = await readJsonFile<TranscriptRecord>(job.transcriptPath);
+    const jobDir = jobStore.getJobDir(jobId);
+
+    const summaryResult = await generateSummary(transcriptRecord);
+
+    if (summaryResult.summary) {
+      transcriptRecord.summary = summaryResult.summary;
+      const summaryPath = path.join(jobDir, "summary.json");
+      await writeJsonFile(summaryPath, summaryResult.summary);
+      await writeJsonFile(job.transcriptPath, transcriptRecord);
+      jobStore.setTranscript(jobId, transcriptRecord);
+
+      await updateJobImmediate(jobId, (current) => {
+        current.summaryPath = summaryPath;
+        // Remove the old summary warning if present
+        current.warnings = current.warnings.filter(w => !w.startsWith("AI summary skipped"));
+        current.warnings.push(...summaryResult.warnings);
+      });
+
+      res.json(summaryResult.summary);
+    } else {
+      res.status(500).json({ error: summaryResult.warnings.join("; ") || "Summary generation failed." });
+    }
+  } catch (error) {
+    res.status(500).send(error instanceof Error ? error.message : "Retry failed.");
+  }
+});
+
+app.post("/api/jobs/:jobId/retry/diarize", async (req, res) => {
+  const jobId = req.params.jobId;
+  const job = jobStore.get(jobId);
+
+  if (!job || job.status !== "completed") {
+    res.status(400).send("Job must be completed before retrying diarization.");
+    return;
+  }
+
+  if (!job.transcriptPath || !job.normalizedAudioPath) {
+    res.status(400).send("No cached transcript or audio available.");
+    return;
+  }
+
+  try {
+    const transcriptRecord = await readJsonFile<TranscriptRecord>(job.transcriptPath);
+    const jobDir = jobStore.getJobDir(jobId);
+    const workingDir = path.join(jobDir, "working");
+
+    // Strip old speaker labels before re-diarizing
+    const rawSegments = transcriptRecord.source.segments.map(s => ({ ...s, speaker: undefined }));
+
+    const diarization = await applyOptionalDiarization(
+      job.normalizedAudioPath,
+      path.join(workingDir, "diarization"),
+      rawSegments
+    );
+
+    transcriptRecord.source.segments = diarization.segments;
+    await writeJsonFile(job.transcriptPath, transcriptRecord);
+    jobStore.setTranscript(jobId, transcriptRecord);
+
+    await updateJobImmediate(jobId, (current) => {
+      // Remove old diarization warnings
+      current.warnings = current.warnings.filter(w => !w.includes("diarization"));
+      current.warnings.push(...diarization.warnings);
+    });
+
+    res.json({ warnings: diarization.warnings, segmentCount: diarization.segments.length });
+  } catch (error) {
+    res.status(500).send(error instanceof Error ? error.message : "Retry failed.");
+  }
 });
 
 app.get("/api/jobs/:jobId/export", async (req, res) => {

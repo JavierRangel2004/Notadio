@@ -13,6 +13,37 @@ export type TranscriptVariant = {
   segments: TranscriptSegment[];
 };
 
+export type MeetingActionItem = {
+  task: string;
+  assignee?: string;
+  deadline?: string;
+  priority?: string;
+  status?: string;
+  notes?: string;
+};
+
+export type MeetingSummarySection = {
+  title: string;
+  summary: string;
+  bullets: string[];
+  priority?: string;
+};
+
+export type MeetingSummary = {
+  headline?: string;
+  brief: string;
+  overview?: string;
+  narrative?: string;
+  keyDecisions: string[];
+  actionItems: MeetingActionItem[];
+  topics: string[];
+  sections: MeetingSummarySection[];
+  followUps: string[];
+  risks: string[];
+  operationalNotes: string[];
+  openQuestions: string[];
+};
+
 export type TranscriptRecord = {
   jobId: string;
   sourceMedia: {
@@ -25,6 +56,7 @@ export type TranscriptRecord = {
   warnings: string[];
   source: TranscriptVariant;
   english?: TranscriptVariant;
+  summary?: MeetingSummary;
 };
 
 export type JobProgress = {
@@ -64,6 +96,7 @@ export type JobManifest = {
   warnings: string[];
   error?: string;
   transcriptPath?: string;
+  summaryPath?: string;
   progress?: JobProgress;
   processing?: JobProcessingProfile;
   logs?: string[];

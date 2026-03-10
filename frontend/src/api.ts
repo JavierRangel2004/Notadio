@@ -13,6 +13,37 @@ export type TranscriptVariant = {
   segments: TranscriptSegment[];
 };
 
+export type MeetingActionItem = {
+  task: string;
+  assignee?: string;
+  deadline?: string;
+  priority?: string;
+  status?: string;
+  notes?: string;
+};
+
+export type MeetingSummarySection = {
+  title: string;
+  summary: string;
+  bullets: string[];
+  priority?: string;
+};
+
+export type MeetingSummary = {
+  headline?: string;
+  brief: string;
+  overview?: string;
+  narrative?: string;
+  keyDecisions: string[];
+  actionItems: MeetingActionItem[];
+  topics: string[];
+  sections: MeetingSummarySection[];
+  followUps: string[];
+  risks: string[];
+  operationalNotes: string[];
+  openQuestions: string[];
+};
+
 export type TranscriptPayload = {
   jobId: string;
   sourceMedia: {
@@ -25,6 +56,7 @@ export type TranscriptPayload = {
   warnings: string[];
   source: TranscriptVariant;
   english?: TranscriptVariant;
+  summary?: MeetingSummary;
 };
 
 export type JobProgress = {
@@ -103,6 +135,36 @@ export async function getTranscript(jobId: string, signal?: AbortSignal): Promis
     throw new Error(await response.text());
   }
 
+  return response.json();
+}
+
+export async function getSummary(jobId: string, signal?: AbortSignal): Promise<MeetingSummary | null> {
+  const response = await fetch(`${API_BASE}/jobs/${jobId}/summary`, { signal });
+  if (response.status === 404) {
+    return null;
+  }
+  if (!response.ok) {
+    throw new Error(await response.text());
+  }
+
+  return response.json();
+}
+
+export async function retrySummarize(jobId: string): Promise<MeetingSummary | null> {
+  const response = await fetch(`${API_BASE}/jobs/${jobId}/retry/summarize`, { method: "POST" });
+  if (!response.ok) {
+    const text = await response.text();
+    throw new Error(text || "Retry failed");
+  }
+  return response.json();
+}
+
+export async function retryDiarize(jobId: string): Promise<{ warnings: string[]; segmentCount: number }> {
+  const response = await fetch(`${API_BASE}/jobs/${jobId}/retry/diarize`, { method: "POST" });
+  if (!response.ok) {
+    const text = await response.text();
+    throw new Error(text || "Retry diarization failed");
+  }
   return response.json();
 }
 

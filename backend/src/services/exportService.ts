@@ -47,7 +47,8 @@ async function writeVariantArtifacts(
       durationSeconds: record.durationSeconds,
       detectedLanguage: record.detectedLanguage,
       warnings: record.warnings,
-      variant
+      variant,
+      summary: record.summary
     })
   ]);
 
