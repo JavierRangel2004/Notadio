@@ -1,0 +1,323 @@
+
+NOTADIO
+Workspace
+Upload New ↑
+¿Cuánto_Vale_tu_Código_.mp4
+Size:32.5 MB
+Duration:06:35
+Language:es
+Process New File
+Overview
+Contrato desigual: 91.6% de código escrito por una sola persona
+
+Un contrato de colaboración entre un desarrollador y una startup revela una desigualdad extrema en el valor del trabajo, con un solo autor escribiendo el 91.6% del código, mientras que el desarrollador recibe un pago mensual de 4.000 pesos, 10 veces menor que el mercado.
+
+Key Decisions
+Negociar un nuevo contrato con un pago justo
+Exigir el valor de mercado y poner candados a las acciones
+Renunciar a las acciones a cambio de un pago único
+Action Items
+Negociar un nuevo contrato con un pago justo
+
+@El desarrollador
+pendiente
+Exigir el valor de mercado y poner candados a las acciones
+
+@La empresa
+pendiente
+Renunciar a las acciones a cambio de un pago único
+
+@El desarrollador
+pendiente
+La desigualdad en el contrato
+El contrato de colaboración entre el desarrollador y la startup revela una desigualdad extrema en el valor del trabajo, con un solo autor escribiendo el 91.6% del código.
+
+Un solo autor escribió el 91.6% del código
+El desarrollador recibe un pago mensual de 4.000 pesos
+El valor real del trabajo es de 200.000 a 325.000 pesos
+La cláusula peligrosa
+La auditoría independiente revela una cláusula peligrosa que le da a la empresa el poder de recomprar todas las acciones a su valor nominal.
+
+La empresa puede recomprar todas las acciones a su valor nominal
+El desarrollador se ve obligado a renunciar a las acciones
+La cláusula es peligrosa y puede ser utilizada para manipular al desarrollador
+Open Questions
+¿Cómo se puede evitar futuras desigualdades en los contratos?
+¿Cómo se puede proteger el valor de trabajo del desarrollador?
+Summary Diagnostics
+Strategy
+Direct single-pass summary
+Total
+62.9 s
+LLM Calls
+1
+Direct
+62.9 s
+Reduce
+n/a
+Local Merge
+n/a
+Fallback
+n/a
+Primary structured summary succeeded. Final reduce request skipped. Full selected transcript blocks were used.
+Chunk timing details (1)
+Chunk 1
+62.9 s
+completed
+6835 chars
+2 sections
+3 action items
+Pipeline Timings
+Queued
+0 ms
+Normalizing media for transcription
+completed
+Normalize
+425 ms
+Normalizing media for transcription
+completed
+Transcribe
+10.8 s
+Running local Whisper transcription
+completed
+Translate
+9.23 s
+Generating English translation
+completed
+Diarize
+43.6 s
+Applying speaker diarization
+completed
+Summarize
+19.2 s
+Generating AI meeting summary
+completed
+Export
+4 ms
+Writing transcript artifacts
+completed
+Copy Summary JSON
+Regenerate Summary
+Re-run Speaker ID
+Source
+Translation
+Copy
+TXT
+SRT
+JSON
+SPEAKER_00
+00:00
+A ver, imagínense esto, firma en un contrato para colaborar en un proyecto.
+COMPLETE CORRECT TRANSCRIBE CUTTED FOR SAVING TOKENS
+
+
+Unknown
+06:33
+[Música]
+
+00:00
+06:35
+Processing Logs
+Upload stored. Waiting for worker start.
+Detected processing profile: balanced (Apple Silicon | darwin | arm64 | 8 logical cores)
+ffmpeg version 8.0.1 Copyright (c) 2000-2025 the FFmpeg developers
+built with Apple clang version 17.0.0 (clang-1700.6.3.2)
+configuration: --prefix=/opt/homebrew/Cellar/ffmpeg/8.0.1_4 --enable-shared --enable-pthreads --enable-version3 --cc=clang --host-cflags= --host-ldflags= --enable-ffplay --enable-gpl --enable-libsvtav1 --enable-libopus --enable-libx264 --enable-libmp3lame --enable-libdav1d --enable-libvpx --enable-libx265 --enable-openssl --enable-videotoolbox --enable-audiotoolbox --enable-neon
+libavutil      60.  8.100 / 60.  8.100
+libavcodec     62. 11.100 / 62. 11.100
+libavformat    62.  3.100 / 62.  3.100
+libavdevice    62.  1.100 / 62.  1.100
+libavfilter    11.  4.100 / 11.  4.100
+libswscale      9.  1.100 /  9.  1.100
+libswresample   6.  1.100 /  6.  1.100
+Input #0, mov,mp4,m4a,3gp,3g2,mj2, from '/Users/javierrangel/github/Notadio/data/jobs/153e7467-c45a-4aad-92a0-4e36901331f6/uploads/source.mp4':
+Metadata:
+major_brand     : mp42
+minor_version   : 0
+compatible_brands: isommp42
+encoder         : Google
+Duration: 00:06:34.32, start: 0.000000, bitrate: 691 kb/s
+Stream #0:0[0x1](und): Video: h264 (High) (avc1 / 0x31637661), yuv420p(tv, bt709, progressive), 1280x720 [SAR 1:1 DAR 16:9], 593 kb/s, 24 fps, 24 tbr, 12288 tbn (default)
+Metadata:
+handler_name    : ISO Media file produced by Google Inc.
+vendor_id       : [0][0][0][0]
+Stream #0:1[0x2](und): Audio: aac (LC) (mp4a / 0x6134706D), 44100 Hz, mono, fltp, 95 kb/s (default)
+Metadata:
+handler_name    : ISO Media file produced by Google Inc.
+vendor_id       : [0][0][0][0]
+Stream mapping:
+Stream #0:1 -> #0:0 (aac (native) -> pcm_s16le (native))
+Press [q] to stop, [?] for help
+Output #0, wav, to '/Users/javierrangel/github/Notadio/data/jobs/153e7467-c45a-4aad-92a0-4e36901331f6/working/normalized.wav':
+Metadata:
+major_brand     : mp42
+minor_version   : 0
+compatible_brands: isommp42
+ISFT            : Lavf62.3.100
+Stream #0:0(und): Audio: pcm_s16le ([1][0][0][0] / 0x0001), 16000 Hz, mono, s16, 256 kb/s (default)
+Metadata:
+encoder         : Lavc62.11.100 pcm_s16le
+handler_name    : ISO Media file produced by Google Inc.
+vendor_id       : [0][0][0][0]
+[out#0/wav @ 0xb29058300] video:0KiB audio:12323KiB subtitle:0KiB other streams:0KiB global headers:0KiB muxing overhead: 0.000618%
+size=   12323KiB time=00:06:34.32 bitrate= 256.0kbits/s speed=1.69e+03x elapsed=0:00:00.23
+Whisper thread recommendation: 6
+whisper_init_from_file_with_params_no_state: loading model from '/Users/javierrangel/github/Notadio/.local/models/ggml-base.bin'
+whisper_init_with_params_no_state: use gpu    = 1
+whisper_init_with_params_no_state: flash attn = 1
+whisper_init_with_params_no_state: gpu_device = 0
+whisper_init_with_params_no_state: dtw        = 0
+ggml_metal_device_init: tensor API disabled for pre-M5 and pre-A19 devices
+ggml_metal_library_init: using embedded metal library
+ggml_metal_library_init: loaded in 0.033 sec
+ggml_metal_rsets_init: creating a residency set collection (keep_alive = 180 s)
+ggml_metal_device_init: GPU name:   Apple M2
+ggml_metal_device_init: GPU family: MTLGPUFamilyApple8  (1008)
+ggml_metal_device_init: GPU family: MTLGPUFamilyCommon3 (3003)
+ggml_metal_device_init: GPU family: MTLGPUFamilyMetal4  (5002)
+ggml_metal_device_init: simdgroup reduction   = true
+ggml_metal_device_init: simdgroup matrix mul. = true
+ggml_metal_device_init: has unified memory    = true
+ggml_metal_device_init: has bfloat            = true
+ggml_metal_device_init: has tensor            = false
+ggml_metal_device_init: use residency sets    = true
+ggml_metal_device_init: use shared buffers    = true
+ggml_metal_device_init: recommendedMaxWorkingSetSize  =  5726.63 MB
+whisper_init_with_params_no_state: devices    = 3
+whisper_init_with_params_no_state: backends   = 3
+whisper_model_load: loading model
+whisper_model_load: n_vocab       = 51865
+whisper_model_load: n_audio_ctx   = 1500
+whisper_model_load: n_audio_state = 512
+whisper_model_load: n_audio_head  = 8
+whisper_model_load: n_audio_layer = 6
+whisper_model_load: n_text_ctx    = 448
+whisper_model_load: n_text_state  = 512
+whisper_model_load: n_text_head   = 8
+whisper_model_load: n_text_layer  = 6
+whisper_model_load: n_mels        = 80
+whisper_model_load: ftype         = 1
+whisper_model_load: qntvr         = 0
+whisper_model_load: type          = 2 (base)
+whisper_model_load: adding 1608 extra tokens
+whisper_model_load: n_langs       = 99
+whisper_model_load:        Metal total size =   147.37 MB
+whisper_model_load: model size    =  147.37 MB
+whisper_backend_init_gpu: device 0: Metal (type: 1)
+whisper_backend_init_gpu: found GPU device 0: Metal (type: 1, cnt: 0)
+whisper_backend_init_gpu: using Metal backend
+ggml_metal_init: allocating
+ggml_metal_init: found device: Apple M2
+ggml_metal_init: picking default device: Apple M2
+ggml_metal_init: use fusion         = true
+ggml_metal_init: use concurrency    = true
+ggml_metal_init: use graph optimize = true
+whisper_backend_init: using BLAS backend
+whisper_init_state: kv self size  =    6.29 MB
+whisper_init_state: kv cross size =   18.87 MB
+whisper_init_state: kv pad  size  =    3.15 MB
+whisper_init_state: compute buffer (conv)   =   17.24 MB
+whisper_init_state: compute buffer (encode) =   26.31 MB
+whisper_init_state: compute buffer (cross)  =   10.81 MB
+whisper_init_state: compute buffer (decode) =   97.29 MB
+system_info: n_threads = 6 / 8 | WHISPER : COREML = 0 | OPENVINO = 0 | Metal : EMBED_LIBRARY = 1 | CPU : NEON = 1 | ARM_FMA = 1 | FP16_VA = 1 | DOTPROD = 1 | ACCELERATE = 1 | REPACK = 1 |
+main: processing '/Users/javierrangel/github/Notadio/data/jobs/153e7467-c45a-4aad-92a0-4e36901331f6/working/normalized.wav' (6309140 samples, 394.3 sec), 6 threads, 1 processors, 5 beams + best of 5, lang = auto, task = transcribe, timestamps = 1 ...
+whisper_full_with_state: auto-detected language: es (p = 0.998862)
+output_srt: saving output to '/Users/javierrangel/github/Notadio/data/jobs/153e7467-c45a-4aad-92a0-4e36901331f6/working/whisper/source.srt'
+output_json: saving output to '/Users/javierrangel/github/Notadio/data/jobs/153e7467-c45a-4aad-92a0-4e36901331f6/working/whisper/source.json'
+whisper_print_timings:     load time =   169.71 ms
+whisper_print_timings:     fallbacks =   1 p /   0 h
+whisper_print_timings:      mel time =   139.53 ms
+whisper_print_timings:   sample time =  2316.86 ms / 10372 runs (     0.22 ms per run)
+whisper_print_timings:   encode time =  1117.82 ms /    16 runs (    69.86 ms per run)
+whisper_print_timings:   decode time =    20.40 ms /     6 runs (     3.40 ms per run)
+whisper_print_timings:   batchd time =  5951.93 ms / 10296 runs (     0.58 ms per run)
+whisper_print_timings:   prompt time =   205.97 ms /  2872 runs (     0.07 ms per run)
+whisper_print_timings:    total time = 10188.30 ms
+ggml_metal_free: deallocating
+whisper_init_from_file_with_params_no_state: loading model from '/Users/javierrangel/github/Notadio/.local/models/ggml-base.bin'
+whisper_init_with_params_no_state: use gpu    = 1
+whisper_init_with_params_no_state: flash attn = 1
+whisper_init_with_params_no_state: gpu_device = 0
+whisper_init_with_params_no_state: dtw        = 0
+ggml_metal_device_init: tensor API disabled for pre-M5 and pre-A19 devices
+ggml_metal_library_init: using embedded metal library
+ggml_metal_library_init: loaded in 0.007 sec
+ggml_metal_rsets_init: creating a residency set collection (keep_alive = 180 s)
+ggml_metal_device_init: GPU name:   Apple M2
+ggml_metal_device_init: GPU family: MTLGPUFamilyApple8  (1008)
+ggml_metal_device_init: GPU family: MTLGPUFamilyCommon3 (3003)
+ggml_metal_device_init: GPU family: MTLGPUFamilyMetal4  (5002)
+ggml_metal_device_init: simdgroup reduction   = true
+ggml_metal_device_init: simdgroup matrix mul. = true
+ggml_metal_device_init: has unified memory    = true
+ggml_metal_device_init: has bfloat            = true
+ggml_metal_device_init: has tensor            = false
+ggml_metal_device_init: use residency sets    = true
+ggml_metal_device_init: use shared buffers    = true
+ggml_metal_device_init: recommendedMaxWorkingSetSize  =  5726.63 MB
+whisper_init_with_params_no_state: devices    = 3
+whisper_init_with_params_no_state: backends   = 3
+whisper_model_load: loading model
+whisper_model_load: n_vocab       = 51865
+whisper_model_load: n_audio_ctx   = 1500
+whisper_model_load: n_audio_state = 512
+whisper_model_load: n_audio_head  = 8
+whisper_model_load: n_audio_layer = 6
+whisper_model_load: n_text_ctx    = 448
+whisper_model_load: n_text_state  = 512
+whisper_model_load: n_text_head   = 8
+whisper_model_load: n_text_layer  = 6
+whisper_model_load: n_mels        = 80
+whisper_model_load: ftype         = 1
+whisper_model_load: qntvr         = 0
+whisper_model_load: type          = 2 (base)
+whisper_model_load: adding 1608 extra tokens
+whisper_model_load: n_langs       = 99
+whisper_model_load:        Metal total size =   147.37 MB
+whisper_model_load: model size    =  147.37 MB
+whisper_backend_init_gpu: device 0: Metal (type: 1)
+whisper_backend_init_gpu: found GPU device 0: Metal (type: 1, cnt: 0)
+whisper_backend_init_gpu: using Metal backend
+ggml_metal_init: allocating
+ggml_metal_init: found device: Apple M2
+ggml_metal_init: picking default device: Apple M2
+ggml_metal_init: use fusion         = true
+ggml_metal_init: use concurrency    = true
+ggml_metal_init: use graph optimize = true
+whisper_backend_init: using BLAS backend
+whisper_init_state: kv self size  =    6.29 MB
+whisper_init_state: kv cross size =   18.87 MB
+whisper_init_state: kv pad  size  =    3.15 MB
+whisper_init_state: compute buffer (conv)   =   17.24 MB
+whisper_init_state: compute buffer (encode) =   26.31 MB
+whisper_init_state: compute buffer (cross)  =   10.81 MB
+whisper_init_state: compute buffer (decode) =   97.29 MB
+system_info: n_threads = 6 / 8 | WHISPER : COREML = 0 | OPENVINO = 0 | Metal : EMBED_LIBRARY = 1 | CPU : NEON = 1 | ARM_FMA = 1 | FP16_VA = 1 | DOTPROD = 1 | ACCELERATE = 1 | REPACK = 1 |
+main: processing '/Users/javierrangel/github/Notadio/data/jobs/153e7467-c45a-4aad-92a0-4e36901331f6/working/normalized.wav' (6309140 samples, 394.3 sec), 6 threads, 1 processors, 5 beams + best of 5, lang = auto, task = translate, timestamps = 1 ...
+whisper_full_with_state: auto-detected language: es (p = 0.998862)
+output_json: saving output to '/Users/javierrangel/github/Notadio/data/jobs/153e7467-c45a-4aad-92a0-4e36901331f6/working/whisper/english.json'
+whisper_print_timings:     load time =    77.85 ms
+whisper_print_timings:     fallbacks =   0 p /   0 h
+whisper_print_timings:      mel time =   130.13 ms
+whisper_print_timings:   sample time =  1902.10 ms /  8690 runs (     0.22 ms per run)
+whisper_print_timings:   encode time =  1060.36 ms /    16 runs (    66.27 ms per run)
+whisper_print_timings:   decode time =    48.82 ms /    17 runs (     2.87 ms per run)
+whisper_print_timings:   batchd time =  4976.28 ms /  8602 runs (     0.58 ms per run)
+whisper_print_timings:   prompt time =   208.74 ms /  3064 runs (     0.07 ms per run)
+whisper_print_timings:    total time =  8640.71 ms
+ggml_metal_free: deallocating
+[summary] Calling local Ollama LLM (llama3.2) at http://localhost:11434...
+[summary] Summarizing 140 transcript segments across 17 transcript blocks.
+Loading diarization models (this may download weights on first run)...
+Processing audio: /Users/javierrangel/github/Notadio/data/jobs/153e7467-c45a-4aad-92a0-4e36901331f6/working/normalized.wav
+/Users/javierrangel/github/Notadio/.local/diarize-venv/lib/python3.9/site-packages/silero_vad/utils_vad.py:143: UserWarning: torchaudio.sox_effects.sox_effects.apply_effects_file has been deprecated. This deprecation is part of a large refactoring effort to transition TorchAudio into a maintenance phase. Please see https://github.com/pytorch/audio/issues/3902 for more information. It will be removed from the 2.9 release.
+wav, sr = torchaudio.sox_effects.apply_effects_file(path, effects=effects)
+/Users/javierrangel/github/Notadio/.local/diarize-venv/lib/python3.9/site-packages/torchaudio/_backend/utils.py:213: UserWarning: In 2.9, this function's implementation will be changed to use torchaudio.load_with_torchcodec` under the hood. Some parameters like ``normalize``, ``format``, ``buffer_size``, and ``backend`` will be ignored. We recommend that you port your code to rely directly on TorchCodec's decoder instead: https://docs.pytorch.org/torchcodec/stable/generated/torchcodec.decoders.AudioDecoder.html#torchcodec.decoders.AudioDecoder.
+warnings.warn(
+Diarization complete. Found 3 segments.
+Diarization complete. Found 3 segments.
+[summary-metrics] direct summary request completed in 62.9s.
+Meeting summary generated successfully.
+[summary-metrics] total summary stage completed in 62.9s.
+Transcript artifacts written successfully.

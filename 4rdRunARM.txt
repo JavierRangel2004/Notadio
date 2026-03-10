@@ -1,0 +1,1397 @@
+
+NOTADIO
+Workspace
+Upload New ↑
+Cómo_robar_una_startup_con_mil_pesos.m4a
+Applying speaker diarization
+90% Complete
+diarize
+Elapsed
+03:28
+Threads
+6
+Profile
+balanced
+Live Logs
+[00:15:14.600 --> 00:15:16.600]   that the contract is called Fetch de Salida.
+[00:15:16.600 --> 00:15:18.600]   Oh, that class.
+[00:15:18.600 --> 00:15:20.600]   When does that happen?
+[00:15:20.600 --> 00:15:23.600]   The text says that it will be when the software is "st"
+[00:15:23.600 --> 00:15:26.600]   and "sit" in operation to use it
+[00:15:26.600 --> 00:15:28.600]   for the fines that were created.
+[00:15:28.600 --> 00:15:31.600]   It is a completely subjective definition
+[00:15:31.600 --> 00:15:33.600]   controlled by the company.
+[00:15:33.600 --> 00:15:34.600]   Very convenient.
+[00:15:34.600 --> 00:15:35.600]   Too much.
+[00:15:35.600 --> 00:15:37.600]   If one day the founders say
+[00:15:37.600 --> 00:15:39.600]   that the interface lacks a menu,
+[00:15:39.600 --> 00:15:41.600]   it can legally be argued
+[00:15:41.600 --> 00:15:43.600]   that it is not working
+[00:15:43.600 --> 00:15:46.600]   and retain the actions indefinitely.
+[00:15:46.600 --> 00:15:48.600]   And while they do it,
+[00:15:48.600 --> 00:15:50.600]   the clause 11 obliges to raise
+[00:15:50.600 --> 00:15:52.600]   all its rights of intellectual property
+[00:15:52.600 --> 00:15:53.600]   permanently.
+[00:15:53.600 --> 00:15:56.600]   That is the nucleus of the asymmetry of power.
+[00:15:56.600 --> 00:15:58.600]   They are demanding the total transfer
+[00:15:58.600 --> 00:16:00.600]   of the value created.
+[00:16:00.600 --> 00:16:02.600]   The intellectual property of all the platform.
+[00:16:02.600 --> 00:16:04.600]   Change of an action promise
+[00:16:04.600 --> 00:16:05.600]   that is conditioned
+[00:16:05.600 --> 00:16:07.600]   by the subjective opinion of the founders.
+[00:16:07.600 --> 00:16:09.600]   It delivers the complete product
+[00:16:09.600 --> 00:16:11.600]   before having a single guarantee
+[00:16:11.600 --> 00:16:12.600]   of your favor.
+[00:16:12.600 --> 00:16:14.600]   And if we think that that was serious,
+[00:16:14.600 --> 00:16:16.600]   we go to the right to buy.
+[00:16:16.600 --> 00:16:17.600]   This is the clause
+[00:16:17.600 --> 00:16:19.600]   that leaves you really on the side
+[00:16:19.600 --> 00:16:20.600]   if you do the math.
+[00:16:20.600 --> 00:16:22.600]   Yes, it is very hard.
+[00:16:22.600 --> 00:16:23.600]   The contract is stipulated
+[00:16:23.600 --> 00:16:25.600]   that if the company determines
+[00:16:25.600 --> 00:16:28.600]   that Javier causes a material damage
+[00:16:28.600 --> 00:16:31.600]   another term dangerously ambiguous,
+[00:16:31.600 --> 00:16:33.600]   they can rescind the convenience
+[00:16:33.600 --> 00:16:35.600]   and force it to sell it back
+[00:16:35.600 --> 00:16:38.600]   to their 15% of the actions.
+[00:16:38.600 --> 00:16:40.600]   The question is,
+[00:16:40.600 --> 00:16:42.600]   what price would they buy it?
+[00:16:42.600 --> 00:16:45.600]   The document says that it has a nominal value.
+[00:16:45.600 --> 00:16:47.600]   If we remember the constitutive act
+[00:16:47.600 --> 00:16:48.600]   of the beginning,
+[00:16:48.600 --> 00:16:50.600]   the complete social capital was $1,000.
+[00:16:50.600 --> 00:16:51.600]   That's right.
+[00:16:51.600 --> 00:16:53.600]   If we take out the calculator,
+[00:16:53.600 --> 00:16:57.600]   the 15% of $1,000 are $150.
+[00:16:57.600 --> 00:16:58.600]   $150?
+[00:16:58.600 --> 00:16:59.600]   $150.
+[00:16:59.600 --> 00:17:03.600]   They could argue a mistake in the code,
+[00:17:03.600 --> 00:17:05.600]   with the intellectual property
+[00:17:05.600 --> 00:17:07.600]   of a system that integrates
+[00:17:07.600 --> 00:17:10.600]   government validation and international payments
+[00:17:10.600 --> 00:17:12.600]   to liquidate its shareholders' participation
+[00:17:12.600 --> 00:17:14.600]   with $150.
+[00:17:14.600 --> 00:17:15.600]   Literally,
+[00:17:15.600 --> 00:17:17.600]   what a couple of coffees costs you
+[00:17:17.600 --> 00:17:20.600]   depends on the work of months.
+[00:17:20.600 --> 00:17:22.600]   It's an impressive legal fragility.
+[00:17:22.600 --> 00:17:24.600]   It is a punitive clause
+[00:17:24.600 --> 00:17:25.600]   that uses the minimum legal capital
+[00:17:25.600 --> 00:17:27.600]   as a mechanism of depot.
+[00:17:27.600 --> 00:17:29.600]   And to ensure that the developer
+[00:17:29.600 --> 00:17:30.600]   does not have the ability,
+[00:17:30.600 --> 00:17:33.600]   the contract closes with a non-competent clause.
+[00:17:33.600 --> 00:17:35.600]   It is forbidden to open for 18 months
+[00:17:35.600 --> 00:17:37.600]   after any contract termination
+[00:17:37.600 --> 00:17:39.600]   to develop similar platforms.
+[00:17:39.600 --> 00:17:40.600]   Imagine that.
+[00:17:40.600 --> 00:17:42.600]   Find clients from the sector
+[00:17:42.600 --> 00:17:44.600]   or work in similar projects
+[00:17:44.600 --> 00:17:47.600]   throughout Mexico and the United States.
+[00:17:47.600 --> 00:17:49.600]   They block it professionally
+[00:17:49.600 --> 00:17:51.600]   in the biggest markets.
+[00:17:51.600 --> 00:17:52.600]   Attending it to a project
+[00:17:52.600 --> 00:17:54.600]   that pays off a misery,
+[00:17:54.600 --> 00:17:56.600]   under a threat to demand them,
+[00:17:56.600 --> 00:17:58.600]   to apply their experience on the other side.
+[00:17:58.600 --> 00:18:00.600]   Looking at all this legal panorama,
+[00:18:00.600 --> 00:18:02.600]   such an adverse one,
+[00:18:02.600 --> 00:18:04.600]   then what does all this mean?
+[00:18:04.600 --> 00:18:06.600]   What is the real economic damage?
+[00:18:06.600 --> 00:18:08.600]   How much money I left
+[00:18:08.600 --> 00:18:10.600]   on the table this developer
+[00:18:10.600 --> 00:18:12.600]   did not have a clear contract
+[00:18:12.600 --> 00:18:13.600]   from day one.
+[00:18:13.600 --> 00:18:14.600]   For this,
+[00:18:14.600 --> 00:18:15.600]   the independent auditory
+[00:18:15.600 --> 00:18:17.600]   made the calculations cold.
+[00:18:17.600 --> 00:18:19.600]   And instead of marring us
+[00:18:19.600 --> 00:18:20.600]   with all the tariffs,
+[00:18:20.600 --> 00:18:21.600]   we are going to see the large panorama
+[00:18:21.600 --> 00:18:22.600]   of the numbers.
+[00:18:22.600 --> 00:18:23.600]   The conclusion of the auditory
+[00:18:23.600 --> 00:18:26.600]   is based on market terms.
+[00:18:26.600 --> 00:18:27.600]   The 4,000 monthly taxes
+[00:18:27.600 --> 00:18:29.600]   that they offered to them,
+[00:18:29.600 --> 00:18:30.600]   do not represent
+[00:18:30.600 --> 00:18:32.600]   10% of the base salary
+[00:18:32.600 --> 00:18:33.600]   that a software engineer
+[00:18:33.600 --> 00:18:34.600]   with the capacity
+[00:18:34.600 --> 00:18:36.600]   of architecture in the cloud,
+[00:18:36.600 --> 00:18:37.600]   should be covered in Mexico
+[00:18:37.600 --> 00:18:38.600]   or in the day.
+[00:18:38.600 --> 00:18:40.600]   How much are we talking about more or less?
+[00:18:40.600 --> 00:18:41.600]   There should be around
+[00:18:41.600 --> 00:18:44.600]   40,000 to 65,000 monthly taxes,
+[00:18:44.600 --> 00:18:46.600]   and that is a conservative calculation.
+[00:18:46.600 --> 00:18:47.600]   In many urban areas,
+[00:18:47.600 --> 00:18:48.600]   4,000 monthly taxes
+[00:18:48.600 --> 00:18:49.600]   is an income
+[00:18:49.600 --> 00:18:51.600]   that falls under the minimum salary.
+[00:18:51.600 --> 00:18:54.600]   And the debt of 50,000 pesos
+[00:18:54.600 --> 00:18:55.600]   that the founders
+[00:18:55.600 --> 00:18:56.600]   recognize in the contract
+[00:18:56.600 --> 00:18:57.600]   as a great gesture
+[00:18:57.600 --> 00:18:59.600]   for five months of work,
+[00:18:59.600 --> 00:19:01.600]   the auditory destroys it.
+[00:19:01.600 --> 00:19:03.600]   By analyzing the volume
+[00:19:03.600 --> 00:19:05.600]   of more than 300,000 lines
+[00:19:05.600 --> 00:19:06.600]   of code
+[00:19:06.600 --> 00:19:08.600]   and the integration of complex technologies,
+[00:19:08.600 --> 00:19:10.600]   the real market value
+[00:19:10.600 --> 00:19:11.600]   of the work already delivered,
+[00:19:11.600 --> 00:19:13.600]   or if it is among the 200,000
+[00:19:13.600 --> 00:19:15.600]   and the 325,000 pesos.
+[00:19:15.600 --> 00:19:16.600]   They were offering
+[00:19:16.600 --> 00:19:18.600]   paying them a quarter
+[00:19:18.600 --> 00:19:19.600]   of what they really
+[00:19:19.600 --> 00:19:20.600]   had already generated.
+[00:19:20.600 --> 00:19:22.600]   A madness.
+[00:19:22.600 --> 00:19:23.600]   There is a more revelatory metric
+[00:19:23.600 --> 00:19:25.600]   that is the cost of replacing.
+[00:19:25.600 --> 00:19:27.600]   If the funder team
+[00:19:27.600 --> 00:19:29.600]   decides that it does not need to open
+[00:19:29.600 --> 00:19:30.600]   and they take into account
+[00:19:30.600 --> 00:19:31.600]   the market to hire
+[00:19:31.600 --> 00:19:32.600]   an agency
+[00:19:32.600 --> 00:19:33.600]   or a structured team
+[00:19:33.600 --> 00:19:34.600]   to rebuild
+[00:19:34.600 --> 00:19:36.600]   those same digital mascots
+[00:19:36.600 --> 00:19:37.600]   from scratch.
+[00:19:37.600 --> 00:19:39.600]   Contracting all the necessary profiles.
+[00:19:39.600 --> 00:19:40.600]   Exactly.
+[00:19:40.600 --> 00:19:41.600]   A specialist in backend,
+[00:19:41.600 --> 00:19:42.600]   an expert in infrastructure
+[00:19:42.600 --> 00:19:44.600]   in the cloud or DevOps,
+[00:19:44.600 --> 00:19:46.600]   and someone of quality proofs or QAE.
+[00:19:46.600 --> 00:19:47.600]   The factory would run almost
+[00:19:47.600 --> 00:19:49.600]   the million of pesos.
+[00:19:49.600 --> 00:19:53.600]   The auditorium has 630,820,000 pesos.
+[00:19:53.600 --> 00:19:55.600]   That is the real commercial value
+[00:19:55.600 --> 00:19:56.600]   of the platform
+[00:19:56.600 --> 00:19:57.600]   that would have to be secured
+[00:19:57.600 --> 00:19:58.600]   with a contract
+[00:19:58.600 --> 00:19:59.600]   attached to a company
+[00:19:59.600 --> 00:20:00.600]   of 1,000 pesos.
+[00:20:00.600 --> 00:20:01.600]   It is a level
+[00:20:01.600 --> 00:20:03.600]   of incredible value extraction.
+[00:20:03.600 --> 00:20:04.600]   This case is,
+[00:20:04.600 --> 00:20:05.600]   definitely,
+[00:20:05.600 --> 00:20:06.600]   the perfect radiography
+[00:20:06.600 --> 00:20:07.600]   of how they operate
+[00:20:07.600 --> 00:20:08.600]   the power asymmetry
+[00:20:08.600 --> 00:20:11.600]   in the modern ecosystem.
+[00:20:11.600 --> 00:20:12.600]   On one hand,
+[00:20:12.600 --> 00:20:13.600]   you have the technical creator
+[00:20:13.600 --> 00:20:15.600]   assuming absolutely
+[00:20:15.600 --> 00:20:16.600]   all the risk
+[00:20:16.600 --> 00:20:17.600]   of execution.
+[00:20:17.600 --> 00:20:19.600]   Working hand in hand
+[00:20:19.600 --> 00:20:20.600]   with customers.
+[00:20:20.600 --> 00:20:21.600]   Loading with the stress
+[00:20:21.600 --> 00:20:23.600]   that the payment will not fall
+[00:20:23.600 --> 00:20:24.600]   and even assuming
+[00:20:24.600 --> 00:20:26.600]   the legal responsibility
+[00:20:26.600 --> 00:20:27.600]   if something goes wrong,
+[00:20:27.600 --> 00:20:28.600]   that contract was given to Leonino.
+[00:20:28.600 --> 00:20:29.600]   While on the other hand,
+[00:20:29.600 --> 00:20:31.600]   the technical funders
+[00:20:31.600 --> 00:20:32.600]   that in this case
+[00:20:32.600 --> 00:20:33.600]   were forced by their operative
+[00:20:33.600 --> 00:20:35.600]   and lack of leadership
+[00:20:35.600 --> 00:20:36.600]   retain the monopoly
+[00:20:36.600 --> 00:20:39.600]   of the corporate and financial control.
+[00:20:39.600 --> 00:20:40.600]   They build barriers
+[00:20:40.600 --> 00:20:42.600]   of extremely sophisticated paper
+[00:20:42.600 --> 00:20:43.600]   to make sure
+[00:20:43.600 --> 00:20:44.600]   that the risk is associated
+[00:20:44.600 --> 00:20:45.600]   in the team
+[00:20:45.600 --> 00:20:46.600]   but the benefit
+[00:20:46.600 --> 00:20:48.600]   is privatized in the dome.
+[00:20:48.600 --> 00:20:49.600]   To explore this story
+[00:20:49.600 --> 00:20:50.600]   for those who don't listen,
+[00:20:50.600 --> 00:20:52.600]   the great lesson is very clear.
+[00:20:52.600 --> 00:20:53.600]   The technical talent,
+[00:20:53.600 --> 00:20:55.600]   the hard work,
+[00:20:55.600 --> 00:20:56.600]   the exhaustive tornadoes
+[00:20:56.600 --> 00:20:57.600]   and the first world code
+[00:20:57.600 --> 00:20:59.600]   are not sold
+[00:20:59.600 --> 00:21:00.600]   if they formalize
+[00:21:00.600 --> 00:21:01.600]   with legal protection
+[00:21:01.600 --> 00:21:03.600]   just from the beginning.
+[00:21:03.600 --> 00:21:04.600]   The famous promise
+[00:21:04.600 --> 00:21:05.600]   of the capital of SUDOR,
+[00:21:05.600 --> 00:21:06.600]   is the idea
+[00:21:06.600 --> 00:21:07.600]   of working free and today
+[00:21:07.600 --> 00:21:08.600]   for actions
+[00:21:08.600 --> 00:21:09.600]   that will cost millions of dollars
+[00:21:09.600 --> 00:21:10.600]   a day
+[00:21:10.600 --> 00:21:11.600]   can be converted
+[00:21:11.600 --> 00:21:13.600]   quickly into a spejismo.
+[00:21:13.600 --> 00:21:15.600]   In an absolute field.
+[00:21:15.600 --> 00:21:16.600]   It is evident
+[00:21:16.600 --> 00:21:17.600]   that a simple constitutive act
+[00:21:17.600 --> 00:21:19.600]   of low cost,
+[00:21:19.600 --> 00:21:20.600]   of thousands of pesos
+[00:21:20.600 --> 00:21:22.600]   and a counter-meditated
+[00:21:22.600 --> 00:21:23.600]   strategically
+[00:21:23.600 --> 00:21:25.600]   can be sufficient
+[00:21:25.600 --> 00:21:26.600]   to evaluate
+[00:21:26.600 --> 00:21:28.600]   the technical effort of months.
+[00:21:28.600 --> 00:21:30.600]   Leaving who really
+[00:21:30.600 --> 00:21:31.600]   built the building
+[00:21:31.600 --> 00:21:32.600]   in the street
+[00:21:32.600 --> 00:21:33.600]   and with the empty bags.
+[00:21:33.600 --> 00:21:35.600]   This has been a important question
+[00:21:35.600 --> 00:21:37.600]   with which it is worth reflecting.
+[00:21:37.600 --> 00:21:38.600]   I leave a very specific paradox
+[00:21:38.600 --> 00:21:40.600]   of modern era.
+[00:21:40.600 --> 00:21:41.600]   The corporate laws
+[00:21:41.600 --> 00:21:42.600]   were invented
+[00:21:42.600 --> 00:21:44.600]   to protect the economic capital.
+[00:21:44.600 --> 00:21:45.600]   The money.
+[00:21:45.600 --> 00:21:46.600]   But today,
+[00:21:46.600 --> 00:21:48.600]   in these technological companies,
+[00:21:48.600 --> 00:21:49.600]   the real capital,
+[00:21:49.600 --> 00:21:50.600]   is the code
+[00:21:50.600 --> 00:21:51.600]   and the technical knowledge
+[00:21:51.600 --> 00:21:53.600]   of those who write it.
+[00:21:53.600 --> 00:21:54.600]   100%.
+[00:21:54.600 --> 00:21:55.600]   It is designed
+[00:21:55.600 --> 00:21:56.600]   to protect
+[00:21:56.600 --> 00:21:57.600]   the papers
+[00:21:57.600 --> 00:21:58.600]   before a notice.
+[00:21:58.600 --> 00:21:59.600]   Not to design
+[00:21:59.600 --> 00:22:00.600]   the architecture of the server.
+[00:22:00.600 --> 00:22:02.600]   It gives us a question.
+[00:22:02.600 --> 00:22:03.600]   Who has the power
+[00:22:03.600 --> 00:22:04.600]   when the company
+[00:22:04.600 --> 00:22:05.600]   is legally blind
+[00:22:05.600 --> 00:22:06.600]   I can't operate
+[00:22:06.600 --> 00:22:07.600]   for five minutes
+[00:22:07.600 --> 00:22:08.600]   if the developer
+[00:22:08.600 --> 00:22:09.600]   decides to simply
+[00:22:09.600 --> 00:22:10.600]   pay its computer.
+[00:22:10.600 --> 00:22:11.600]   Who has the power
+[00:22:11.600 --> 00:22:12.600]   at that moment?
+[00:22:12.600 --> 00:22:14.600]   The one who sign the papers
+[00:22:14.600 --> 00:22:15.600]   or the one who has
+[00:22:15.600 --> 00:22:16.600]   the keys of the servers.
+[00:22:16.600 --> 00:22:17.600]   A dilemma
+[00:22:17.600 --> 00:22:18.600]   tremendous
+[00:22:18.600 --> 00:22:19.600]   about the real power
+[00:22:19.600 --> 00:22:20.600]   versus the legal power.
+[00:22:20.600 --> 00:22:21.600]   And a face choke
+[00:22:21.600 --> 00:22:22.600]   between the world
+[00:22:22.600 --> 00:22:23.600]   of paper
+[00:22:23.600 --> 00:22:24.600]   and digital world
+[00:22:24.600 --> 00:22:25.600]   where we are
+[00:22:25.600 --> 00:22:26.600]   still discovering
+[00:22:26.600 --> 00:22:27.600]   the rules.
+[00:22:27.600 --> 00:22:28.600]   Until here,
+[00:22:28.600 --> 00:22:29.600]   the review of today
+[00:22:29.600 --> 00:22:30.600]   we will continue
+[00:22:30.600 --> 00:22:31.600]   exploring the nuances
+[00:22:31.600 --> 00:22:32.600]   and the lessons
+[00:22:32.600 --> 00:22:33.600]   behind these
+[00:22:33.600 --> 00:22:35.600]   fascinating cases.
+output_json: saving output to '/Users/javierrangel/github/Notadio/data/jobs/d08d0fde-4aa7-4abe-990c-9adcef664f35/working/whisper/english.json'
+whisper_print_timings:     load time =    87.63 ms
+whisper_print_timings:     fallbacks =   3 p /   0 h
+whisper_print_timings:      mel time =   416.39 ms
+whisper_print_timings:   sample time =  6938.61 ms / 31255 runs (     0.22 ms per run)
+whisper_print_timings:   encode time =  3270.62 ms /    51 runs (    64.13 ms per run)
+whisper_print_timings:   decode time =   656.01 ms /   244 runs (     2.69 ms per run)
+whisper_print_timings:   batchd time = 17260.66 ms / 30753 runs (     0.56 ms per run)
+whisper_print_timings:   prompt time =   886.21 ms / 11219 runs (     0.08 ms per run)
+whisper_print_timings:    total time = 30321.60 ms
+ggml_metal_free: deallocating
+Loading diarization models (this may download weights on first run)...
+Processing audio: /Users/javierrangel/github/Notadio/data/jobs/d08d0fde-4aa7-4abe-990c-9adcef664f35/working/normalized.wav
+/Users/javierrangel/github/Notadio/.local/diarize-venv/lib/python3.9/site-packages/silero_vad/utils_vad.py:143: UserWarning: torchaudio.sox_effects.sox_effects.apply_effects_file has been deprecated. This deprecation is part of a large refactoring effort to transition TorchAudio into a maintenance phase. Please see https://github.com/pytorch/audio/issues/3902 for more information. It will be removed from the 2.9 release.
+wav, sr = torchaudio.sox_effects.apply_effects_file(path, effects=effects)
+/Users/javierrangel/github/Notadio/.local/diarize-venv/lib/python3.9/site-packages/torchaudio/_backend/utils.py:213: UserWarning: In 2.9, this function's implementation will be changed to use torchaudio.load_with_torchcodec` under the hood. Some parameters like ``normalize``, ``format``, ``buffer_size``, and ``backend`` will be ignored. We recommend that you port your code to rely directly on TorchCodec's decoder instead: https://docs.pytorch.org/torchcodec/stable/generated/torchcodec.decoders.AudioDecoder.html#torchcodec.decoders.AudioDecoder.
+warnings.warn(
+Diarization complete. Found 461 segments.
+Calling local Ollama LLM (llama3.2) at http://localhost:11434...
+Summarizing 362 transcript segments.
+
+
+
+NOTADIO
+Workspace
+Upload New ↑
+Cómo_robar_una_startup_con_mil_pesos.m4a
+Size:41.6 MB
+Duration:22:35
+Language:es
+Process New File
+Overview
+No brief generated.
+
+Copy Summary JSON
+Regenerate Summary
+Re-run Speaker ID
+Source
+Translation
+Copy
+TXT
+SRT
+JSON
+SPEAKER_02
+00:00
+Resulta muy fácil visualizar la escena porque este es el clásico sueño dorado del
+
+emprendimiento que hemos escuchado mil veces.
+
+SPEAKER_03
+00:08
+Claro, el mito de Silicon Valley.
+
+SPEAKER_02
+00:11
+Exacto, un startup tecnológica en este caso enfocada en el sector legal.
+
+Una idea que sobre el papel suena a que vale millones un equipo construyendo el futuro
+
+desde cero y pues la eterna promesa de que trabajar de madrugada hoy se convertirá en el
+
+imperio del mañana.
+
+SPEAKER_03
+00:30
+Suena al escenario ideal, ¿la verdad?
+
+SPEAKER_02
+00:32
+Suena padrísimo, pero ¿qué pasa cuando esa promesa esconde un laberinto de contratos
+
+diseñados para exprimir hasta la última gota de talento sin ceder absolutamente nada
+
+de poder real?
+
+SPEAKER_03
+00:45
+Hmm, ahí es donde la cosa cambia.
+
+SPEAKER_02
+00:48
+Totalmente.
+
+Al desmenuzar la historia en este análisis a fondo vamos a explorar exactamente cómo
+
+ese sueño de crear una empresa puede transformarse en una auténtica pesadilla, una pesadilla
+
+tanto operativa como legal.
+
+SPEAKER_03
+01:02
+Lo fascinante aquí es que tenemos acceso a la anatomía completa del desastre.
+
+SPEAKER_01
+01:07
+No estamos hablando de teorías de administración o casos hipotéticos.
+
+SPEAKER_02
+01:11
+Para nada.
+
+SPEAKER_01
+01:12
+Tenemos los documentos que cuentan toda la historia desde adentro.
+
+SPEAKER_02
+01:15
+Es una colección de documentos que parece película de suspenso corporativo.
+
+Para quienes nos escuchan y les gustan estos temas, tenemos una acta constitutiva formal,
+
+un contrato de colaboración al que le llaman convenio con cláusulas tan agresivas
+
+que, híjole, resultan sorprendentes.
+
+También contamos con un testimonio interno directo desde las trinchelas titulado "Operational
+
+incompetence".
+
+SPEAKER_01
+01:43
+¿Qué es un título bastante fuerte?
+
+SPEAKER_02
+01:44
+¡Fuertísimo! Se lee como el diario de un desarrollador al borde del colapso total.
+
+SPEAKER_00
+01:51
+Y para cerrar el círculo, tenemos una auditoria técnica y económica independiente que pone
+
+bajo la lupa cuánto vale realmente el trabajo de código que se hizo.
+
+SPEAKER_01
+02:01
+Es un contraste brutal, porque estos documentos leídos en conjunto cuentan dos historias
+
+que corren en paralelo, pero en universos completamente distintos.
+
+SPEAKER_02
+02:12
+Sí, como dos realidades.
+
+SPEAKER_01
+02:14
+Exacto. Por un lado está la versión corporativa, la de papel, donde todo está blindado y bajo
+
+el control de quienes firmaron ante notario.
+
+Y por el otro está la realidad de los servidores, las madrugadas, el estrés y el código fuente.
+
+SPEAKER_02
+02:29
+Y en el mundo de la tecnología, esos dos universos tarde o temprano chocan.
+
+SPEAKER_01
+02:34
+Inevitablemente.
+
+SPEAKER_02
+02:36
+Pues el objetivo de revisar estos documentos es precisamente entender esa colisión, entender
+
+cómo el trabajo más pesado y el talento técnico pueden ser devaluados y muy rápido
+
+SPEAKER_00
+02:47
+si no hay un control legal que lo respalde.
+
+SPEAKER_01
+02:50
+Que es algo súper común.
+
+SPEAKER_02
+02:51
+Sí, las lecciones de este caso son oro puro para cualquiera que esté pensando en fundar
+
+un startup o unirse aún en sus primeros días.
+
+A ver, vamos a desempacar esto empezando por la fachada corporativa.
+
+Tenemos una acta constitutiva de una empresa llamada "legaltech digital-mexico-spapi-de-cb".
+
+SPEAKER_01
+03:12
+¿Ok?
+
+SPEAKER_02
+03:13
+Fechada en julio de 2025.
+
+En papá en los dueños son dos.
+
+Jacob J. Weiner-Arvieres con el 95% de las acciones y el título de presidente.
+
+Y Emiliano Montesgómez con el 5% como secretario.
+
+SPEAKER_03
+03:27
+Ah, ¿la estructura clásica?
+
+SPEAKER_02
+03:30
+Pero aquí hay un dato que llama la atención de inmediato.
+
+El capital social mínimo con el que se registró este empresa es de apenas mil pesos mexicanos.
+
+SPEAKER_03
+03:38
+Y ese número no es un simple detalle administrativo.
+
+En México, la figura de la SPAPI, que es una sociedad anónima promotora de inversión,
+
+está diseñada precisamente para ser muy flexible.
+
+Claro.
+
+Suelo usarse para proteger a los accionistas minoritarios y permitir la entrada de inversionistas
+
+con reglas claras.
+
+Es paradojico porque, en este caso, esa misma estructura sofisticada se montó sobre
+
+un capital de mil pesos.
+
+SPEAKER_00
+04:05
+A ver, detengamos unos ahí un segundo para ser de abogado del diablo.
+
+Constituir una empresa con mil pesos es necesariamente una trampa desde el día uno.
+
+SPEAKER_03
+04:16
+No, no necesariamente.
+
+SPEAKER_02
+04:17
+Porque muchos startups arrancan sin inversión haciendo bootstrapping, financiándose con
+
+SPEAKER_00
+04:22
+sus propios ahorros.
+
+Podría ser simplemente una formalidad para empezar a operar.
+
+SPEAKER_03
+04:27
+Es una excelente pregunta.
+
+En sí mismo registrar una empresa con el mínimo de capital no es un delito ni una trampa.
+
+Es una práctica común cuando no hay flujo defectivo.
+
+SPEAKER_00
+04:36
+Exacto.
+
+Cuando vas empezando.
+
+SPEAKER_03
+04:39
+El problema no es empezar con mil pesos.
+
+El problema, como veremos en los contratos más adelante, es usar esos mil pesos como
+
+un arma de valoración para atrapar al talento técnico.
+
+SPEAKER_00
+04:50
+Claro, usarlo en su contra.
+
+SPEAKER_03
+04:53
+Exactamente, la intención real de ese capital se revela cuando contrastamos la estructura
+
+SPEAKER_01
+04:58
+accionaria de papel con la realidad técnica de quién está construyendo la empresa.
+
+SPEAKER_02
+05:03
+Y la desconexión es total.
+
+Revisando la auditoria técnica y los registros de Git, que bueno esencialmente es la
+
+habitácore inalterable de quién escribe cada línea de código.
+
+SPEAKER_01
+05:13
+Sí.
+
+Ahí no es como mentir.
+
+SPEAKER_02
+05:15
+Ahí no hay mentiras.
+
+La historia da un giro.
+
+Resulta que Emiliano, el supuesto dueño del 5%, hizo su última porte de código en
+
+SPEAKER_00
+05:24
+septiembre de 2025.
+
+SPEAKER_03
+05:26
+¿Y después de eso desaparece?
+
+SPEAKER_00
+05:28
+Desaparece del mapa operativo por completo y aquí es donde entra la verdadera pieza
+
+central de este rompecabezas.
+
+El desarrollador Javier Alejandro Ranjel Murillo.
+
+Los números que presenta la auditoria sobre su trabajo son simplemente colosales.
+
+SPEAKER_03
+05:44
+Es un volumen de trabajo que rara a veces concentrado en una sola persona en tampoco
+
+SPEAKER_02
+05:48
+tiempo.
+
+SPEAKER_01
+05:49
+Es una locura.
+
+SPEAKER_00
+05:50
+Estamos hablando de que Javier añadió más de 300 un mil líneas de código.
+
+Hizo el 68% de absolutamente todos los comits del repositorio del proyecto.
+
+SPEAKER_03
+06:01
+68% del solo.
+
+SPEAKER_00
+06:03
+El solo.
+
+Son 444 aportes documentados.
+
+Desde que entró al proyecto en octubre de 2025, la auditoria señala que la productividad
+
+se aceleró unas 10 veces.
+
+SPEAKER_01
+06:15
+10 veces?
+
+Sí.
+
+SPEAKER_00
+06:17
+Y si no se va a levantar un rascacielos.
+
+Es como si los dueños estuvieran en una cafetería decidiendo el logo y el color de las tarjetas
+
+de presentación.
+
+Y mientras tanto hay una sola persona excavando los cimientos, montando las vigas de acero,
+
+poniendo el cableado eléctrico, exacto, el cableado, la plomería de los 50 pisos.
+
+SPEAKER_01
+06:38
+La analogía del rascacielos es perfecta porque no solo construyó las paredes, diseñó
+
+SPEAKER_03
+06:42
+la ingeniería estructural.
+
+SPEAKER_01
+06:44
+El cabierno solo hizo el backend, que es la lógica invisible que hace que el sistema
+
+funcione, integró pasarelas de pago con PayPal, sistemas de vídeo llamadas con Google
+
+Meet, automatizó la validación de identidad con Renapo, que no es nada sencillo.
+
+Para nada.
+
+Crea un sistema de raspado de datos web para verificarse de las profesionales del ASEP en
+
+tiempo real, montó toda la infraestructura en la nube de Google y armó un sistema completo
+
+de citas.
+
+SPEAKER_00
+07:08
+Todo esto contenido en más de 4.3 megabytes de puro código TypeScript.
+
+SPEAKER_01
+07:15
+Que en términos de texto plano es una obra literaria masiva y complejísima.
+
+SPEAKER_00
+07:19
+Y sin un solo error ortográfico por así decirlo porque si no el código no corre.
+
+SPEAKER_01
+07:23
+Exactamente.
+
+Y hay que entender el nivel de especialización.
+
+La auditoria cataloga este perfil como el de un staff engineer o un ingeniero fundador.
+
+Para dimensionarlo, implementó cosas como "circuit breakers".
+
+SPEAKER_02
+07:36
+Y eso como funciona para los que no son tan técnicos.
+
+SPEAKER_01
+07:39
+Ah, en el software esto funciona como los fusibles eléctricos de una casa.
+
+Si hay una sobrecarga de datos o un error, el fusible se vota para que no se queme toda
+
+la instalación.
+
+También instaló métricas avanzadas de prometios.
+
+Ya.
+
+Esto no es trabajo de un programador junior que va empezando experimentar.
+
+Este es la arquitectura crítica que permite que el negocio exista.
+
+Sin este nivel técnico, esa idea de negocio legal es solo una presentación bonita en
+
+PDF.
+
+SPEAKER_02
+08:05
+Pero claro, montaron rascacielos tu solo, sin casco y sin arnez, tiene un costo humano altísimo,
+
+lo cual nos lleva al testimonio directo de las trincheras, el documento Operational Incompetence.
+
+SPEAKER_03
+08:19
+¡Ijole!
+
+¿Le eres el documento?
+
+SPEAKER_02
+08:21
+Leerlo da una sensación de aogo.
+
+SPEAKER_00
+08:24
+Es la crónica del famoso ponerse la camiseta llevado al extremo más tóxico posible.
+
+El documento detalla jornadas de lunes a domingo, cubriendo 10 festivos y asumiendo todo
+
+SPEAKER_02
+08:35
+el peso operativo bajo la supuesta dirección de Jakob, el dueño del 95% y autonombrado
+
+Project Manager.
+
+SPEAKER_01
+08:43
+¿Y aquí es donde la arquitectura técnica de primer nivel choca de frente con una gestión
+
+gerencial deficiente?
+
+SPEAKER_03
+08:49
+Una plataforma tecnológica robusta no sobrevides y las decisiones de negocios onerráticas.
+
+El incidente con Google Cloud Platform, o GCP, ilustra esto a la perfección.
+
+SPEAKER_02
+08:58
+Es un momento que se lecon muchísima frustración.
+
+SPEAKER_00
+09:01
+Todo este ecosistema que Javier construyó estaba ospedado en Google Cloud.
+
+SPEAKER_02
+09:06
+El testimonio relata que Jakob, a pesar de las advertencias previas del equipo, olvidó
+
+SPEAKER_00
+09:11
+o de plano ignoró pagar la factura del servicio.
+
+SPEAKER_01
+09:14
+No pasó la tarjeta.
+
+SPEAKER_02
+09:15
+No pasó la tarjeta.
+
+SPEAKER_00
+09:17
+Y el resultado fue que a la mitad de una demostración en vivo con un abogado que era un cliente
+
+real, los servidores simplemente se apagaron.
+
+La plataforma con la psofrente al cliente.
+
+SPEAKER_01
+09:27
+Y hay que entender las implicaciones de esto.
+
+No es un simple error informático.
+
+En el sector B2B, es decir, vendiéndole a otros negocios como despachos de abogados,
+
+la confianza es tu único activo inicial.
+
+SPEAKER_02
+09:41
+Totalmente.
+
+SPEAKER_01
+09:42
+Si la plataforma se cae durante la venta por falta de pago, la credibilidad de la empresa
+
+llega a Hacelo, es un fallo gerencial crítico, no técnico.
+
+SPEAKER_02
+09:51
+Y la reacción ante ese fallo es lo más revelador.
+
+Según el testimonio, en lugar de aceptar el error administrativo, Jacob llega a la reunión
+
+de equipo a gritar, exigiendo saber por qué lo había numillado frente al cliente.
+
+SPEAKER_01
+10:05
+Increíble.
+
+SPEAKER_02
+10:06
+Culpando a los desarrolladores de un problema que se originó porque su tarjeta fue rechazada.
+
+SPEAKER_01
+10:11
+Si conectamos esto con el panorama general, te das cuenta del vacío de liderazgo.
+
+El principio básico de un buen líder técnico es proteger al equipo de las balas externas
+
+y asumir la responsabilidad.
+
+Aquí la cadena de mando funcionaba al revés.
+
+SPEAKER_00
+10:25
+Y la manera en que se gestionaba el trabajo diario es un caso de estudio en sí mismo.
+
+Las aportaciones de liderazgo de Jacob consistían en crear tickets, o sea, tareas, utilizando
+
+SPEAKER_02
+10:37
+cursor, una inteligencia artificial.
+
+SPEAKER_01
+10:39
+Usar IA para dirigir el producto.
+
+SPEAKER_02
+10:42
+Literalmente.
+
+Le pedía una IA que redactara los requerimientos sin entender si eran viables.
+
+SPEAKER_00
+10:49
+Le didía integrar herramientas como sumo SDK que el equipo descubrió que costaba mil dólares
+
+al mes.
+
+Un gasto imposible para ellos.
+
+SPEAKER_01
+10:58
+Un absurdo financiero.
+
+SPEAKER_00
+10:59
+O exigía integraciones con Karen Lee sin revisar la arquitectura.
+
+Es la fantasía de que la IA puede ser un director de producto, escupiendo tareas para
+
+que el desarrollador haga magia.
+
+SPEAKER_01
+11:10
+Es una irresponsabilidad tremenda.
+
+Delegar las decisiones de producto a un algoritmo sin comprender el impacto técnico
+
+o financiero genera una deuda técnica asfixiante.
+
+A esto se suma que no tenían a nadie de QA, es decir, quality assurance.
+
+SPEAKER_00
+11:25
+Nadie revisaba la calidad.
+
+SPEAKER_01
+11:27
+Exacto.
+
+Sin un equipo de control de calidad, el mismo desarrollador que escribe el código tiene
+
+que buscar sus propios errores, probar la plataforma y arreglarla.
+
+Es una receta garantizada para el colapso emocional del equipo.
+
+SPEAKER_00
+11:41
+Y ese colapso ocurrió precisamente en un fin de semana crítico.
+
+El equipo, ya superado por los errores y el estrés, decidió reunirse en sábado para
+
+restructurar todo el flujo de trabajo, tratando de salvar el barco, donde estaba el dueño
+
+del 95% de la empresa en ese momento de vida o muerte para el proyecto.
+
+SPEAKER_01
+12:01
+De vacaciones.
+
+SPEAKER_00
+12:02
+De vacaciones.
+
+Y cuando javierle mando un mensaje urgente, reclamando su presencia para tomar decisiones,
+
+la respuesta de Jacob citada en el documento es increíble.
+
+SPEAKER_01
+12:13
+Si esa parte es de no creerse.
+
+SPEAKER_00
+12:15
+Se justifica diciendo que lleva trabajando 24/7 sin sueldo desde hace dos años en este
+
+SPEAKER_02
+12:20
+proyecto.
+
+SPEAKER_01
+12:21
+¿Cuál nos regresa a la habitácora inalterable del código que mencionábamos?
+
+Los registros de GitHub demuestran que el proyecto rancó sus comits en junio de 2025.
+
+Es imposible que llevar a dos años trabajando 24/7 en una plataforma que ni siquiera existía
+
+en los repositorios en ese entonces.
+
+SPEAKER_00
+12:38
+Y en medio de este caos operativo aparece un personaje secundario fascinante.
+
+Mariano.
+
+Otro bogado que supuestamente solo redactaba términos y condiciones pero que extrañamente
+
+es el único que aporta dinero real.
+
+SPEAKER_01
+12:52
+Sí, el verdadero inversionista en la sombra.
+
+SPEAKER_00
+12:56
+Según el documento, Mariano es quien termina pagando la factura caída de Google Cloud
+
+y es quien le transferió a Javier los únicos 4.000 pesos que ha cobrado.
+
+Su rol legal es un fantasma en los papeles pero es el único que actúa como verdadero sociocapitalista.
+
+SPEAKER_01
+13:11
+Y es justo en este punto donde la historia da su giro más oscuro porque después de todo
+
+este caos operativo de construir la plataforma entera sumiendo las responsabilidades de tres
+
+departamentos distintos llega al momento de formalizar la relación y aquí es donde
+
+la estructura corporativa que mencionamos al principio se revela como un campo minado.
+
+SPEAKER_00
+13:31
+Aquí es donde la cosa se pone realmente interesante.
+
+Vamos a entrar a la joya de la corona de los documentos, el convenio que le presentan
+
+a Javier.
+
+La empresa finalmente quiere regularizar su situación por ser el creador del producto.
+
+SPEAKER_01
+13:45
+Aha, por fin le ponen algo sobre la mesa.
+
+SPEAKER_00
+13:48
+Y la oferta en papel suen atentadora si no se le he con cuidado.
+
+Le proponen entregarle el 15% de participación en la sociedad, le reconocen de forma retroactiva
+
+una deudo de 50.000 pesos por los meses trabajados y le ofrecen una compensación mensual
+
+de 4.000 pesos.
+
+SPEAKER_01
+14:05
+¿Qué suena algo?
+
+SPEAKER_00
+14:06
+Cualquiera en el furor de un estarto podría pensar, bueno, me están haciendo socio, es
+
+una arranque digno, pero la letra chiquita es un manual de tácticas predatorias.
+
+SPEAKER_01
+14:17
+Hay que desarmar estas cláusulas porque están diseñadas como una trampa de la cual es
+
+SPEAKER_03
+14:21
+casi imposible salir beneficiado.
+
+Empecemos por la compensación.
+
+SPEAKER_01
+14:26
+Esos 4.000 pesos mensuales vienen con la promesa de subir hasta 35.000 pesos.
+
+SPEAKER_00
+14:31
+¿Qué ya suena un sueldo más real?
+
+SPEAKER_01
+14:33
+Sí, pero el truco es que sin cremento está condicionado a una métrica de ingresos
+
+nítos de la empresa.
+
+En el mundo real, alcanzar un ingreso neto alto implica que primero se deben descontar
+
+todos los gastos operativos, servidores, sueldos e impuestos.
+
+SPEAKER_02
+14:47
+Claro.
+
+SPEAKER_03
+14:48
+Para un estarto pensó etapa inicial sin flujo de caja y que ni siquiera puede pagar su servicio
+
+SPEAKER_01
+14:53
+de la nube, llegar a ese margen de ingresos netos es financieramente inviable.
+
+Es una zanahoria tada un palo en alcanzable.
+
+SPEAKER_02
+14:59
+Un espejismo financiero en toda la regla.
+
+Pero bueno, uno pensaría que al menos tiene su 15% de acciones asegurado, ¿no?
+
+Pues resulta que no.
+
+SPEAKER_00
+15:11
+La entrega de esas acciones está amarrada a un concepto que el contrato llama fecha
+
+de salida.
+
+SPEAKER_01
+15:17
+Uy, esa cláusula.
+
+SPEAKER_00
+15:20
+Cuando ocurre eso, el texto dice que será cuando el software esté y sito en funcionamiento
+
+SPEAKER_02
+15:26
+para utilizarse para los fines que fue creado.
+
+SPEAKER_00
+15:29
+Es una definición completamente subjetiva controlada por la empresa.
+
+SPEAKER_01
+15:34
+Muy conveniente.
+
+SPEAKER_02
+15:35
+Demasiado.
+
+Si un día los fundadores dicen que al interfaz le falta pulir un menú, legalmente pueden
+
+SPEAKER_00
+15:41
+argumentar que no está en funcionamiento y retener las acciones indefinidamente.
+
+Y mientras lo hacen, la cláusula 11 obliga a Javier a ceder todos sus derechos de propiedad
+
+intelectual de forma permanente.
+
+SPEAKER_03
+15:54
+Ese es el núcleo de lácimetría de poder, están exigiendo la transferencia total del
+
+valor de creo, la propiedad intelectual de toda la plataforma, a cambio de una promesa
+
+de acciones que está condicionada a la opinión subjetiva de los fundadores.
+
+Entregas el producto completo antes de tener una sola garantía legal a tu favor.
+
+SPEAKER_00
+16:12
+Y si pensábamos que eso era grave, vamos al derecho de recomprar.
+
+Esta es la cláusula que te deja verdaderamente helado si haces la matemática.
+
+SPEAKER_01
+16:21
+Sí, es durísima.
+
+SPEAKER_00
+16:22
+El contrato estipula, que si la empresa determina que Javier causa un daño material, otro
+
+término peligrosamente anviguo, pueden rescindir el convenio, despedirlo y obligarlo a venderles
+
+de vuelta a su 15% de las acciones.
+
+La pregunta es, ¿a qué precios se las comprarían?
+
+El documento dice que al valor nominal.
+
+Si recordamos el acta constitutiva del inicio, el capital social completo era de mil pesos.
+
+SPEAKER_01
+16:51
+Así es.
+
+SPEAKER_00
+16:52
+La calculadora, el 15% de mil pesos, son 150 pesos.
+
+SPEAKER_03
+16:58
+150 pesos.
+
+SPEAKER_00
+17:00
+Podrían argumentar un error en el código, despedirlo, quedarse con la propiedad intelectual absoluta
+
+de un sistema que integra validación gobernamental y pagos internacionales y liquidar su participación
+
+accionaria con 150 pesos.
+
+Literalmente, con lo que te cuesta un par de cafés, te despojan del trabajo de meses.
+
+Esto es una frialdad legal impresionante.
+
+SPEAKER_03
+17:23
+Es una cláusula punitiva que utiliza el mínimo capital legal como un mecanismo de despojo.
+
+Y para asegurar que el desarrollador no tenga escapatoria, el contrato cierra con una
+
+cláusula de no competencia.
+
+Le prohíben a Javier durante 18 meses, tras cualquier terminación de contrato, desarrollar
+
+plataformas similares.
+
+SPEAKER_00
+17:40
+Imagínate.
+
+SPEAKER_03
+17:41
+Buscar clientes del sector o trabajar en proyectos parecidos en todo el territorio de México
+
+y Estados Unidos.
+
+Lo bloquean profesionalmente en los marcados más grandes, atándolo a un proyecto que
+
+le paga una miseria bajo amenaza de demandarlos si busca aplicar su experiencia en otro lado.
+
+SPEAKER_02
+17:58
+Viendo todo este panorama legal, tan adverso, entonces, ¿qué significa todo esto?
+
+SPEAKER_00
+18:04
+¿Cuál es el daño económico real?
+
+¿Cuánto dinero dejó sobre la mesa a este desarrollador por no tener un contrato
+
+claro desde el día 1?
+
+SPEAKER_03
+18:22
+La conclusión de la auditoría es devastador en términos de mercado.
+
+Los 4.000 pesos mensuales que le estaban ofreciendo no representan ni el 10% del salario
+
+base que un ingeniero de software con capacidades de arquitectura en la nube debería cobrar
+
+en México hoy en día.
+
+SPEAKER_00
+18:38
+¿De cuánto estamos hablando más o menos?
+
+SPEAKER_03
+18:40
+Debería rondar los 40.000 a 65.000 pesos mensuales y ese es un cálculo conservador.
+
+En muchas zonas urbanas, 4.000 pesos al mes es un ingreso que cae por debajo del salario
+
+mínimo legal.
+
+SPEAKER_00
+18:52
+Y el adeudo de 50.000 pesos que los fundadores reconocen en el contrato como un gran gesto
+
+por los 5 meses de trabajo, la auditoría lo destroza.
+
+SPEAKER_02
+19:02
+Analizando el volumen de más de 300.000 líneas de código y la integración de tecnologías
+
+SPEAKER_00
+19:08
+complejas, el valor de mercado real del trabajo ya entregado, o si la entre los 200.000 y
+
+SPEAKER_02
+19:14
+los 325.000 pesos.
+
+SPEAKER_03
+19:16
+Le estaban ofreciendo pagarle una cuarta parte de lo que verdaderamente ya había generado.
+
+SPEAKER_00
+19:21
+Una locura.
+
+SPEAKER_03
+19:23
+Hay una métrica aún más reveladora, que es el costo de reemplazazo.
+
+Si el equipo fundador decidiera que no necesita a Javier y acudieran al mercado a contratar
+
+a una agencia o a un equipo estructurado para reconstruir ese mismo rascacielos digital
+
+desde cero.
+
+SPEAKER_00
+19:38
+Eso a todos los perfiles necesarios.
+
+SPEAKER_03
+19:40
+Exacto.
+
+Un especialista en backend, un experto en infraestructura en la nube o DevOps y alguien de pruebas de calidad
+
+o QA.
+
+La factura rondaría casi el millón de pesos.
+
+La auditoría lo estina entre 630.820.000 pesos.
+
+Ese es el verdadero valor comercial de la plataforma que pretendían asegurar con un
+
+contrato atado a una empresa de 1.000 pesos.
+
+SPEAKER_00
+20:00
+Es un nivel de extracción de valor increíble.
+
+Este caso es, definitivamente, la radiografía perfecta de cómo operan las asimetrias de
+
+poder en el ecosistema emprendedor moderno.
+
+Por un lado, tienes al creador técnico, asumiendo absolutamente todo el riesgo de ejecución.
+
+SPEAKER_03
+20:18
+Trabajando de madrugada, reglando servidores.
+
+SPEAKER_02
+20:20
+Lidiendo con el estrés de que la pasarela de pagos no falle e incluso sumiendo la responsabilidad
+
+SPEAKER_00
+20:26
+legal si algo sale mal bajo ese contrato leonino.
+
+SPEAKER_03
+20:29
+Es que, del otro lado, los fundadores notecnicos que en este caso brillaron por su ausencia operativa
+
+y falta de liderazgo retienen el monoporio del control corporativo y financiero.
+
+Construyen barreras de papel sumamente sofisticadas para asegurarse de que el riesgo sea socializado
+
+en el equipo, pero el beneficio sea privatizado en la cúpula.
+
+SPEAKER_00
+20:48
+Al explorar esta historia para quienes nos escuchan, la gran lección es muy clara.
+
+El talento técnico, el trabajo duro, las jornadas exhaustivas y el código de primer
+
+mundo, nos sirven de nada si no se formalizan con protección legal justo desde el principio.
+
+La famosa promesa del capital de sudor, esa idea de trabajar gratis hoy por acciones
+
+que valdrán millones mañana, puede convertirse rápidamente en un espejismo.
+
+SPEAKER_03
+21:13
+En una trampa absoluta.
+
+SPEAKER_00
+21:15
+Resulta evidente que una simple áracta constitutiva, debajo costo de mil pesos y un contrato
+
+redactado estratégicamente, pueden ser suficientes para devaluar el esfuerzo técnico de meses,
+
+dejando a quien realmente construyó el edificio en la calle y con los bolsillos vacíos.
+
+SPEAKER_03
+21:34
+Esto planteó una pregunta importante con la que vale la pena reflexionar.
+
+Nos deja una paradoja muy propia de la era moderna.
+
+SPEAKER_01
+21:41
+Las leyes corporativas se inventaron hace siglos para proteger el capital económico,
+
+SPEAKER_03
+21:45
+el dinero.
+
+Pero hoy, en estas empresas tecnológicas, el verdadero capital es el código y el conocimiento
+
+técnico de quien lo escribe.
+
+SPEAKER_00
+21:53
+100%
+
+SPEAKER_03
+21:54
+Está diseñada para proteger al que firma los papeles ante un notario, no al que diseña
+
+la arquitectura del servidor.
+
+Nos obliga a preguntarnos, ¿qué entiene el poder real cuando el empresa blindada legalmente
+
+no puede operar ni cinco minutos si el desarrollador decide simplemente apagar su computadora?
+
+¿Quién tiene realmente el poder en ese momento?
+
+El que firma los papeles o el que tiene las llaves de los servidores.
+
+SPEAKER_02
+22:17
+Un dilema tremendo sobre el poder real versus el poder legal y un choque frontal entre
+
+el mundo de papel y el mundo digital donde todavía estamos descubriendo las reglas.
+
+Hasta aquí llega la revisión de hoy, seguiremos explorando los matices y las lecciones
+
+detrás de estos casos fascinantes.
+
+00:00
+22:35

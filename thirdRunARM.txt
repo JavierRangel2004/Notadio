@@ -1,0 +1,799 @@
+Upload a meeting recording and export a full transcript.
+Notadio runs on your machine with free local tooling. The first release turns audio or video into timestamped transcript files without depending on paid APIs.
+
+Drop audio/video here or browse
+¿Cuánto_Vale_tu_Código_.mp4
+¿Cuánto_Vale_tu_Código_.mp4
+32.5 MB
+Start transcription
+JOB STATUS
+
+completed
+Â¿CuaÌnto_Vale_tu_CoÌdigo_.mp4
+Transcript ready
+
+100%
+export
+Language
+es
+Duration
+06:35
+Elapsed
+00:21
+ETA
+00:00
+PROCESSING
+
+balanced
+Apple Silicon | darwin | arm64 | 8 logical cores
+
+Threads
+6
+Translation
+Enabled
+Runtime
+pending
+Waiting for Whisper runtime telemetry
+
+WARNINGS
+
+Speaker labels were skipped because no diarization command is configured.
+LIVE LOGS
+
+[00:01:57.560 --> 00:02:00.400]   cuánto valía de verdad todo ese trabajo técnico.
+[00:02:00.400 --> 00:02:04.200]   Y para responder eso, se tuvo que hacer una auditoría independiente.
+[00:02:04.200 --> 00:02:06.760]   Y con esto, le damos la vuelta a la moneda.
+[00:02:06.760 --> 00:02:10.760]   Dejamos el contrato y nos vamos a la historia que cuenta el código,
+[00:02:10.760 --> 00:02:14.040]   a los datos duros que salieron de esta auditoría técnica.
+[00:02:14.040 --> 00:02:18.640]   La cifra que lo cambia todo es esta, 91.62%.
+[00:02:18.640 --> 00:02:21.560]   Repito, 91.6%.
+[00:02:21.560 --> 00:02:25.240]   Esa es la cantidad de código del sistema, el que funciona, el que está vivo,
+[00:02:25.240 --> 00:02:27.240]   que fue escrito por una sola persona.
+[00:02:27.240 --> 00:02:29.080]   El contrato decía colaboración,
+[00:02:29.080 --> 00:02:32.480]   pero los datos gritan que esto fue obra de un solo autor.
+[00:02:32.480 --> 00:02:36.200]   Ahora, si lo vemos en una gráfica, esto todavía más impactante.
+[00:02:36.200 --> 00:02:39.400]   La rebanada del pastel de este desarrollador es enorme,
+[00:02:39.400 --> 00:02:41.680]   así que todo lo demás se vea diminuto.
+[00:02:41.680 --> 00:02:45.280]   Fíjense el segundo colaborador más grande, no llega ni al 4%.
+[00:02:45.280 --> 00:02:46.560]   Y un dato curioso.
+[00:02:46.560 --> 00:02:48.400]   La última vez que esa persona portó algo,
+[00:02:48.400 --> 00:02:51.600]   fue antes de que el desarrollador principal entrar al proyecto.
+[00:02:51.600 --> 00:02:54.120]   Pero, esperen, que no solo fue la cantidad.
+[00:02:54.120 --> 00:02:55.920]   Fue también la velocidad.
+[00:02:55.920 --> 00:02:59.600]   La auditoría encontró que la productividad del proyecto se fue a los cielos.
+[00:02:59.600 --> 00:03:03.280]   El ritmo de trabajo, medido en comits o contribuciones por mes,
+[00:03:03.280 --> 00:03:04.600]   se multiplicó por 10.
+[00:03:04.600 --> 00:03:07.240]   Pasaron de un promedio de 9 a casi 100.
+[00:03:07.240 --> 00:03:10.440]   Literal fue como pasar de caminar a volar en un jet.
+[00:03:10.440 --> 00:03:12.280]   Llegué clara algo súper importante.
+[00:03:12.280 --> 00:03:15.240]   Este 90 y tantos por ciento no eran arreglos menores.
+[00:03:15.240 --> 00:03:17.360]   Estamos hablando del corazón del sistema.
+[00:03:17.360 --> 00:03:20.720]   La plataforma de pagos, la integración con Google Mid para las videellamadas,
+[00:03:20.720 --> 00:03:22.560]   la validación de documentos oficiales,
+[00:03:22.560 --> 00:03:24.240]   toda la infraestructura en la 9,
+[00:03:24.240 --> 00:03:27.840]   prácticamente el cerebro y el sistema nervioso de toda la operación.
+[00:03:27.840 --> 00:03:31.200]   Muy bien, ya vimos la cantidad y la calidad del trabajo.
+[00:03:31.200 --> 00:03:32.240]   Ahora viene lo bueno.
+[00:03:32.240 --> 00:03:35.240]   Vamos a ponerle precio y a comparar lo que decía el contrato
+[00:03:35.240 --> 00:03:36.960]   contra lo que dice el mercado.
+[00:03:36.960 --> 00:03:38.800]   Este gráfico lo dice todo.
+[00:03:38.800 --> 00:03:41.040]   El pago del contrato, 4.000 pesos.
+[00:03:41.040 --> 00:03:44.440]   El sueldo más bajo, el piso del mercado para un trabajo así,
+[00:03:44.440 --> 00:03:46.000]   40.000 pesos.
+[00:03:46.000 --> 00:03:48.720]   O sea, se estaba pagando 10 veces menos
+[00:03:48.720 --> 00:03:51.040]   que le están dar más conservador de la industria.
+[00:03:51.040 --> 00:03:52.240]   Una vismo.
+[00:03:52.240 --> 00:03:56.280]   Esta tabla es como una radiografía del problema, punto por punto.
+[00:03:56.280 --> 00:04:00.000]   El pago mensual de 10 a 14 veces por debajo del mercado.
+[00:04:00.000 --> 00:04:03.160]   La deuda que se reconoció de 4 a 6 veces menor
+[00:04:03.160 --> 00:04:05.400]   de lo que realmente valía ese trabajo.
+[00:04:05.400 --> 00:04:07.440]   Y la ironía más grande de todas.
+[00:04:07.440 --> 00:04:11.480]   Se prometió un 15% de la empresa por haber construido en la práctica
+[00:04:11.480 --> 00:04:14.920]   el 91.6% de su tecnología.
+[00:04:14.920 --> 00:04:17.520]   Para que quede súper claro, en una sola frase,
+[00:04:17.520 --> 00:04:22.960]   5 meses de trabajo fueron valuados por la auditoría entre 200.000 y 325.000 pesos.
+[00:04:22.960 --> 00:04:27.160]   El contrato, sumando pagos y la deuda, apenas reconoció 70.000.
+[00:04:27.160 --> 00:04:30.600]   Y se creían que la parte del dinero era la peor a gárrense.
+[00:04:30.600 --> 00:04:32.880]   Porque la auditoría también encontró varios riesgos
+[00:04:32.880 --> 00:04:35.960]   muy serios escondidos en la letra chiquita del contrato.
+[00:04:35.960 --> 00:04:40.040]   Esta es probablemente la cláusula más peligrosa de todas.
+[00:04:40.040 --> 00:04:43.240]   Le da a la empresa el poder de recomprar todas las acciones,
+[00:04:43.240 --> 00:04:45.080]   a su valor nominal.
+[00:04:45.080 --> 00:04:46.560]   ¿Y qué significa eso?
+[00:04:46.560 --> 00:04:49.840]   Que te las pueden comprar de vuelta por un peso cada una.
+[00:04:49.840 --> 00:04:52.920]   Un valor simbólico, o sea, por nada.
+[00:04:52.920 --> 00:04:55.480]   Y se preguntarán cómo podrían usar esto.
+[00:04:55.480 --> 00:04:56.440]   Pues es muy fácil.
+[00:04:56.440 --> 00:04:59.000]   Le empresa simplemente alega un incumplimiento.
+[00:04:59.000 --> 00:05:01.560]   Algo tan subjetivo como actuar de mala fe.
+[00:05:01.560 --> 00:05:05.040]   Le dan 10 días para corregirlo, lo que sea que eso significa.
+[00:05:05.040 --> 00:05:06.800]   Y si no, activan la cláusula.
+[00:05:06.800 --> 00:05:07.840]   Y así, puf.
+[00:05:07.840 --> 00:05:10.880]   El 15% de la compañía, meses de trabajo,
+[00:05:10.880 --> 00:05:13.280]   se conviertan en un puñado de monedas.
+[00:05:13.280 --> 00:05:15.720]   Pero esperen que hay más focos rojos.
+[00:05:15.720 --> 00:05:20.160]   Una sesión total y para siempre de toda la propiedad intelectual.
+[00:05:20.160 --> 00:05:23.800]   Una cláusula que le impedía trabajar en algo similar por un año y medio.
+[00:05:23.800 --> 00:05:25.960]   Y para rematar, se había una disputa.
+[00:05:25.960 --> 00:05:28.320]   Se tenía que resolver en un arbitraje carísimo,
+[00:05:28.320 --> 00:05:30.520]   prácticamente impagable para una persona.
+[00:05:30.520 --> 00:05:32.360]   Una desventaja total.
+[00:05:32.360 --> 00:05:35.360]   OK, el panorama se ve muy complicado, ¿verdad?
+[00:05:35.360 --> 00:05:38.840]   Pero la auditoría no solo se quedó en señalar todo lo malo.
+[00:05:38.840 --> 00:05:41.560]   Lo más importante es que propuso tres caminos,
+[00:05:41.560 --> 00:05:43.920]   tres estrategias claras para negociar,
+[00:05:43.920 --> 00:05:46.160]   todas respaldadas por los datos.
+[00:05:46.160 --> 00:05:49.680]   Y aquí es donde los datos se convierten en poder real.
+[00:05:49.680 --> 00:05:51.680]   Se plantearon tres escenarios.
+[00:05:51.680 --> 00:05:53.680]   El primero, uno conservador.
+[00:05:53.680 --> 00:05:56.240]   Corregir el sueldo y cobrar la deuda mínima.
+[00:05:56.240 --> 00:05:58.080]   El segundo, uno más justo.
+[00:05:58.080 --> 00:06:00.320]   Exigir el valor de mercado y, sobre todo,
+[00:06:00.320 --> 00:06:03.520]   ponerle candados a ese 15% de acciones.
+[00:06:03.520 --> 00:06:05.800]   Y el tercero, una salida limpia.
+[00:06:05.800 --> 00:06:08.240]   Renunciar a las acciones a cambio de un pago único
+[00:06:08.240 --> 00:06:10.480]   que compense el valor ya creado.
+[00:06:10.480 --> 00:06:12.760]   Tres caminos claros para negociar.
+[00:06:12.760 --> 00:06:15.680]   Y, todo este caso, nos deja con una pregunta final.
+[00:06:15.680 --> 00:06:18.160]   Una que va más allá de este desarrollador.
+[00:06:18.160 --> 00:06:20.480]   Cuando se firma un acuerdo, sobre todo,
+[00:06:20.480 --> 00:06:22.240]   al principio de un proyecto,
+[00:06:22.240 --> 00:06:24.560]   ¿realmente se está creando una sociedad justa?
+[00:06:24.560 --> 00:06:26.240]   O sin darnos cuenta, se está entregando
+[00:06:26.240 --> 00:06:29.120]   la herramienta de negociación más poderosa que existe.
+[00:06:29.120 --> 00:06:31.480]   El valor real y medible del propio trabajo.
+[00:06:33.520 --> 00:06:35.520]   [Música]
+output_srt: saving output to '/Users/javierrangel/github/Notadio/backend/data/jobs/56f5d8a3-79f3-462c-b1cc-0b6d05fa9a03/working/whisper/source.srt'
+output_json: saving output to '/Users/javierrangel/github/Notadio/backend/data/jobs/56f5d8a3-79f3-462c-b1cc-0b6d05fa9a03/working/whisper/source.json'
+whisper_print_timings:     load time =   176.56 ms
+whisper_print_timings:     fallbacks =   1 p /   0 h
+whisper_print_timings:      mel time =   156.11 ms
+whisper_print_timings:   sample time =  2324.79 ms / 10372 runs (     0.22 ms per run)
+whisper_print_timings:   encode time =  1205.79 ms /    16 runs (    75.36 ms per run)
+whisper_print_timings:   decode time =    24.14 ms /     6 runs (     4.02 ms per run)
+whisper_print_timings:   batchd time =  6208.49 ms / 10296 runs (     0.60 ms per run)
+whisper_print_timings:   prompt time =   500.69 ms /  2872 runs (     0.17 ms per run)
+whisper_print_timings:    total time = 10863.42 ms
+ggml_metal_free: deallocating
+whisper_init_from_file_with_params_no_state: loading model from '/Users/javierrangel/github/Notadio/.local/models/ggml-base.bin'
+whisper_init_with_params_no_state: use gpu    = 1
+whisper_init_with_params_no_state: flash attn = 1
+whisper_init_with_params_no_state: gpu_device = 0
+whisper_init_with_params_no_state: dtw        = 0
+ggml_metal_device_init: tensor API disabled for pre-M5 and pre-A19 devices
+ggml_metal_library_init: using embedded metal library
+ggml_metal_library_init: loaded in 0.008 sec
+ggml_metal_rsets_init: creating a residency set collection (keep_alive = 180 s)
+ggml_metal_device_init: GPU name:   Apple M2
+ggml_metal_device_init: GPU family: MTLGPUFamilyApple8  (1008)
+ggml_metal_device_init: GPU family: MTLGPUFamilyCommon3 (3003)
+ggml_metal_device_init: GPU family: MTLGPUFamilyMetal4  (5002)
+ggml_metal_device_init: simdgroup reduction   = true
+ggml_metal_device_init: simdgroup matrix mul. = true
+ggml_metal_device_init: has unified memory    = true
+ggml_metal_device_init: has bfloat            = true
+ggml_metal_device_init: has tensor            = false
+ggml_metal_device_init: use residency sets    = true
+ggml_metal_device_init: use shared buffers    = true
+ggml_metal_device_init: recommendedMaxWorkingSetSize  =  5726.63 MB
+whisper_init_with_params_no_state: devices    = 3
+whisper_init_with_params_no_state: backends   = 3
+whisper_model_load: loading model
+whisper_model_load: n_vocab       = 51865
+whisper_model_load: n_audio_ctx   = 1500
+whisper_model_load: n_audio_state = 512
+whisper_model_load: n_audio_head  = 8
+whisper_model_load: n_audio_layer = 6
+whisper_model_load: n_text_ctx    = 448
+whisper_model_load: n_text_state  = 512
+whisper_model_load: n_text_head   = 8
+whisper_model_load: n_text_layer  = 6
+whisper_model_load: n_mels        = 80
+whisper_model_load: ftype         = 1
+whisper_model_load: qntvr         = 0
+whisper_model_load: type          = 2 (base)
+whisper_model_load: adding 1608 extra tokens
+whisper_model_load: n_langs       = 99
+whisper_model_load:        Metal total size =   147.37 MB
+whisper_model_load: model size    =  147.37 MB
+whisper_backend_init_gpu: device 0: Metal (type: 1)
+whisper_backend_init_gpu: found GPU device 0: Metal (type: 1, cnt: 0)
+whisper_backend_init_gpu: using Metal backend
+ggml_metal_init: allocating
+ggml_metal_init: found device: Apple M2
+ggml_metal_init: picking default device: Apple M2
+ggml_metal_init: use fusion         = true
+ggml_metal_init: use concurrency    = true
+ggml_metal_init: use graph optimize = true
+whisper_backend_init: using BLAS backend
+whisper_init_state: kv self size  =    6.29 MB
+whisper_init_state: kv cross size =   18.87 MB
+whisper_init_state: kv pad  size  =    3.15 MB
+whisper_init_state: compute buffer (conv)   =   17.24 MB
+whisper_init_state: compute buffer (encode) =   26.31 MB
+whisper_init_state: compute buffer (cross)  =   10.81 MB
+whisper_init_state: compute buffer (decode) =   97.29 MB
+system_info: n_threads = 6 / 8 | WHISPER : COREML = 0 | OPENVINO = 0 | Metal : EMBED_LIBRARY = 1 | CPU : NEON = 1 | ARM_FMA = 1 | FP16_VA = 1 | DOTPROD = 1 | ACCELERATE = 1 | REPACK = 1 |
+main: processing '/Users/javierrangel/github/Notadio/backend/data/jobs/56f5d8a3-79f3-462c-b1cc-0b6d05fa9a03/working/normalized.wav' (6309140 samples, 394.3 sec), 6 threads, 1 processors, 5 beams + best of 5, lang = auto, task = translate, timestamps = 1 ...
+whisper_full_with_state: auto-detected language: es (p = 0.998862)
+[00:00:00.000 --> 00:00:04.480]   Let's see, imagine this, sign a contract to collaborate on a project.
+[00:00:04.480 --> 00:00:10.560]   But in the end, the data, the free numbers show that practically everything was built by a single person.
+[00:00:10.560 --> 00:00:12.480]   How valuable is that code?
+[00:00:12.480 --> 00:00:18.240]   Today we are going to analyze a real case, where what a paper says is a joke about the reality that the data tells.
+[00:00:18.240 --> 00:00:20.480]   And here is the conflict in two columns.
+[00:00:20.480 --> 00:00:24.400]   On the one hand, we have the words, a contract that talks about collaboration.
+[00:00:24.400 --> 00:00:31.920]   And on the other hand, the numbers are hard, an auditory that reveals that a single person wrote the 91.6% of all the code.
+[00:00:31.920 --> 00:00:34.560]   The difference is, well, it is a joke.
+[00:00:34.560 --> 00:00:36.960]   Okay, let's go for parts.
+[00:00:36.960 --> 00:00:42.160]   To understand how big is this difference, first we have to add a eye to what was signed.
+[00:00:42.160 --> 00:00:46.000]   We are going to decrease the contract between the developer and this startup.
+[00:00:46.000 --> 00:00:50.160]   The first thing that we see is a 4,000- pesos per month base.
+[00:00:50.160 --> 00:00:55.200]   Which, let's see, in the startup ecosystem, this sometimes happens, right? The idea is that the payment is low,
+[00:00:55.200 --> 00:00:58.800]   because the true winning, the good, will come later.
+[00:00:58.800 --> 00:01:04.000]   And here comes that big promise, the famous equity, a 15% of the company.
+[00:01:04.000 --> 00:01:05.600]   But eye, here is the trick.
+[00:01:05.600 --> 00:01:10.400]   The actions only deliver to a sale date that defines the same company.
+[00:01:10.400 --> 00:01:15.920]   That is, the total control of when and if it is that they deliver those actions, it does not have the developer.
+[00:01:15.920 --> 00:01:22.000]   And finally, it is recognized a debt of 50,000 pesos by Chamba that had already been done.
+[00:01:22.000 --> 00:01:26.880]   But again, the payment is tied to a sale of liquids.
+[00:01:26.880 --> 00:01:33.520]   In Spanish, this means that money is paid only if the company raises capital or starts selling a lot.
+[00:01:33.520 --> 00:01:36.400]   Something that we could never spend on these.
+[00:01:36.400 --> 00:01:40.160]   Then, the deal is a very expensive payment.
+[00:01:40.160 --> 00:01:47.600]   A debt that when you buy a promise of actions with conditions and a sale that yes, could go up, but it had a top.
+[00:01:47.600 --> 00:01:50.880]   Simply seen, it could be a typical startup deal.
+[00:01:50.880 --> 00:01:53.440]   But it is just here where things are good.
+[00:01:53.440 --> 00:01:57.520]   And of course, the question of the million is, more than what the paper says,
+[00:01:57.520 --> 00:02:00.400]   how much value is really all that technical work.
+[00:02:00.400 --> 00:02:04.160]   And to answer that, it was necessary to make an independent auditory.
+[00:02:04.160 --> 00:02:06.720]   And with this, we give the return to the coin.
+[00:02:06.720 --> 00:02:14.080]   We leave the contract and we go to the story that tells the code to the hard data that came out of this technical auditory.
+[00:02:14.080 --> 00:02:18.640]   The number that changes everything is this, 91.62%.
+[00:02:18.640 --> 00:02:21.520]   Repeat, 91.6%.
+[00:02:21.520 --> 00:02:27.200]   That is the amount of code of the system that works, the one that is alive, that was written by a single person.
+[00:02:27.200 --> 00:02:32.480]   The contract said collaboration, but the data says that this was work of a single author.
+[00:02:32.480 --> 00:02:39.360]   Now, if we look at it in a graphic, this is still more impressive. The rebound of the pastel of this developer is huge,
+[00:02:39.360 --> 00:02:41.680]   so everything else looks like a minute.
+[00:02:41.680 --> 00:02:45.200]   Look at the second largest collaborator, it does not reach 4%.
+[00:02:45.200 --> 00:02:51.520]   And a curious fact, the last time that this person brought something was before the main developer entered the project.
+[00:02:51.520 --> 00:02:55.840]   But wait, it was not only the amount, it was also the speed.
+[00:02:55.840 --> 00:02:59.520]   The auditorium found that the productivity of the project was at the sky.
+[00:02:59.520 --> 00:03:04.560]   The work rhythm, in Comits or contributions for months, was multiplied by 10.
+[00:03:04.560 --> 00:03:07.200]   Passed by a average of 9 to almost 100.
+[00:03:07.200 --> 00:03:10.400]   Literally, it was like walking around in a jet.
+[00:03:10.400 --> 00:03:12.160]   Something super important arrived.
+[00:03:12.160 --> 00:03:15.200]   This 90 and so many percent were not minor rules.
+[00:03:15.200 --> 00:03:17.280]   We are talking about the heart of the system.
+[00:03:17.280 --> 00:03:20.720]   The platform of payment, the integration with Google Mid for the video calls,
+[00:03:20.720 --> 00:03:24.240]   the validation of official documents, all the infrastructure in the 9,
+[00:03:24.240 --> 00:03:27.840]   practically the brain and the nervous system of all the operation.
+[00:03:27.840 --> 00:03:31.200]   Very well, we already saw the amount and quality of the work.
+[00:03:31.200 --> 00:03:36.880]   Now come on, let's put it price and compare what the contract said against what the market says.
+[00:03:36.880 --> 00:03:38.800]   This graph says everything.
+[00:03:38.800 --> 00:03:41.040]   The payment of the contract, 4,000 pesos.
+[00:03:41.040 --> 00:03:45.920]   The lower the ground, the piece of the market for a work like this, 40,000 pesos.
+[00:03:45.920 --> 00:03:51.040]   That is, it was paying 10 times less than the more conservative of the industry.
+[00:03:51.040 --> 00:03:52.160]   One at the same time.
+[00:03:52.160 --> 00:03:56.240]   This talk is like a radiography of the problem, point by point.
+[00:03:56.240 --> 00:03:59.920]   The monthly payment, from 10 to 14 times below the market.
+[00:03:59.920 --> 00:04:05.360]   The debt that was recognized 4 to 6 times less than what was really worth that work.
+[00:04:05.360 --> 00:04:07.360]   And the largest irony of all.
+[00:04:07.360 --> 00:04:14.800]   It was promised 15% of the company to have built in practice the 91.6% of its technology.
+[00:04:14.800 --> 00:04:17.440]   To make it super clear, in a single phrase.
+[00:04:17.440 --> 00:04:22.880]   Five months of work were valued by the auditorium between 200,000 and 325,000 pesos.
+[00:04:22.880 --> 00:04:27.040]   The contract, selling payment and debt, barely recognized 70,000.
+[00:04:27.040 --> 00:04:30.560]   And they believed that the part of the money to the worst is paid.
+[00:04:30.560 --> 00:04:35.840]   Because the auditorium also found several serious risks hidden in the small letter of the contract.
+[00:04:35.840 --> 00:04:40.000]   This is probably the most dangerous clause of all.
+[00:04:40.000 --> 00:04:45.040]   It gives the company the power to buy all the shares, to their nominal value.
+[00:04:45.040 --> 00:04:46.480]   And what does that mean?
+[00:04:46.480 --> 00:04:49.760]   That they can buy them back for a piece each.
+[00:04:49.760 --> 00:04:51.120]   A symbolic value.
+[00:04:51.120 --> 00:04:52.960]   That is, nothing.
+[00:04:52.960 --> 00:04:55.440]   And they will wonder how they could use this.
+[00:04:55.440 --> 00:04:56.480]   Well, it is very easy.
+[00:04:56.480 --> 00:04:58.960]   The company simply adds an incoherent.
+[00:04:58.960 --> 00:05:01.600]   Something so subjective as "actually sick".
+[00:05:01.600 --> 00:05:03.520]   They give you 10 days to correct it.
+[00:05:03.520 --> 00:05:05.040]   What does that mean?
+[00:05:05.040 --> 00:05:06.800]   And if not, they activate the clause.
+[00:05:06.800 --> 00:05:07.840]   And so, Puff.
+[00:05:07.840 --> 00:05:09.680]   The 15% of the company.
+[00:05:09.680 --> 00:05:13.280]   Work months become a coin coin.
+[00:05:13.280 --> 00:05:15.680]   But I hope there are more red focus.
+[00:05:15.680 --> 00:05:20.160]   A total session and forever for all the intellectual property.
+[00:05:20.160 --> 00:05:23.760]   A clause that he asked to work in something similar for a year and a half.
+[00:05:23.760 --> 00:05:25.920]   And to rematize, there was a dispute.
+[00:05:25.920 --> 00:05:28.240]   It had to be resolved in a very expensive arbitrage.
+[00:05:28.240 --> 00:05:30.480]   Practically impregnable for a person.
+[00:05:30.480 --> 00:05:32.320]   A total disadvantage.
+[00:05:32.320 --> 00:05:35.360]   Okay, the panorama is very complicated, right?
+[00:05:35.360 --> 00:05:38.880]   But the auditorium did not only show everything bad.
+[00:05:38.880 --> 00:05:41.520]   The most important thing is that I proposed three paths.
+[00:05:41.520 --> 00:05:43.840]   Three clear strategies to negotiate.
+[00:05:43.840 --> 00:05:46.160]   All backed by the data.
+[00:05:46.160 --> 00:05:49.680]   And here is where the data become real power.
+[00:05:49.680 --> 00:05:51.680]   Three scenarios were planned.
+[00:05:51.680 --> 00:05:53.680]   First, a conservator.
+[00:05:53.680 --> 00:05:56.240]   Run the floor and cover the roof.
+[00:05:56.240 --> 00:05:58.080]   Second, one more.
+[00:05:58.080 --> 00:06:00.320]   Exit the market value and, above all,
+[00:06:00.320 --> 00:06:03.520]   put a 15% of shares.
+[00:06:03.520 --> 00:06:05.760]   And third, a clean exit.
+[00:06:05.760 --> 00:06:08.160]   Renounce the actions by changing a single page
+[00:06:08.160 --> 00:06:10.400]   that compends the value created.
+[00:06:10.400 --> 00:06:12.720]   Three clear paths to negotiate.
+[00:06:12.720 --> 00:06:15.600]   And in this case, I leave you with a final question.
+[00:06:15.600 --> 00:06:18.080]   One that goes beyond this developer.
+[00:06:18.080 --> 00:06:22.160]   When you sign an agreement, especially at the beginning of a project,
+[00:06:22.160 --> 00:06:24.560]   is it really creating a fair society?
+[00:06:24.560 --> 00:06:29.040]   Or without realizing it, you're delivering the tools of more powerful negotiation.
+[00:06:29.040 --> 00:06:31.840]   The real and medible value of the work itself.
+output_json: saving output to '/Users/javierrangel/github/Notadio/backend/data/jobs/56f5d8a3-79f3-462c-b1cc-0b6d05fa9a03/working/whisper/english.json'
+whisper_print_timings:     load time =    89.05 ms
+whisper_print_timings:     fallbacks =   0 p /   0 h
+whisper_print_timings:      mel time =   126.19 ms
+whisper_print_timings:   sample time =  1931.82 ms /  8690 runs (     0.22 ms per run)
+whisper_print_timings:   encode time =  1121.93 ms /    16 runs (    70.12 ms per run)
+whisper_print_timings:   decode time =    49.43 ms /    17 runs (     2.91 ms per run)
+whisper_print_timings:   batchd time =  4974.27 ms /  8602 runs (     0.58 ms per run)
+whisper_print_timings:   prompt time =   215.55 ms /  3064 runs (     0.07 ms per run)
+whisper_print_timings:    total time =  8743.90 ms
+ggml_metal_free: deallocating
+Transcript artifacts written successfully.
+TRANSCRIPT
+
+English export
+Source
+English
+TXT
+SRT
+JSON
+Let's see, imagine this, sign a contract to collaborate on a project. But in the end, the data, the free numbers show that practically everything was built by a single person. How valuable is that code? Today we are going to analyze a real case, where what a paper says is a joke about the reality that the data tells. And here is the conflict in two columns. On the one hand, we have the words, a contract that talks about collaboration. And on the other hand, the numbers are hard, an auditory that reveals that a single person wrote the 91.6% of all the code. The difference is, well, it is a joke. Okay, let's go for parts. To understand how big is this difference, first we have to add a eye to what was signed. We are going to decrease the contract between the developer and this startup. The first thing that we see is a 4,000- pesos per month base. Which, let's see, in the startup ecosystem, this sometimes happens, right? The idea is that the payment is low, because the true winning, the good, will come later. And here comes that big promise, the famous equity, a 15% of the company. But eye, here is the trick. The actions only deliver to a sale date that defines the same company. That is, the total control of when and if it is that they deliver those actions, it does not have the developer. And finally, it is recognized a debt of 50,000 pesos by Chamba that had already been done. But again, the payment is tied to a sale of liquids. In Spanish, this means that money is paid only if the company raises capital or starts selling a lot. Something that we could never spend on these. Then, the deal is a very expensive payment. A debt that when you buy a promise of actions with conditions and a sale that yes, could go up, but it had a top. Simply seen, it could be a typical startup deal. But it is just here where things are good. And of course, the question of the million is, more than what the paper says, how much value is really all that technical work. And to answer that, it was necessary to make an independent auditory. And with this, we give the return to the coin. We leave the contract and we go to the story that tells the code to the hard data that came out of this technical auditory. The number that changes everything is this, 91.62%. Repeat, 91.6%. That is the amount of code of the system that works, the one that is alive, that was written by a single person. The contract said collaboration, but the data says that this was work of a single author. Now, if we look at it in a graphic, this is still more impressive. The rebound of the pastel of this developer is huge, so everything else looks like a minute. Look at the second largest collaborator, it does not reach 4%. And a curious fact, the last time that this person brought something was before the main developer entered the project. But wait, it was not only the amount, it was also the speed. The auditorium found that the productivity of the project was at the sky. The work rhythm, in Comits or contributions for months, was multiplied by 10. Passed by a average of 9 to almost 100. Literally, it was like walking around in a jet. Something super important arrived. This 90 and so many percent were not minor rules. We are talking about the heart of the system. The platform of payment, the integration with Google Mid for the video calls, the validation of official documents, all the infrastructure in the 9, practically the brain and the nervous system of all the operation. Very well, we already saw the amount and quality of the work. Now come on, let's put it price and compare what the contract said against what the market says. This graph says everything. The payment of the contract, 4,000 pesos. The lower the ground, the piece of the market for a work like this, 40,000 pesos. That is, it was paying 10 times less than the more conservative of the industry. One at the same time. This talk is like a radiography of the problem, point by point. The monthly payment, from 10 to 14 times below the market. The debt that was recognized 4 to 6 times less than what was really worth that work. And the largest irony of all. It was promised 15% of the company to have built in practice the 91.6% of its technology. To make it super clear, in a single phrase. Five months of work were valued by the auditorium between 200,000 and 325,000 pesos. The contract, selling payment and debt, barely recognized 70,000. And they believed that the part of the money to the worst is paid. Because the auditorium also found several serious risks hidden in the small letter of the contract. This is probably the most dangerous clause of all. It gives the company the power to buy all the shares, to their nominal value. And what does that mean? That they can buy them back for a piece each. A symbolic value. That is, nothing. And they will wonder how they could use this. Well, it is very easy. The company simply adds an incoherent. Something so subjective as "actually sick". They give you 10 days to correct it. What does that mean? And if not, they activate the clause. And so, Puff. The 15% of the company. Work months become a coin coin. But I hope there are more red focus. A total session and forever for all the intellectual property. A clause that he asked to work in something similar for a year and a half. And to rematize, there was a dispute. It had to be resolved in a very expensive arbitrage. Practically impregnable for a person. A total disadvantage. Okay, the panorama is very complicated, right? But the auditorium did not only show everything bad. The most important thing is that I proposed three paths. Three clear strategies to negotiate. All backed by the data. And here is where the data become real power. Three scenarios were planned. First, a conservator. Run the floor and cover the roof. Second, one more. Exit the market value and, above all, put a 15% of shares. And third, a clean exit. Renounce the actions by changing a single page that compends the value created. Three clear paths to negotiate. And in this case, I leave you with a final question. One that goes beyond this developer. When you sign an agreement, especially at the beginning of a project, is it really creating a fair society? Or without realizing it, you're delivering the tools of more powerful negotiation. The real and medible value of the work itself.
+
+00:00
+00:04
+Let's see, imagine this, sign a contract to collaborate on a project.
+
+00:04
+00:10
+But in the end, the data, the free numbers show that practically everything was built by a single person.
+
+00:10
+00:12
+How valuable is that code?
+
+00:12
+00:18
+Today we are going to analyze a real case, where what a paper says is a joke about the reality that the data tells.
+
+00:18
+00:20
+And here is the conflict in two columns.
+
+00:20
+00:24
+On the one hand, we have the words, a contract that talks about collaboration.
+
+00:24
+00:31
+And on the other hand, the numbers are hard, an auditory that reveals that a single person wrote the 91.6% of all the code.
+
+00:31
+00:34
+The difference is, well, it is a joke.
+
+00:34
+00:36
+Okay, let's go for parts.
+
+00:36
+00:42
+To understand how big is this difference, first we have to add a eye to what was signed.
+
+00:42
+00:46
+We are going to decrease the contract between the developer and this startup.
+
+00:46
+00:50
+The first thing that we see is a 4,000- pesos per month base.
+
+00:50
+00:55
+Which, let's see, in the startup ecosystem, this sometimes happens, right? The idea is that the payment is low,
+
+00:55
+00:58
+because the true winning, the good, will come later.
+
+00:58
+01:04
+And here comes that big promise, the famous equity, a 15% of the company.
+
+01:04
+01:05
+But eye, here is the trick.
+
+01:05
+01:10
+The actions only deliver to a sale date that defines the same company.
+
+01:10
+01:15
+That is, the total control of when and if it is that they deliver those actions, it does not have the developer.
+
+01:15
+01:22
+And finally, it is recognized a debt of 50,000 pesos by Chamba that had already been done.
+
+01:22
+01:26
+But again, the payment is tied to a sale of liquids.
+
+01:26
+01:33
+In Spanish, this means that money is paid only if the company raises capital or starts selling a lot.
+
+01:33
+01:36
+Something that we could never spend on these.
+
+01:36
+01:40
+Then, the deal is a very expensive payment.
+
+01:40
+01:47
+A debt that when you buy a promise of actions with conditions and a sale that yes, could go up, but it had a top.
+
+01:47
+01:50
+Simply seen, it could be a typical startup deal.
+
+01:50
+01:53
+But it is just here where things are good.
+
+01:53
+01:57
+And of course, the question of the million is, more than what the paper says,
+
+01:57
+02:00
+how much value is really all that technical work.
+
+02:00
+02:04
+And to answer that, it was necessary to make an independent auditory.
+
+02:04
+02:06
+And with this, we give the return to the coin.
+
+02:06
+02:14
+We leave the contract and we go to the story that tells the code to the hard data that came out of this technical auditory.
+
+02:14
+02:18
+The number that changes everything is this, 91.62%.
+
+02:18
+02:21
+Repeat, 91.6%.
+
+02:21
+02:27
+That is the amount of code of the system that works, the one that is alive, that was written by a single person.
+
+02:27
+02:32
+The contract said collaboration, but the data says that this was work of a single author.
+
+02:32
+02:39
+Now, if we look at it in a graphic, this is still more impressive. The rebound of the pastel of this developer is huge,
+
+02:39
+02:41
+so everything else looks like a minute.
+
+02:41
+02:45
+Look at the second largest collaborator, it does not reach 4%.
+
+02:45
+02:51
+And a curious fact, the last time that this person brought something was before the main developer entered the project.
+
+02:51
+02:55
+But wait, it was not only the amount, it was also the speed.
+
+02:55
+02:59
+The auditorium found that the productivity of the project was at the sky.
+
+02:59
+03:04
+The work rhythm, in Comits or contributions for months, was multiplied by 10.
+
+03:04
+03:07
+Passed by a average of 9 to almost 100.
+
+03:07
+03:10
+Literally, it was like walking around in a jet.
+
+03:10
+03:12
+Something super important arrived.
+
+03:12
+03:15
+This 90 and so many percent were not minor rules.
+
+03:15
+03:17
+We are talking about the heart of the system.
+
+03:17
+03:20
+The platform of payment, the integration with Google Mid for the video calls,
+
+03:20
+03:24
+the validation of official documents, all the infrastructure in the 9,
+
+03:24
+03:27
+practically the brain and the nervous system of all the operation.
+
+03:27
+03:31
+Very well, we already saw the amount and quality of the work.
+
+03:31
+03:36
+Now come on, let's put it price and compare what the contract said against what the market says.
+
+03:36
+03:38
+This graph says everything.
+
+03:38
+03:41
+The payment of the contract, 4,000 pesos.
+
+03:41
+03:45
+The lower the ground, the piece of the market for a work like this, 40,000 pesos.
+
+03:45
+03:51
+That is, it was paying 10 times less than the more conservative of the industry.
+
+03:51
+03:52
+One at the same time.
+
+03:52
+03:56
+This talk is like a radiography of the problem, point by point.
+
+03:56
+03:59
+The monthly payment, from 10 to 14 times below the market.
+
+03:59
+04:05
+The debt that was recognized 4 to 6 times less than what was really worth that work.
+
+04:05
+04:07
+And the largest irony of all.
+
+04:07
+04:14
+It was promised 15% of the company to have built in practice the 91.6% of its technology.
+
+04:14
+04:17
+To make it super clear, in a single phrase.
+
+04:17
+04:22
+Five months of work were valued by the auditorium between 200,000 and 325,000 pesos.
+
+04:22
+04:27
+The contract, selling payment and debt, barely recognized 70,000.
+
+04:27
+04:30
+And they believed that the part of the money to the worst is paid.
+
+04:30
+04:35
+Because the auditorium also found several serious risks hidden in the small letter of the contract.
+
+04:35
+04:40
+This is probably the most dangerous clause of all.
+
+04:40
+04:45
+It gives the company the power to buy all the shares, to their nominal value.
+
+04:45
+04:46
+And what does that mean?
+
+04:46
+04:49
+That they can buy them back for a piece each.
+
+04:49
+04:51
+A symbolic value.
+
+04:51
+04:52
+That is, nothing.
+
+04:52
+04:55
+And they will wonder how they could use this.
+
+04:55
+04:56
+Well, it is very easy.
+
+04:56
+04:58
+The company simply adds an incoherent.
+
+04:58
+05:01
+Something so subjective as "actually sick".
+
+05:01
+05:03
+They give you 10 days to correct it.
+
+05:03
+05:05
+What does that mean?
+
+05:05
+05:06
+And if not, they activate the clause.
+
+05:06
+05:07
+And so, Puff.
+
+05:07
+05:09
+The 15% of the company.
+
+05:09
+05:13
+Work months become a coin coin.
+
+05:13
+05:15
+But I hope there are more red focus.
+
+05:15
+05:20
+A total session and forever for all the intellectual property.
+
+05:20
+05:23
+A clause that he asked to work in something similar for a year and a half.
+
+05:23
+05:25
+And to rematize, there was a dispute.
+
+05:25
+05:28
+It had to be resolved in a very expensive arbitrage.
+
+05:28
+05:30
+Practically impregnable for a person.
+
+05:30
+05:32
+A total disadvantage.
+
+05:32
+05:35
+Okay, the panorama is very complicated, right?
+
+05:35
+05:38
+But the auditorium did not only show everything bad.
+
+05:38
+05:41
+The most important thing is that I proposed three paths.
+
+05:41
+05:43
+Three clear strategies to negotiate.
+
+05:43
+05:46
+All backed by the data.
+
+05:46
+05:49
+And here is where the data become real power.
+
+05:49
+05:51
+Three scenarios were planned.
+
+05:51
+05:53
+First, a conservator.
+
+05:53
+05:56
+Run the floor and cover the roof.
+
+05:56
+05:58
+Second, one more.
+
+05:58
+06:00
+Exit the market value and, above all,
+
+06:00
+06:03
+put a 15% of shares.
+
+06:03
+06:05
+And third, a clean exit.
+
+06:05
+06:08
+Renounce the actions by changing a single page
+
+06:08
+06:10
+that compends the value created.
+
+06:10
+06:12
+Three clear paths to negotiate.
+
+06:12
+06:15
+And in this case, I leave you with a final question.
+
+06:15
+06:18
+One that goes beyond this developer.
+
+06:18
+06:22
+When you sign an agreement, especially at the beginning of a project,
+
+06:22
+06:24
+is it really creating a fair society?
+
+06:24
+06:29
+Or without realizing it, you're delivering the tools of more powerful negotiation.
+
+06:29
+06:31
+The real and medible value of the work itself.
