@@ -46,7 +46,8 @@ export async function applyOptionalDiarization(
   const outputFile = path.join(workDir, "diarization.json");
   const args = parseArgs(config.diarizationArgs, {
     input: audioPath,
-    outputFile
+    outputFile,
+    projectRoot: config.projectRoot
   });
 
   try {
@@ -58,7 +59,7 @@ export async function applyOptionalDiarization(
 
     try {
       await runCommand(config.diarizationCommand, args, {
-        cwd: workDir,
+        cwd: config.projectRoot,
         onStdoutLine: (line) => callbacks.onLog?.(line),
         onStderrLine: (line) => callbacks.onLog?.(line)
       });
