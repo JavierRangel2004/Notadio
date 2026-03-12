@@ -11,11 +11,21 @@ import { detectProcessingProfile } from "./services/deviceProfileService.js";
 import { normalizeMediaToWav } from "./services/mediaService.js";
 import { writeArtifacts } from "./services/exportService.js";
 import { applyOptionalDiarization } from "./services/diarizationService.js";
-import { transcribeAudio } from "./services/transcriptionService.js";
+import { transcribeAudio, translateAudio } from "./services/transcriptionService.js";
 import { generateSummary } from "./services/summaryService.js";
 import { jobStore } from "./store/jobStore.js";
 import { ensureDir, readJsonFile, writeJsonFile } from "./utils/fs.js";
-import { JobManifest, JobProcessingProfile, JobProgress, StageTiming, TranscriptRecord } from "./types.js";
+import {
+  EnhancementConfig,
+  EnhancementStageKey,
+  EnhancementStageState,
+  JobManifest,
+  JobProcessingProfile,
+  JobProgress,
+  SourceOrigin,
+  StageTiming,
+  TranscriptRecord
+} from "./types.js";
 import { JobQueue } from "./utils/jobQueue.js";
 
 const app = express();
@@ -135,6 +145,7 @@ function makeJobResponse(job: JobManifest) {
     stage: normalized.stage,
     createdAt: normalized.createdAt,
     updatedAt: normalized.updatedAt,
+    sourceOrigin: normalized.sourceOrigin,
     sourceMedia: normalized.sourceMedia
       ? {
         originalName: normalized.sourceMedia.originalName,
@@ -146,6 +157,10 @@ function makeJobResponse(job: JobManifest) {
     durationSeconds: normalized.durationSeconds,
     warnings: normalized.warnings,
     error: normalized.error,
+    transcriptReady: normalized.transcriptReady,
+    enhancementStatus: normalized.enhancementStatus,
+    enhancementConfig: normalized.enhancementConfig,
+    enhancementStages: normalized.enhancementStages ? { ...normalized.enhancementStages } : undefined,
     summaryDiagnostics: normalized.summaryDiagnostics,
     stageTimings: normalized.stageTimings,
     progress: normalized.progress,
@@ -472,9 +487,32 @@ function applyTelemetryUpdate(
   }
 }
 
-async function processJob(jobId: string): Promise<void> {
+function buildBaseTelemetryContext(processing: JobProcessingProfile, durationSeconds?: number): TelemetryContext {
+  return {
+    stages: [
+      { key: "normalize", weight: estimateStageWeight("normalize", processing, durationSeconds) },
+      { key: "transcribe", weight: estimateStageWeight("transcribe", processing, durationSeconds) },
+      { key: "export", weight: estimateStageWeight("export", processing, durationSeconds) }
+    ]
+  };
+}
+
+function buildEnhancementTelemetryContext(
+  selectedStages: EnhancementStageKey[],
+  processing: JobProcessingProfile,
+  durationSeconds?: number
+): TelemetryContext {
+  const stages: StageDefinition[] = selectedStages.map((key) => ({
+    key: key as PipelineStageKey,
+    weight: estimateStageWeight(key as Exclude<PipelineStageKey, "queued">, processing, durationSeconds)
+  }));
+  stages.push({ key: "export", weight: estimateStageWeight("export", processing, durationSeconds) });
+  return { stages };
+}
+
+async function processBaseJob(jobId: string): Promise<void> {
   const processingProfile = detectProcessingProfile();
-  let telemetry = buildTelemetryContext(processingProfile);
+  let telemetry = buildBaseTelemetryContext(processingProfile);
 
   try {
     const job = jobStore.get(jobId);
@@ -518,7 +556,7 @@ async function processJob(jobId: string): Promise<void> {
       current.durationSeconds = normalization.durationSeconds;
     });
 
-    telemetry = buildTelemetryContext(processingProfile, normalization.durationSeconds);
+    telemetry = buildBaseTelemetryContext(processingProfile, normalization.durationSeconds);
 
     applyTelemetryUpdate(jobId, telemetry, {
       stage: "Running local Whisper transcription",
@@ -527,9 +565,10 @@ async function processJob(jobId: string): Promise<void> {
       logLine: `Whisper thread recommendation: ${processingProfile.threads}`
     });
 
+    const baseProfile: JobProcessingProfile = { ...processingProfile, translationEnabled: false };
     const transcriptVariants = await transcribeAudio(normalization.outputPath, path.join(workingDir, "whisper"), {
       durationSeconds: normalization.durationSeconds,
-      processingProfile,
+      processingProfile: baseProfile,
       onSourceLog: (line: string) =>
         applyTelemetryUpdate(jobId, telemetry, {
           stage: "Running local Whisper transcription",
@@ -541,18 +580,6 @@ async function processJob(jobId: string): Promise<void> {
           stage: "Running local Whisper transcription",
           stageKey: "transcribe",
           stagePct
-        }),
-      onTranslationLog: (line: string) =>
-        applyTelemetryUpdate(jobId, telemetry, {
-          stage: "Generating English translation",
-          stageKey: "translate",
-          logLine: line
-        }),
-      onTranslationProgress: (stagePct: number) =>
-        applyTelemetryUpdate(jobId, telemetry, {
-          stage: "Generating English translation",
-          stageKey: "translate",
-          stagePct
         })
     });
 
@@ -561,107 +588,10 @@ async function processJob(jobId: string): Promise<void> {
       ...(latestJob?.warnings ?? []),
       ...transcriptVariants.warnings
     ];
-    let summaryStagePct = 0;
-    let summaryStageVisible = !config.diarizationCommand;
-    let summaryCompleted = false;
-    const summaryPromise = config.enableSummary
-      ? generateSummary(
-        {
-          jobId,
-          sourceMedia: {
-            originalName: job.sourceMedia.originalName,
-            mimeType: job.sourceMedia.mimeType,
-            sizeBytes: job.sourceMedia.sizeBytes
-          },
-          durationSeconds: normalization.durationSeconds,
-          detectedLanguage: transcriptVariants.source.language,
-          warnings,
-          source: transcriptVariants.source,
-          english: transcriptVariants.english
-        },
-        {
-          onLog: (line) =>
-            applyTelemetryUpdate(jobId, telemetry, summaryStageVisible
-              ? {
-                stage: "Generating AI meeting summary",
-                stageKey: "summarize",
-                logLine: line
-              }
-              : {
-                logLine: `[summary] ${line}`
-              }),
-          onProgress: (stagePct) => {
-            summaryStagePct = stagePct;
-            if (!summaryStageVisible) {
-              return;
-            }
 
-            applyTelemetryUpdate(jobId, telemetry, {
-              stage: "Generating AI meeting summary",
-              stageKey: "summarize",
-              stagePct
-            });
-          }
-        }
-      ).finally(() => {
-        summaryCompleted = true;
-        updateJobDebounced(jobId, (current) => {
-          completeStageTiming(current, "summarize");
-        });
-      })
-      : undefined;
-
-    if (config.enableSummary) {
-      updateJobDebounced(jobId, (current) => {
-        startStageTiming(current, "summarize", "Generating AI meeting summary");
-      });
-    }
-
-    applyTelemetryUpdate(jobId, telemetry, {
-      stage: config.diarizationCommand
-        ? "Applying speaker diarization"
-        : config.enableSummary
-          ? "Generating AI meeting summary"
-          : "Writing transcript artifacts",
-      stageKey: config.diarizationCommand
-        ? "diarize"
-        : config.enableSummary
-          ? "summarize"
-          : "export",
-      stagePct: 0,
-      processing: transcriptVariants.processing
-    });
-
-    const diarization = await applyOptionalDiarization(
-      normalization.outputPath,
-      path.join(workingDir, "diarization"),
-      transcriptVariants.source.segments,
-      {
-        durationSeconds: normalization.durationSeconds,
-        onLog: (line) =>
-          applyTelemetryUpdate(jobId, telemetry, {
-            stage: "Applying speaker diarization",
-            stageKey: "diarize",
-            logLine: line
-          }),
-        onProgress: (stagePct) =>
-          applyTelemetryUpdate(jobId, telemetry, {
-            stage: "Applying speaker diarization",
-            stageKey: "diarize",
-            stagePct
-          })
-      }
-    );
-
-    warnings.push(...diarization.warnings);
     if (transcriptVariants.source.segments.length === 0) {
       throw new Error("Transcription completed without parsed source segments.");
     }
-
-    const source = {
-      ...transcriptVariants.source,
-      segments: diarization.segments
-    };
 
     const transcriptRecord: TranscriptRecord = {
       jobId,
@@ -670,50 +600,18 @@ async function processJob(jobId: string): Promise<void> {
         mimeType: job.sourceMedia.mimeType,
         sizeBytes: job.sourceMedia.sizeBytes
       },
-      durationSeconds: source.segments.at(-1)?.end ?? normalization.durationSeconds,
-      detectedLanguage: source.language,
+      durationSeconds: transcriptVariants.source.segments.at(-1)?.end ?? normalization.durationSeconds,
+      detectedLanguage: transcriptVariants.source.language,
       warnings,
-      source,
-      english: transcriptVariants.english
+      source: transcriptVariants.source
     };
 
     if (!transcriptRecord.source.text.trim() || transcriptRecord.source.segments.length === 0) {
       throw new Error("Transcript was generated but contains no source transcript content.");
     }
 
-    if (config.enableSummary && summaryPromise && config.diarizationCommand && !summaryCompleted) {
-      summaryStageVisible = true;
-      applyTelemetryUpdate(jobId, telemetry, {
-        stage: "Generating AI meeting summary",
-        stageKey: "summarize",
-        stagePct: summaryStagePct
-      });
-    }
-
-    const summaryResult: Awaited<ReturnType<typeof generateSummary>> = summaryPromise
-      ? await summaryPromise
-      : { warnings: [], summaryDiagnostics: undefined };
-
-    if (summaryResult.summaryDiagnostics) {
-      transcriptRecord.summaryDiagnostics = summaryResult.summaryDiagnostics;
-    }
-
-    if (summaryResult.summary) {
-      transcriptRecord.summary = summaryResult.summary;
-      const summaryPath = path.join(jobDir, "summary.json");
-      await writeJsonFile(summaryPath, transcriptRecord.summary);
-      await updateJobImmediate(jobId, (current) => {
-        current.summaryPath = summaryPath;
-        current.summaryDiagnostics = summaryResult.summaryDiagnostics;
-      });
-    }
-
-    warnings.push(...summaryResult.warnings);
-
     const transcriptPath = path.join(jobDir, "transcript.json");
     await writeJsonFile(transcriptPath, transcriptRecord);
-
-    // Cache transcript in memory for instant reads
     jobStore.setTranscript(jobId, transcriptRecord);
 
     applyTelemetryUpdate(jobId, telemetry, {
@@ -726,15 +624,15 @@ async function processJob(jobId: string): Promise<void> {
 
     await updateJobImmediate(jobId, (current) => {
       completeStageTiming(current, current.progress?.stageKey);
-      current.status = "completed";
-      current.stage = "Transcript ready";
       current.transcriptPath = transcriptPath;
       current.detectedLanguage = transcriptRecord.detectedLanguage;
       current.durationSeconds = transcriptRecord.durationSeconds;
       current.warnings = warnings;
-      current.summaryDiagnostics = summaryResult.summaryDiagnostics;
       current.artifacts = artifacts;
-      appendLog(current, "Transcript artifacts written successfully.");
+      current.transcriptReady = true;
+      current.enhancementStatus = "awaiting_selection";
+      current.stage = "Transcript ready \u2014 choose enhancements";
+      appendLog(current, "Base transcription complete. Waiting for enhancement selection.");
       current.progress = {
         ...(current.progress ?? buildDefaultProgress(current.createdAt)),
         stageKey: "export",
@@ -766,6 +664,211 @@ async function processJob(jobId: string): Promise<void> {
   }
 }
 
+async function processEnhancements(jobId: string): Promise<void> {
+  const job = jobStore.get(jobId);
+  if (!job?.sourceMedia || !job.transcriptPath || !job.normalizedAudioPath || !job.enhancementConfig) {
+    throw new Error("Job is not ready for enhancement processing.");
+  }
+
+  const enhancementConfig = job.enhancementConfig;
+  const stages = enhancementConfig.stages;
+  const processingProfile = job.processing ?? buildDefaultProcessing();
+  const telemetry = buildEnhancementTelemetryContext(stages, processingProfile, job.durationSeconds);
+
+  const enhancementStageStates: Record<string, EnhancementStageState> = {};
+  for (const stage of stages) {
+    enhancementStageStates[stage] = { status: "pending" };
+  }
+
+  await updateJobImmediate(jobId, (current) => {
+    current.enhancementStatus = "running";
+    current.enhancementStages = enhancementStageStates;
+    current.stage = "Running enhancements";
+    appendLog(current, `Starting enhancements: ${stages.join(", ")}`);
+    current.progress = {
+      ...(current.progress ?? buildDefaultProgress(current.createdAt)),
+      stageKey: (stages[0] ?? "export") as string,
+      overallPct: 0,
+      stagePct: 0,
+      etaSeconds: undefined
+    };
+  });
+
+  try {
+    const jobDir = jobStore.getJobDir(jobId);
+    const workingDir = path.join(jobDir, "working");
+    const artifactDir = jobStore.getArtifactDir(jobId);
+    const transcriptRecord = await readJsonFile<TranscriptRecord>(job.transcriptPath);
+    const warnings: string[] = [];
+
+    if (stages.includes("translate")) {
+      await updateJobImmediate(jobId, (current) => {
+        if (current.enhancementStages) current.enhancementStages.translate = { status: "running" };
+      });
+      applyTelemetryUpdate(jobId, telemetry, {
+        stage: "Generating English translation",
+        stageKey: "translate",
+        stagePct: 0
+      });
+      try {
+        const english = await translateAudio(job.normalizedAudioPath, path.join(workingDir, "whisper"), {
+          durationSeconds: job.durationSeconds,
+          processingProfile,
+          onLog: (line) => applyTelemetryUpdate(jobId, telemetry, { stageKey: "translate", logLine: line }),
+          onProgress: (stagePct) => applyTelemetryUpdate(jobId, telemetry, {
+            stage: "Generating English translation",
+            stageKey: "translate",
+            stagePct
+          })
+        });
+        transcriptRecord.english = english;
+        await updateJobImmediate(jobId, (current) => {
+          if (current.enhancementStages) current.enhancementStages.translate = { status: "completed" };
+        });
+      } catch (error) {
+        const message = error instanceof Error
+          ? `English translation failed: ${error.message}`
+          : "English translation failed.";
+        warnings.push(message);
+        await updateJobImmediate(jobId, (current) => {
+          if (current.enhancementStages) current.enhancementStages.translate = { status: "failed", error: message };
+        });
+      }
+    }
+
+    if (stages.includes("diarize")) {
+      await updateJobImmediate(jobId, (current) => {
+        if (current.enhancementStages) current.enhancementStages.diarize = { status: "running" };
+      });
+      applyTelemetryUpdate(jobId, telemetry, {
+        stage: "Applying speaker diarization",
+        stageKey: "diarize",
+        stagePct: 0
+      });
+      const diarization = await applyOptionalDiarization(
+        job.normalizedAudioPath,
+        path.join(workingDir, "diarization"),
+        transcriptRecord.source.segments,
+        {
+          durationSeconds: job.durationSeconds,
+          onLog: (line) => applyTelemetryUpdate(jobId, telemetry, {
+            stage: "Applying speaker diarization",
+            stageKey: "diarize",
+            logLine: line
+          }),
+          onProgress: (stagePct) => applyTelemetryUpdate(jobId, telemetry, {
+            stage: "Applying speaker diarization",
+            stageKey: "diarize",
+            stagePct
+          })
+        }
+      );
+      warnings.push(...diarization.warnings);
+      transcriptRecord.source = { ...transcriptRecord.source, segments: diarization.segments };
+      const hasSpeakers = diarization.segments.some((s) => s.speaker);
+      await updateJobImmediate(jobId, (current) => {
+        if (current.enhancementStages) {
+          current.enhancementStages.diarize = {
+            status: hasSpeakers ? "completed" : "failed",
+            error: hasSpeakers ? undefined : "Diarization did not produce speaker labels"
+          };
+        }
+      });
+    }
+
+    if (stages.includes("summarize")) {
+      await updateJobImmediate(jobId, (current) => {
+        if (current.enhancementStages) current.enhancementStages.summarize = { status: "running" };
+      });
+      applyTelemetryUpdate(jobId, telemetry, {
+        stage: "Generating AI summary",
+        stageKey: "summarize",
+        stagePct: 0
+      });
+      const summaryResult = await generateSummary(
+        transcriptRecord,
+        {
+          onLog: (line) => applyTelemetryUpdate(jobId, telemetry, {
+            stage: "Generating AI summary",
+            stageKey: "summarize",
+            logLine: line
+          }),
+          onProgress: (stagePct) => applyTelemetryUpdate(jobId, telemetry, {
+            stage: "Generating AI summary",
+            stageKey: "summarize",
+            stagePct
+          })
+        },
+        { preset: enhancementConfig.summaryPreset, force: true }
+      );
+      warnings.push(...summaryResult.warnings);
+      if (summaryResult.summary) {
+        transcriptRecord.summary = summaryResult.summary;
+        transcriptRecord.summaryDiagnostics = summaryResult.summaryDiagnostics;
+        const summaryPath = path.join(jobDir, "summary.json");
+        await writeJsonFile(summaryPath, summaryResult.summary);
+        await updateJobImmediate(jobId, (current) => {
+          current.summaryPath = summaryPath;
+          current.summaryDiagnostics = summaryResult.summaryDiagnostics;
+          if (current.enhancementStages) current.enhancementStages.summarize = { status: "completed" };
+        });
+      } else {
+        await updateJobImmediate(jobId, (current) => {
+          if (current.enhancementStages) {
+            current.enhancementStages.summarize = {
+              status: "failed",
+              error: summaryResult.warnings.join("; ") || "Summary generation failed"
+            };
+          }
+        });
+      }
+    }
+
+    await writeJsonFile(job.transcriptPath, transcriptRecord);
+    jobStore.setTranscript(jobId, transcriptRecord);
+
+    applyTelemetryUpdate(jobId, telemetry, {
+      stage: "Writing enhanced artifacts",
+      stageKey: "export",
+      stagePct: 20
+    });
+
+    const artifacts = await writeArtifacts(transcriptRecord, artifactDir);
+
+    await updateJobImmediate(jobId, (current) => {
+      completeStageTiming(current, current.progress?.stageKey);
+      current.status = "completed";
+      current.stage = "Processing complete";
+      current.enhancementStatus = "completed";
+      current.artifacts = artifacts;
+      current.warnings = [...current.warnings, ...warnings];
+      appendLog(current, "Enhancement processing complete.");
+      current.progress = {
+        ...(current.progress ?? buildDefaultProgress(current.createdAt)),
+        stageKey: "export",
+        stagePct: 100,
+        overallPct: 100,
+        elapsedSeconds: Math.max(
+          0,
+          Math.round(
+            (Date.now() - new Date((current.progress ?? buildDefaultProgress(current.createdAt)).startedAt ?? current.createdAt).getTime()) / 1000
+          )
+        ),
+        etaSeconds: 0
+      };
+    });
+  } catch (error) {
+    await updateJobImmediate(jobId, (current) => {
+      completeStageTiming(current, current.progress?.stageKey);
+      current.status = "failed";
+      current.stage = "Enhancement processing failed";
+      current.enhancementStatus = "completed";
+      current.error = error instanceof Error ? error.message : "Unknown enhancement error";
+      appendLog(current, current.error);
+    });
+  }
+}
+
 app.post("/api/uploads", uploadSingle, async (req, res) => {
   const uploadedFile = req.file;
 
@@ -775,6 +878,7 @@ app.post("/api/uploads", uploadSingle, async (req, res) => {
   }
 
   const originalName = normalizeUploadFilename(uploadedFile.originalname);
+  const sourceOrigin = (req.body?.sourceOrigin === "recording" ? "recording" : "upload") as SourceOrigin;
   const jobId = uuidv4();
   const jobDir = jobStore.getJobDir(jobId);
   const uploadsDir = path.join(jobDir, "uploads");
@@ -792,6 +896,7 @@ app.post("/api/uploads", uploadSingle, async (req, res) => {
     stage: "Queued for processing",
     createdAt: now,
     updatedAt: now,
+    sourceOrigin,
     sourceMedia: {
       originalName,
       mimeType: uploadedFile.mimetype,
@@ -809,7 +914,7 @@ app.post("/api/uploads", uploadSingle, async (req, res) => {
   };
 
   await jobStore.save(job);
-  jobQueue.enqueue(() => processJob(jobId));
+  jobQueue.enqueue(() => processBaseJob(jobId));
 
   res.status(202).json({ jobId });
 });
@@ -845,6 +950,51 @@ app.delete("/api/jobs/:jobId", async (req, res) => {
   }
   await jobStore.delete(req.params.jobId);
   res.status(204).send();
+});
+
+app.post("/api/jobs/:jobId/enhancements", async (req, res) => {
+  const jobId = req.params.jobId;
+  const job = jobStore.get(jobId);
+
+  if (!job) {
+    res.status(404).send("Job not found.");
+    return;
+  }
+
+  if (job.enhancementStatus !== "awaiting_selection") {
+    res.status(400).send("Job is not awaiting enhancement selection.");
+    return;
+  }
+
+  const body = req.body as Partial<EnhancementConfig>;
+  const validStages: EnhancementStageKey[] = ["translate", "diarize", "summarize"];
+  const stages = (body.stages ?? []).filter(
+    (s): s is EnhancementStageKey => validStages.includes(s as EnhancementStageKey)
+  );
+
+  const enhancementConfig: EnhancementConfig = {
+    stages,
+    summaryPreset: body.summaryPreset,
+    translationLanguage: body.translationLanguage ?? "en"
+  };
+
+  await updateJobImmediate(jobId, (current) => {
+    current.enhancementConfig = enhancementConfig;
+  });
+
+  if (stages.length === 0) {
+    await updateJobImmediate(jobId, (current) => {
+      current.status = "completed";
+      current.stage = "Processing complete";
+      current.enhancementStatus = "skipped";
+      appendLog(current, "Enhancements skipped by user.");
+    });
+    res.json(makeJobResponse(jobStore.get(jobId)!));
+    return;
+  }
+
+  jobQueue.enqueue(() => processEnhancements(jobId));
+  res.json(makeJobResponse(jobStore.get(jobId)!));
 });
 
 app.get("/api/jobs/:jobId/audio", async (req, res) => {
@@ -924,19 +1074,22 @@ app.get("/api/jobs/:jobId/events", (req, res) => {
 app.get("/api/jobs/:jobId/transcript", async (req, res) => {
   const jobId = req.params.jobId;
   const job = jobStore.get(jobId);
-  if (!job?.transcriptPath) {
+  if (!job?.transcriptPath && !job?.transcriptReady) {
     res.status(404).send("Transcript not ready.");
     return;
   }
 
-  // Check in-memory cache first
+  if (!job.transcriptPath) {
+    res.status(404).send("Transcript not ready.");
+    return;
+  }
+
   const cached = jobStore.getTranscript(jobId);
   if (cached) {
     res.json(cached);
     return;
   }
 
-  // Fall back to disk, then cache
   const transcript = await readJsonFile<TranscriptRecord>(job.transcriptPath);
   jobStore.setTranscript(jobId, transcript);
   res.json(transcript);

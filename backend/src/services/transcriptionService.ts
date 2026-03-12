@@ -233,6 +233,28 @@ async function runWhisperTask(
   return variant;
 }
 
+export async function translateAudio(
+  inputPath: string,
+  workDir: string,
+  options: {
+    durationSeconds?: number;
+    processingProfile?: JobProcessingProfile;
+    onLog?: (line: string) => void;
+    onProgress?: (stagePct: number) => void;
+  } = {}
+): Promise<TranscriptVariant> {
+  await ensureDir(workDir);
+  const processing = options.processingProfile ?? detectProcessingProfile();
+
+  return runWhisperTask(inputPath, path.join(workDir, "english"), "translate", {
+    durationSeconds: options.durationSeconds,
+    processingProfile: processing,
+    onLog: options.onLog,
+    onProgress: options.onProgress,
+    allowEmpty: true
+  });
+}
+
 export async function transcribeAudio(
   inputPath: string,
   workDir: string,

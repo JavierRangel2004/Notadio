@@ -1,5 +1,24 @@
 export type JobStatus = "queued" | "processing" | "completed" | "failed";
 
+export type SourceOrigin = "upload" | "recording";
+
+export type SummaryPreset = "meeting" | "whatsappVoiceNote" | "genericMedia";
+
+export type EnhancementStageKey = "translate" | "diarize" | "summarize";
+
+export type EnhancementStageState = {
+  status: "pending" | "running" | "completed" | "failed" | "skipped";
+  error?: string;
+};
+
+export type EnhancementConfig = {
+  stages: EnhancementStageKey[];
+  summaryPreset?: SummaryPreset;
+  translationLanguage?: string;
+};
+
+export type EnhancementStatus = "awaiting_selection" | "running" | "completed" | "skipped";
+
 export type TranscriptSegment = {
   start: number;
   end: number;
@@ -133,6 +152,7 @@ export type JobManifest = {
   stage: string;
   createdAt: string;
   updatedAt: string;
+  sourceOrigin?: SourceOrigin;
   sourceMedia?: {
     originalName: string;
     mimeType: string;
@@ -144,6 +164,10 @@ export type JobManifest = {
   durationSeconds?: number;
   warnings: string[];
   error?: string;
+  transcriptReady?: boolean;
+  enhancementStatus?: EnhancementStatus;
+  enhancementConfig?: EnhancementConfig;
+  enhancementStages?: Record<string, EnhancementStageState>;
   transcriptPath?: string;
   summaryPath?: string;
   summaryDiagnostics?: SummaryDiagnostics;
