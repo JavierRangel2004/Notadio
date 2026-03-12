@@ -7,14 +7,19 @@ import {
   getJobs,
   deleteJob,
   getAudioUrl,
+  EnhancementConfig,
+  EnhancementStageKey,
   JobPayload,
   JobProcessingProfile,
   JobProgress,
   MeetingSummary,
   retryDiarize,
   retrySummarize,
+  SourceOrigin,
   StageTiming,
+  submitEnhancements,
   SummaryDiagnostics,
+  SummaryPreset,
   subscribeToJob,
   TranscriptPayload,
   TranscriptSegment,
@@ -205,6 +210,12 @@ function hasUsableSummary(summary: MeetingSummary | null | undefined): summary i
   );
 }
 
+const PRESET_DESCRIPTIONS: Record<SummaryPreset, { label: string; description: string; defaultDiarize: boolean }> = {
+  meeting: { label: "Meeting / Daily Standup", description: "Extract action items, decisions, blockers, and follow-ups", defaultDiarize: true },
+  whatsappVoiceNote: { label: "WhatsApp Voice Note", description: "Concise recap with intent, asks, and deadlines", defaultDiarize: false },
+  genericMedia: { label: "Generic Audio/Video", description: "Neutral recap with key points and notable moments", defaultDiarize: false }
+};
+
 function WorkspaceView({ onSelectJob }: { onSelectJob: (job: JobPayload) => void }) {
   const [jobs, setJobs] = useState<JobPayload[]>([]);
   const [loading, setLoading] = useState(true);
@@ -252,6 +263,7 @@ function WorkspaceView({ onSelectJob }: { onSelectJob: (job: JobPayload) => void
           </div>
           <div style={{ display: 'flex', gap: '0.5rem', marginTop: 'auto', paddingTop: '1rem', flexWrap: 'wrap' }}>
             <span className="tag-outline" style={{ fontSize: '0.75rem', padding: '0.1rem 0.5rem' }}>{job.status}</span>
+            {job.sourceOrigin === "recording" && <span className="tag-outline" style={{ fontSize: '0.75rem', padding: '0.1rem 0.5rem' }}>mic</span>}
             {job.detectedLanguage && <span className="tag-outline" style={{ fontSize: '0.75rem', padding: '0.1rem 0.5rem' }}>{job.detectedLanguage}</span>}
           </div>
         </div>
@@ -360,8 +372,256 @@ const AudioPlayer = forwardRef<{ seek: (t: number) => void }, { jobId: string; d
 
 AudioPlayer.displayName = "AudioPlayer";
 
+function RecorderPanel({ onRecordingComplete }: { onRecordingComplete: (file: File) => void }) {
+  const [recording, setRecording] = useState(false);
+  const [paused, setPaused] = useState(false);
+  const [elapsed, setElapsed] = useState(0);
+  const [permissionDenied, setPermissionDenied] = useState(false);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const chunksRef = useRef<Blob[]>([]);
+  const timerRef = useRef<number>(0);
+
+  useEffect(() => {
+    return () => {
+      window.clearInterval(timerRef.current);
+      if (mediaRecorderRef.current && mediaRecorderRef.current.state !== "inactive") {
+        mediaRecorderRef.current.stop();
+        mediaRecorderRef.current.stream.getTracks().forEach((t) => t.stop());
+      }
+    };
+  }, []);
+
+  async function startRecording() {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const mimeType = MediaRecorder.isTypeSupported("audio/webm;codecs=opus")
+        ? "audio/webm;codecs=opus"
+        : "audio/webm";
+      const recorder = new MediaRecorder(stream, { mimeType });
+      chunksRef.current = [];
+
+      recorder.ondataavailable = (e) => {
+        if (e.data.size > 0) chunksRef.current.push(e.data);
+      };
+
+      recorder.onstop = () => {
+        const blob = new Blob(chunksRef.current, { type: recorder.mimeType });
+        const ext = recorder.mimeType.includes("webm") ? "webm" : "ogg";
+        const file = new File([blob], `recording-${Date.now()}.${ext}`, { type: recorder.mimeType });
+        stream.getTracks().forEach((t) => t.stop());
+        onRecordingComplete(file);
+      };
+
+      mediaRecorderRef.current = recorder;
+      recorder.start(1000);
+      setRecording(true);
+      setElapsed(0);
+      timerRef.current = window.setInterval(() => setElapsed((e) => e + 1), 1000);
+    } catch {
+      setPermissionDenied(true);
+    }
+  }
+
+  function stopRecording() {
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== "inactive") {
+      mediaRecorderRef.current.stop();
+    }
+    window.clearInterval(timerRef.current);
+    setRecording(false);
+    setPaused(false);
+  }
+
+  function togglePause() {
+    if (!mediaRecorderRef.current) return;
+    if (paused) {
+      mediaRecorderRef.current.resume();
+      timerRef.current = window.setInterval(() => setElapsed((e) => e + 1), 1000);
+      setPaused(false);
+    } else {
+      mediaRecorderRef.current.pause();
+      window.clearInterval(timerRef.current);
+      setPaused(true);
+    }
+  }
+
+  function discardRecording() {
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== "inactive") {
+      mediaRecorderRef.current.ondataavailable = null;
+      mediaRecorderRef.current.onstop = null;
+      mediaRecorderRef.current.stop();
+      mediaRecorderRef.current.stream.getTracks().forEach((t) => t.stop());
+    }
+    window.clearInterval(timerRef.current);
+    chunksRef.current = [];
+    setRecording(false);
+    setPaused(false);
+    setElapsed(0);
+  }
+
+  if (permissionDenied) {
+    return (
+      <div className="glass-panel" style={{ textAlign: "center", padding: "2rem" }}>
+        <p style={{ color: "var(--danger)", marginBottom: "1rem" }}>Microphone access denied</p>
+        <p style={{ color: "var(--text-muted)" }}>Allow microphone access in your browser settings to record.</p>
+        <button className="btn-secondary" onClick={() => setPermissionDenied(false)} style={{ marginTop: "1rem" }}>
+          Try Again
+        </button>
+      </div>
+    );
+  }
+
+  if (!recording) {
+    return (
+      <button className="btn-primary" onClick={startRecording} style={{ width: "100%" }}>
+        Start Recording
+      </button>
+    );
+  }
+
+  return (
+    <div className="glass-panel" style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "1.5rem", padding: "2rem" }}>
+      <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
+        <span
+          style={{
+            width: 12,
+            height: 12,
+            borderRadius: "50%",
+            background: paused ? "var(--text-muted)" : "var(--danger)",
+            animation: paused ? "none" : "pulse 1.5s infinite"
+          }}
+        />
+        <span style={{ fontSize: "2rem", fontVariantNumeric: "tabular-nums" }}>{formatTime(elapsed)}</span>
+      </div>
+      <p style={{ color: "var(--text-muted)" }}>{paused ? "Paused" : "Recording..."}</p>
+      <div style={{ display: "flex", gap: "1rem" }}>
+        <button className="btn-secondary" onClick={discardRecording}>Discard</button>
+        <button className="btn-secondary" onClick={togglePause}>{paused ? "Resume" : "Pause"}</button>
+        <button className="btn-primary" onClick={stopRecording}>Stop & Use</button>
+      </div>
+    </div>
+  );
+}
+
+function EnhancementPrompt({ job, onSubmit, onSkip }: {
+  job: JobPayload;
+  onSubmit: (config: EnhancementConfig) => void;
+  onSkip: () => void;
+}) {
+  const defaultPreset: SummaryPreset = job.sourceOrigin === "recording" ? "meeting" : "genericMedia";
+  const [summarizeEnabled, setSummarizeEnabled] = useState(true);
+  const [diarizeEnabled, setDiarizeEnabled] = useState(PRESET_DESCRIPTIONS[defaultPreset].defaultDiarize);
+  const [translateEnabled, setTranslateEnabled] = useState(false);
+  const [summaryPreset, setSummaryPreset] = useState<SummaryPreset>(defaultPreset);
+  const [submitting, setSubmitting] = useState(false);
+
+  function handlePresetChange(preset: SummaryPreset) {
+    setSummaryPreset(preset);
+    setDiarizeEnabled(PRESET_DESCRIPTIONS[preset].defaultDiarize);
+  }
+
+  function handleSubmit() {
+    setSubmitting(true);
+    const stages: EnhancementStageKey[] = [];
+    if (translateEnabled) stages.push("translate");
+    if (diarizeEnabled) stages.push("diarize");
+    if (summarizeEnabled) stages.push("summarize");
+    onSubmit({
+      stages,
+      summaryPreset: summarizeEnabled ? summaryPreset : undefined,
+      translationLanguage: translateEnabled ? "en" : undefined
+    });
+  }
+
+  return (
+    <div className="glass-panel" style={{ padding: "1.5rem" }}>
+      <h4 style={{ marginBottom: "0.5rem" }}>Enhance Your Transcript</h4>
+      <p style={{ color: "var(--text-muted)", marginBottom: "1.5rem", fontSize: "0.9rem" }}>
+        Base transcription is ready. Choose optional enhancements to run.
+      </p>
+
+      <div style={{ display: "flex", flexDirection: "column", gap: "1rem", marginBottom: "1.5rem" }}>
+        <label style={{ display: "flex", alignItems: "flex-start", gap: "0.75rem", cursor: "pointer" }}>
+          <input
+            type="checkbox"
+            checked={summarizeEnabled}
+            onChange={(e) => setSummarizeEnabled(e.target.checked)}
+            style={{ marginTop: "0.2rem" }}
+          />
+          <div>
+            <strong>AI Summary</strong>
+            <p style={{ color: "var(--text-muted)", fontSize: "0.85rem", margin: 0 }}>
+              Extract key points, decisions, and action items
+            </p>
+          </div>
+        </label>
+
+        {summarizeEnabled && (
+          <div style={{ marginLeft: "2rem" }}>
+            <label style={{ display: "block", marginBottom: "0.5rem", fontSize: "0.85rem", color: "var(--text-muted)" }}>
+              Summary type
+            </label>
+            <select
+              value={summaryPreset}
+              onChange={(e) => handlePresetChange(e.target.value as SummaryPreset)}
+              className="enhancement-select"
+            >
+              {Object.entries(PRESET_DESCRIPTIONS).map(([key, info]) => (
+                <option key={key} value={key}>{info.label}</option>
+              ))}
+            </select>
+            <p style={{ color: "var(--text-muted)", fontSize: "0.8rem", margin: "0.4rem 0 0" }}>
+              {PRESET_DESCRIPTIONS[summaryPreset].description}
+            </p>
+          </div>
+        )}
+
+        <label style={{ display: "flex", alignItems: "flex-start", gap: "0.75rem", cursor: "pointer" }}>
+          <input
+            type="checkbox"
+            checked={diarizeEnabled}
+            onChange={(e) => setDiarizeEnabled(e.target.checked)}
+            style={{ marginTop: "0.2rem" }}
+          />
+          <div>
+            <strong>Speaker Identification</strong>
+            <p style={{ color: "var(--text-muted)", fontSize: "0.85rem", margin: 0 }}>
+              Identify who said what in the recording
+            </p>
+          </div>
+        </label>
+
+        <label style={{ display: "flex", alignItems: "flex-start", gap: "0.75rem", cursor: "pointer" }}>
+          <input
+            type="checkbox"
+            checked={translateEnabled}
+            onChange={(e) => setTranslateEnabled(e.target.checked)}
+            style={{ marginTop: "0.2rem" }}
+          />
+          <div>
+            <strong>English Translation</strong>
+            <p style={{ color: "var(--text-muted)", fontSize: "0.85rem", margin: 0 }}>
+              Translate transcript to English
+            </p>
+          </div>
+        </label>
+      </div>
+
+      <div style={{ display: "flex", gap: "1rem" }}>
+        <button className="btn-secondary" onClick={onSkip} disabled={submitting}>Skip Enhancements</button>
+        <button className="btn-primary" onClick={handleSubmit} disabled={submitting}>
+          {submitting ? "Starting..." : "Run Selected"}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+type AppView = "upload" | "processing" | "enhancements" | "results" | "workspace";
+
 export function App() {
+  const [sourceMode, setSourceMode] = useState<"upload" | "record">("upload");
   const [file, setFile] = useState<File | null>(null);
+  const [sourceOrigin, setSourceOrigin] = useState<SourceOrigin>("upload");
   const [job, setJob] = useState<JobPayload | null>(null);
   const [transcript, setTranscript] = useState<TranscriptPayload | null>(null);
   const [summary, setSummary] = useState<MeetingSummary | null>(null);
@@ -372,7 +632,7 @@ export function App() {
   const [copiedState, setCopiedState] = useState<"summary" | "transcript" | null>(null);
   const [liveMessage, setLiveMessage] = useState("");
   const [isDragOver, setIsDragOver] = useState(false);
-  const [view, setView] = useState<"upload" | "processing" | "results" | "workspace">("upload");
+  const [view, setView] = useState<AppView>("upload");
   const logPanelRef = useRef<HTMLDivElement | null>(null);
   const audioPlayerRef = useRef<{ seek: (t: number) => void }>(null);
 
@@ -380,7 +640,19 @@ export function App() {
     if (!job || (job.status !== "queued" && job.status !== "processing")) return;
     const unsubscribe = subscribeToJob(
       job.id,
-      (updatedJob) => setJob(updatedJob),
+      (updatedJob) => {
+        setJob(updatedJob);
+        if (
+          updatedJob.transcriptReady &&
+          updatedJob.enhancementStatus === "awaiting_selection" &&
+          view === "processing"
+        ) {
+          getTranscript(updatedJob.id)
+            .then((t) => setTranscript(t))
+            .catch(() => {});
+          setView("enhancements");
+        }
+      },
       () => {
         void getJob(job.id)
           .then((nextJob) => setJob(nextJob))
@@ -390,7 +662,7 @@ export function App() {
       }
     );
     return unsubscribe;
-  }, [job?.id, job?.status]);
+  }, [job?.id, job?.status, view]);
 
   useEffect(() => {
     if (!job || job.status !== "completed") return;
@@ -403,7 +675,7 @@ export function App() {
         setTranscript(transcriptPayload);
         setSummary(summaryPayload ?? transcriptPayload.summary ?? null);
         if (!transcriptPayload.english) setSelectedVariant("source");
-        if (view === "processing") setView("results");
+        if (view === "processing" || view === "enhancements") setView("results");
       })
       .catch((loadError) => {
         if (controller.signal.aborted) return;
@@ -437,7 +709,7 @@ export function App() {
     setIsUploading(true);
 
     try {
-      const { jobId } = await uploadMedia(file);
+      const { jobId } = await uploadMedia(file, { sourceOrigin });
       const createdJob = await getJob(jobId);
       setJob(createdJob);
       setView("processing");
@@ -445,6 +717,32 @@ export function App() {
       setError(uploadError instanceof Error ? uploadError.message : "Upload failed");
     } finally {
       setIsUploading(false);
+    }
+  }
+
+  async function handleSubmitEnhancements(config: EnhancementConfig) {
+    if (!job) return;
+    try {
+      const updated = await submitEnhancements(job.id, config);
+      setJob(updated);
+      if (config.stages.length > 0) {
+        setView("processing");
+      } else {
+        setView("results");
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to submit enhancements");
+    }
+  }
+
+  async function handleSkipEnhancements() {
+    if (!job) return;
+    try {
+      const updated = await submitEnhancements(job.id, { stages: [] });
+      setJob(updated);
+      setView("results");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to skip enhancements");
     }
   }
 
@@ -486,6 +784,21 @@ export function App() {
     }
   }
 
+  function handleRecordingComplete(recordedFile: File) {
+    setFile(recordedFile);
+    setSourceOrigin("recording");
+  }
+
+  function resetToUpload() {
+    setView("upload");
+    setJob(null);
+    setFile(null);
+    setTranscript(null);
+    setSummary(null);
+    setSourceMode("upload");
+    setSourceOrigin("upload");
+  }
+
   const visibleTranscript: TranscriptVariant | undefined =
     selectedVariant === "english" && transcript?.english ? transcript.english : transcript?.source;
   const progress: JobProgress = job?.progress ?? {
@@ -510,6 +823,7 @@ export function App() {
 
   const isProcessing = job?.status === "processing" || job?.status === "queued";
   const isCompleted = job?.status === "completed";
+  const isAwaitingEnhancements = job?.enhancementStatus === "awaiting_selection";
 
   function announce(message: string) {
     setLiveMessage("");
@@ -522,7 +836,7 @@ export function App() {
 
       <div className="main-app-container">
         <nav className="app-nav">
-          <div className="app-nav-logo" onClick={() => setView("upload")} style={{ cursor: "pointer" }}>
+          <div className="app-nav-logo" onClick={resetToUpload} style={{ cursor: "pointer" }}>
             <div className="brand-icon">
               <span /><span /><span />
             </div>
@@ -530,7 +844,7 @@ export function App() {
           </div>
           <div className="app-nav-links">
             <span onClick={() => { setView("workspace"); setJob(null); setFile(null); }} style={{ fontWeight: view === 'workspace' ? 600 : 400 }}>Workspace</span>
-            <span onClick={() => { setView("upload"); setJob(null); setFile(null); }}>Upload New &uarr;</span>
+            <span onClick={resetToUpload}>New Session &uarr;</span>
           </div>
         </nav>
 
@@ -542,13 +856,17 @@ export function App() {
             </div>
           )}
 
-          {/* WORKSPACE STATE */}
           {view === "workspace" && (
             <WorkspaceView
               onSelectJob={(selectedJob) => {
                 setJob(selectedJob);
                 if (selectedJob.status === "completed" || selectedJob.status === "failed") {
                   setView("results");
+                } else if (selectedJob.transcriptReady && selectedJob.enhancementStatus === "awaiting_selection") {
+                  getTranscript(selectedJob.id)
+                    .then((t) => setTranscript(t))
+                    .catch(() => {});
+                  setView("enhancements");
                 } else {
                   setView("processing");
                 }
@@ -556,50 +874,91 @@ export function App() {
             />
           )}
 
-          {/* IDLE / UPLOAD STATE */}
           {view === "upload" && !job && (
             <div className="hero-upload">
-              <h2>Transform Your Meetings with Intelligent AI</h2>
-              <p style={{ color: 'var(--text-muted)' }}>Upload your audio to extract speaker-aware transcripts, task summaries, and decisions.</p>
+              <h2>Transform Your Audio with Intelligent AI</h2>
+              <p style={{ color: 'var(--text-muted)' }}>Upload a file or record from your microphone to get speaker-aware transcripts, summaries, and more.</p>
 
-              <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2rem', width: '100%', maxWidth: '600px' }}>
-                <div
-                  className={`upload-dropzone ${isDragOver ? 'drag-over' : ''}`}
-                  onDragOver={(e) => { e.preventDefault(); setIsDragOver(true); }}
-                  onDragLeave={() => setIsDragOver(false)}
-                  onDrop={(e) => {
-                    e.preventDefault();
-                    setIsDragOver(false);
-                    const dropped = e.dataTransfer.files?.[0];
-                    if (dropped) setFile(dropped);
-                  }}
-                  style={{ width: '100%' }}
+              <div className="control-strip" role="tablist" aria-label="Source mode" style={{ marginBottom: '1.5rem' }}>
+                <button
+                  className={`control-btn ${sourceMode === "upload" ? "active" : ""}`}
+                  onClick={() => { setSourceMode("upload"); setSourceOrigin("upload"); setFile(null); }}
+                  type="button"
                 >
-                  <input
-                    type="file"
-                    accept={ACCEPTED_TYPES}
-                    className="upload-input"
-                    onChange={(e) => setFile(e.target.files?.[0] ?? null)}
-                  />
-                  <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="var(--accent-primary)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
-
-                  {file ? (
-                    <div style={{ textAlign: 'center' }}>
-                      <strong>{displayUploadName}</strong>
-                      <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>{formatBytes(file.size)}</p>
-                    </div>
-                  ) : (
-                    <div style={{ textAlign: 'center' }}>
-                      <strong>Select a file</strong>
-                      <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>or drag and drop here</p>
-                    </div>
-                  )}
-                </div>
-
-                <button className="btn-primary" type="submit" disabled={!file || isUploading} style={{ width: '100%' }}>
-                  {isUploading ? "Uploading..." : "Start Transcription"}
+                  Upload File
                 </button>
-              </form>
+                <button
+                  className={`control-btn ${sourceMode === "record" ? "active" : ""}`}
+                  onClick={() => { setSourceMode("record"); setSourceOrigin("recording"); setFile(null); }}
+                  type="button"
+                >
+                  Record Mic
+                </button>
+              </div>
+
+              {sourceMode === "upload" && (
+                <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2rem', width: '100%', maxWidth: '600px' }}>
+                  <div
+                    className={`upload-dropzone ${isDragOver ? 'drag-over' : ''}`}
+                    onDragOver={(e) => { e.preventDefault(); setIsDragOver(true); }}
+                    onDragLeave={() => setIsDragOver(false)}
+                    onDrop={(e) => {
+                      e.preventDefault();
+                      setIsDragOver(false);
+                      const dropped = e.dataTransfer.files?.[0];
+                      if (dropped) setFile(dropped);
+                    }}
+                    style={{ width: '100%' }}
+                  >
+                    <input
+                      type="file"
+                      accept={ACCEPTED_TYPES}
+                      className="upload-input"
+                      onChange={(e) => setFile(e.target.files?.[0] ?? null)}
+                    />
+                    <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="var(--accent-primary)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
+
+                    {file ? (
+                      <div style={{ textAlign: 'center' }}>
+                        <strong>{displayUploadName}</strong>
+                        <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>{formatBytes(file.size)}</p>
+                      </div>
+                    ) : (
+                      <div style={{ textAlign: 'center' }}>
+                        <strong>Select a file</strong>
+                        <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>or drag and drop here</p>
+                      </div>
+                    )}
+                  </div>
+
+                  <button className="btn-primary" type="submit" disabled={!file || isUploading} style={{ width: '100%' }}>
+                    {isUploading ? "Uploading..." : "Start Transcription"}
+                  </button>
+                </form>
+              )}
+
+              {sourceMode === "record" && !file && (
+                <div style={{ width: "100%", maxWidth: "600px" }}>
+                  <RecorderPanel onRecordingComplete={handleRecordingComplete} />
+                </div>
+              )}
+
+              {sourceMode === "record" && file && (
+                <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1.5rem', width: '100%', maxWidth: '600px' }}>
+                  <div className="glass-panel" style={{ width: "100%", textAlign: "center", padding: "1.5rem" }}>
+                    <strong>{file.name}</strong>
+                    <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', margin: '0.5rem 0 0' }}>{formatBytes(file.size)}</p>
+                  </div>
+                  <div style={{ display: "flex", gap: "1rem", width: "100%" }}>
+                    <button className="btn-secondary" type="button" onClick={() => setFile(null)} style={{ flex: 1 }}>
+                      Re-record
+                    </button>
+                    <button className="btn-primary" type="submit" disabled={isUploading} style={{ flex: 1 }}>
+                      {isUploading ? "Uploading..." : "Start Transcription"}
+                    </button>
+                  </div>
+                </form>
+              )}
 
               <div className="feature-cards">
                 <div className="feature-card">
@@ -618,8 +977,7 @@ export function App() {
             </div>
           )}
 
-          {/* PROCESSING STATE */}
-          {view === "processing" && job && isProcessing && (
+          {view === "processing" && job && isProcessing && !isAwaitingEnhancements && (
             <div className="processing-dash">
               <div className="glass-panel highlight">
                 <div className="status-header">
@@ -634,6 +992,20 @@ export function App() {
                   <span>{Math.round(progress.overallPct)}% Complete</span>
                   <span>{progress.stageKey}</span>
                 </div>
+
+                {job.enhancementStages && (
+                  <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap", marginTop: "1rem" }}>
+                    {Object.entries(job.enhancementStages).map(([key, state]) => (
+                      <span key={key} className="tag-outline" style={{
+                        fontSize: "0.75rem",
+                        padding: "0.15rem 0.5rem",
+                        color: state.status === "completed" ? "var(--accent-primary)" : state.status === "failed" ? "var(--danger)" : undefined
+                      }}>
+                        {formatStageLabel(key)}: {state.status}
+                      </span>
+                    ))}
+                  </div>
+                )}
 
                 <div className="stats-row" style={{ marginTop: '2rem' }}>
                   <div className="stat-block">
@@ -668,13 +1040,65 @@ export function App() {
             </div>
           )}
 
-          {/* FAILED STATE */}
+          {view === "enhancements" && job && transcript && (
+            <div className="results-workspace">
+              <div className="glass-panel results-overview-card" style={{ gridColumn: '1 / -1', display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', padding: '1rem', alignItems: 'center' }}>
+                <div style={{ fontWeight: 600, fontSize: '1.1rem' }}>
+                  {job.sourceMedia?.originalName}
+                  {job.sourceOrigin === "recording" && <span className="tag-outline" style={{ fontSize: '0.7rem', padding: '0.1rem 0.4rem', marginLeft: '0.5rem', verticalAlign: 'middle' }}>mic</span>}
+                </div>
+                <div style={{ display: 'flex', gap: '1.5rem', fontSize: '0.9rem' }}>
+                  {job.durationSeconds && <span><span style={{ color: 'var(--text-muted)', marginRight: '4px' }}>Duration:</span>{formatTime(job.durationSeconds)}</span>}
+                  <span><span style={{ color: 'var(--text-muted)', marginRight: '4px' }}>Language:</span>{job.detectedLanguage || 'auto'}</span>
+                </div>
+              </div>
+
+              <aside className="summary-rail">
+                <EnhancementPrompt job={job} onSubmit={handleSubmitEnhancements} onSkip={handleSkipEnhancements} />
+              </aside>
+
+              <div className="transcript-area">
+                <div className="transcript-header">
+                  <div className="transcript-heading">
+                    <span className="transcript-kicker">Source transcript</span>
+                    <h3>Transcript Preview</h3>
+                  </div>
+                </div>
+
+                <AudioPlayer ref={audioPlayerRef} jobId={job.id} duration={job.durationSeconds} />
+
+                <div className="transcript-body">
+                  {groupedSegments.map((group, index) => (
+                    <div className="speaker-group" key={index}>
+                      <div className="speaker-meta">
+                        <span className={`speaker-tag ${getSpeakerColorClass(group.speaker)}`}>
+                          {group.speaker || 'Speaker'}
+                        </span>
+                        <button type="button" className="time-stamp" onClick={() => audioPlayerRef.current?.seek(group.start)}>
+                          {formatTime(group.start)}
+                        </button>
+                      </div>
+                      <div className="utterances">
+                        {group.segments.map((seg, sIdx) => (
+                          <p key={sIdx} style={{ margin: '0 0 0.5rem' }}>{seg.text}</p>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                  {groupedSegments.length === 0 && (
+                    <p style={{ color: 'var(--text-muted)' }}>No usable transcript text available.</p>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+
           {view === "results" && job && job.status === "failed" && (
             <div className="processing-dash">
               <div className="glass-panel" style={{ borderLeft: '4px solid var(--danger)' }}>
                 <h3 style={{ color: 'var(--danger)', marginBottom: '1rem' }}>Processing Failed</h3>
                 <p style={{ marginBottom: '1rem' }}>{job.error}</p>
-                <button className="btn-secondary" onClick={() => { setView("upload"); setJob(null); setFile(null); }}>Try Again</button>
+                <button className="btn-secondary" onClick={resetToUpload}>Try Again</button>
               </div>
               {logs.length > 0 && (
                 <div className="glass-panel">
@@ -687,13 +1111,13 @@ export function App() {
             </div>
           )}
 
-          {/* RESULTS STATE */}
           {view === "results" && job && isCompleted && transcript && (
             <div className="results-workspace">
 
               <div className="glass-panel results-overview-card" style={{ gridColumn: '1 / -1', display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', padding: '1rem', alignItems: 'center' }}>
                 <div style={{ fontWeight: 600, fontSize: '1.1rem' }}>
                   {job.sourceMedia?.originalName}
+                  {job.sourceOrigin === "recording" && <span className="tag-outline" style={{ fontSize: '0.7rem', padding: '0.1rem 0.4rem', marginLeft: '0.5rem', verticalAlign: 'middle' }}>mic</span>}
                 </div>
                 <div style={{ display: 'flex', gap: '1.5rem', fontSize: '0.9rem' }}>
                   {job.sourceMedia?.sizeBytes && <span><span style={{ color: 'var(--text-muted)', marginRight: '4px' }}>Size:</span>{formatBytes(job.sourceMedia?.sizeBytes)}</span>}
@@ -704,10 +1128,8 @@ export function App() {
 
               <aside className="summary-rail">
                 <div className="glass-panel" style={{ padding: '1rem' }}>
-                  <button className="btn-secondary" style={{ width: '100%' }} onClick={() => {
-                    setJob(null); setFile(null); setTranscript(null); setSummary(null);
-                  }}>
-                    Process New File
+                  <button className="btn-secondary" style={{ width: '100%' }} onClick={resetToUpload}>
+                    New Session
                   </button>
                 </div>
 

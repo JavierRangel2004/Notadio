@@ -1,5 +1,24 @@
 export type JobStatus = "queued" | "processing" | "completed" | "failed";
 
+export type SourceOrigin = "upload" | "recording";
+
+export type SummaryPreset = "meeting" | "whatsappVoiceNote" | "genericMedia";
+
+export type EnhancementStageKey = "translate" | "diarize" | "summarize";
+
+export type EnhancementStageState = {
+  status: "pending" | "running" | "completed" | "failed" | "skipped";
+  error?: string;
+};
+
+export type EnhancementConfig = {
+  stages: EnhancementStageKey[];
+  summaryPreset?: SummaryPreset;
+  translationLanguage?: string;
+};
+
+export type EnhancementStatus = "awaiting_selection" | "running" | "completed" | "skipped";
+
 export type TranscriptSegment = {
   start: number;
   end: number;
@@ -133,6 +152,7 @@ export type JobPayload = {
   stage: string;
   createdAt: string;
   updatedAt: string;
+  sourceOrigin?: SourceOrigin;
   sourceMedia?: {
     originalName: string;
     mimeType: string;
@@ -142,6 +162,10 @@ export type JobPayload = {
   durationSeconds?: number;
   warnings: string[];
   error?: string;
+  transcriptReady?: boolean;
+  enhancementStatus?: EnhancementStatus;
+  enhancementConfig?: EnhancementConfig;
+  enhancementStages?: Record<string, EnhancementStageState>;
   summaryDiagnostics?: SummaryDiagnostics;
   progress?: JobProgress;
   processing?: JobProcessingProfile;
@@ -155,9 +179,15 @@ export type JobPayload = {
 
 const API_BASE = import.meta.env.VITE_API_BASE ?? "http://localhost:8787/api";
 
-export async function uploadMedia(file: File): Promise<{ jobId: string }> {
+export async function uploadMedia(
+  file: File,
+  options?: { sourceOrigin?: SourceOrigin }
+): Promise<{ jobId: string }> {
   const body = new FormData();
   body.append("media", file);
+  if (options?.sourceOrigin) {
+    body.append("sourceOrigin", options.sourceOrigin);
+  }
 
   const response = await fetch(`${API_BASE}/uploads`, {
     method: "POST",
@@ -235,6 +265,21 @@ export async function retryDiarize(jobId: string): Promise<{ warnings: string[];
   if (!response.ok) {
     const text = await response.text();
     throw new Error(text || "Retry diarization failed");
+  }
+  return response.json();
+}
+
+export async function submitEnhancements(
+  jobId: string,
+  config: EnhancementConfig
+): Promise<JobPayload> {
+  const response = await fetch(`${API_BASE}/jobs/${jobId}/enhancements`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(config)
+  });
+  if (!response.ok) {
+    throw new Error(await response.text());
   }
   return response.json();
 }
