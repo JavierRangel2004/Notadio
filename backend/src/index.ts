@@ -11,7 +11,7 @@ import { detectProcessingProfile } from "./services/deviceProfileService.js";
 import { normalizeMediaToWav } from "./services/mediaService.js";
 import { writeArtifacts } from "./services/exportService.js";
 import { applyOptionalDiarization } from "./services/diarizationService.js";
-import { transcribeAudio, translateAudio } from "./services/transcriptionService.js";
+import { transcribeAudio, translateTranscript } from "./services/transcriptionService.js";
 import { generateSummary } from "./services/summaryService.js";
 import { jobStore } from "./store/jobStore.js";
 import { ensureDir, readJsonFile, writeJsonFile } from "./utils/fs.js";
@@ -42,6 +42,14 @@ type StageDefinition = {
 
 type TelemetryContext = {
   stages: StageDefinition[];
+};
+
+type PostCompletionActionKey = EnhancementStageKey;
+
+type PostCompletionAction = {
+  stageKey: PostCompletionActionKey;
+  stageLabel: string;
+  exportLabel?: string;
 };
 
 const QUEUE_BASELINE_PCT = 5;
@@ -375,6 +383,14 @@ function completeStageTiming(job: JobManifest, stageKey?: string): void {
   existing.durationMs = Math.max(0, new Date(completedAt).getTime() - new Date(existing.startedAt).getTime());
 }
 
+function resetStageTiming(job: JobManifest, stageKey: string): void {
+  if (!job.stageTimings) {
+    return;
+  }
+
+  delete job.stageTimings[stageKey];
+}
+
 function transitionStageTiming(job: JobManifest, stageKey: PipelineStageKey, label: string): void {
   const currentStageKey = job.progress?.stageKey;
   if (currentStageKey && currentStageKey !== stageKey) {
@@ -500,14 +516,121 @@ function buildBaseTelemetryContext(processing: JobProcessingProfile, durationSec
 function buildEnhancementTelemetryContext(
   selectedStages: EnhancementStageKey[],
   processing: JobProcessingProfile,
-  durationSeconds?: number
+  durationSeconds?: number,
+  options: { includeExport?: boolean } = {}
 ): TelemetryContext {
   const stages: StageDefinition[] = selectedStages.map((key) => ({
     key: key as PipelineStageKey,
     weight: estimateStageWeight(key as Exclude<PipelineStageKey, "queued">, processing, durationSeconds)
   }));
-  stages.push({ key: "export", weight: estimateStageWeight("export", processing, durationSeconds) });
+
+  if (options.includeExport ?? true) {
+    stages.push({ key: "export", weight: estimateStageWeight("export", processing, durationSeconds) });
+  }
+
   return { stages };
+}
+
+function getRunningEnhancementStage(job: JobManifest): EnhancementStageKey | undefined {
+  if (!job.enhancementStages) {
+    return undefined;
+  }
+
+  return (Object.entries(job.enhancementStages).find(([, state]) => state.status === "running")?.[0] ??
+    undefined) as EnhancementStageKey | undefined;
+}
+
+function ensureNoRunningPostAction(job: JobManifest): string | undefined {
+  const runningStage = getRunningEnhancementStage(job);
+  if (!runningStage) {
+    return undefined;
+  }
+
+  return `Another post-processing action is already running: ${runningStage}.`;
+}
+
+async function startPostCompletionAction(jobId: string, action: PostCompletionAction): Promise<JobManifest> {
+  return updateJobImmediate(jobId, (current) => {
+    const runningError = ensureNoRunningPostAction(current);
+    if (runningError) {
+      throw new Error(runningError);
+    }
+
+    current.error = undefined;
+    current.stage = action.stageLabel;
+    current.enhancementStatus = "completed";
+    current.enhancementStages = {
+      ...(current.enhancementStages ?? {}),
+      [action.stageKey]: { status: "running" }
+    };
+    appendLog(current, `[${action.stageKey}-retry] Started.`);
+    resetStageTiming(current, action.stageKey);
+    if (action.exportLabel) {
+      resetStageTiming(current, "export");
+    }
+    current.progress = {
+      stageKey: action.stageKey,
+      overallPct: 0,
+      stagePct: 0,
+      startedAt: new Date().toISOString(),
+      elapsedSeconds: 0,
+      etaSeconds: undefined
+    };
+  });
+}
+
+async function failPostCompletionAction(
+  jobId: string,
+  action: PostCompletionAction,
+  message: string
+): Promise<void> {
+  await updateJobImmediate(jobId, (current) => {
+    completeStageTiming(current, current.progress?.stageKey);
+    current.stage = `${action.stageLabel} failed`;
+    current.error = message;
+    current.enhancementStages = {
+      ...(current.enhancementStages ?? {}),
+      [action.stageKey]: { status: "failed", error: message }
+    };
+    appendLog(current, `[${action.stageKey}-retry] ${message}`);
+  });
+}
+
+async function completePostCompletionAction(
+  jobId: string,
+  action: PostCompletionAction,
+  options?: {
+    warnings?: string[];
+    stageStatus?: EnhancementStageState;
+  }
+): Promise<void> {
+  await updateJobImmediate(jobId, (current) => {
+    completeStageTiming(current, current.progress?.stageKey);
+    current.stage = "Processing complete";
+    current.error = undefined;
+    current.enhancementStatus = "completed";
+    current.enhancementStages = {
+      ...(current.enhancementStages ?? {}),
+      [action.stageKey]: options?.stageStatus ?? { status: "completed" }
+    };
+    if (options?.warnings?.length) {
+      current.warnings = [...current.warnings, ...options.warnings];
+    }
+    appendLog(current, `[${action.stageKey}-retry] Completed.`);
+    current.progress = {
+      ...(current.progress ?? buildDefaultProgress(current.createdAt)),
+      stageKey: action.exportLabel ? "export" : action.stageKey,
+      stagePct: 100,
+      overallPct: 100,
+      elapsedSeconds: Math.max(
+        0,
+        Math.round(
+          (Date.now() - new Date((current.progress ?? buildDefaultProgress(current.createdAt)).startedAt ?? current.createdAt).getTime()) / 1000
+        )
+      ),
+      etaSeconds: 0
+    };
+  });
 }
 
 async function processBaseJob(jobId: string): Promise<void> {
@@ -711,10 +834,12 @@ async function processEnhancements(jobId: string): Promise<void> {
         stagePct: 0
       });
       try {
-        const english = await translateAudio(job.normalizedAudioPath, path.join(workingDir, "whisper"), {
-          durationSeconds: job.durationSeconds,
-          processingProfile,
-          onLog: (line) => applyTelemetryUpdate(jobId, telemetry, { stageKey: "translate", logLine: line }),
+        const english = await translateTranscript(transcriptRecord.source, {
+          onLog: (line) => applyTelemetryUpdate(jobId, telemetry, {
+            stage: "Generating English translation",
+            stageKey: "translate",
+            logLine: line
+          }),
           onProgress: (stagePct) => applyTelemetryUpdate(jobId, telemetry, {
             stage: "Generating English translation",
             stageKey: "translate",
@@ -866,6 +991,209 @@ async function processEnhancements(jobId: string): Promise<void> {
       current.error = error instanceof Error ? error.message : "Unknown enhancement error";
       appendLog(current, current.error);
     });
+  }
+}
+
+async function processSummaryRetry(jobId: string): Promise<void> {
+  const job = jobStore.get(jobId);
+  if (!job?.transcriptPath) {
+    throw new Error("No cached transcript available.");
+  }
+
+  const action: PostCompletionAction = {
+    stageKey: "summarize",
+    stageLabel: "Regenerating AI summary"
+  };
+
+  const processingProfile = job.processing ?? buildDefaultProcessing();
+  const telemetry = buildEnhancementTelemetryContext(["summarize"], processingProfile, job.durationSeconds, {
+    includeExport: false
+  });
+
+  try {
+    const transcriptRecord = await readJsonFile<TranscriptRecord>(job.transcriptPath);
+    const jobDir = jobStore.getJobDir(jobId);
+    const summaryResult = await generateSummary(
+      transcriptRecord,
+      {
+        onLog: (line) => applyTelemetryUpdate(jobId, telemetry, {
+          stage: action.stageLabel,
+          stageKey: "summarize",
+          logLine: `[summary-retry] ${line}`
+        }),
+        onProgress: (stagePct) => applyTelemetryUpdate(jobId, telemetry, {
+          stage: action.stageLabel,
+          stageKey: "summarize",
+          stagePct
+        })
+      },
+      { preset: job.enhancementConfig?.summaryPreset, force: true }
+    );
+
+    if (!summaryResult.summary) {
+      throw new Error(summaryResult.warnings.join("; ") || "Summary generation failed.");
+    }
+
+    transcriptRecord.summary = summaryResult.summary;
+    transcriptRecord.summaryDiagnostics = summaryResult.summaryDiagnostics;
+    const summaryPath = path.join(jobDir, "summary.json");
+    await writeJsonFile(summaryPath, summaryResult.summary);
+    await writeJsonFile(job.transcriptPath, transcriptRecord);
+    jobStore.setTranscript(jobId, transcriptRecord);
+
+    await updateJobImmediate(jobId, (current) => {
+      current.summaryPath = summaryPath;
+      current.summaryDiagnostics = summaryResult.summaryDiagnostics;
+      current.warnings = current.warnings.filter((warning) => !warning.startsWith("AI summary skipped"));
+      current.warnings.push(...summaryResult.warnings);
+    });
+
+    await completePostCompletionAction(jobId, action);
+  } catch (error) {
+    await failPostCompletionAction(
+      jobId,
+      action,
+      error instanceof Error ? error.message : "Summary regeneration failed."
+    );
+  }
+}
+
+async function processDiarizationRetry(jobId: string): Promise<void> {
+  const job = jobStore.get(jobId);
+  if (!job?.transcriptPath || !job.normalizedAudioPath) {
+    throw new Error("No cached transcript or audio available.");
+  }
+
+  const action: PostCompletionAction = {
+    stageKey: "diarize",
+    stageLabel: "Re-running speaker identification",
+    exportLabel: "Writing enhanced artifacts"
+  };
+  const processingProfile = job.processing ?? buildDefaultProcessing();
+  const telemetry = buildEnhancementTelemetryContext(["diarize"], processingProfile, job.durationSeconds);
+
+  try {
+    const transcriptRecord = await readJsonFile<TranscriptRecord>(job.transcriptPath);
+    const jobDir = jobStore.getJobDir(jobId);
+    const workingDir = path.join(jobDir, "working");
+    const artifactDir = jobStore.getArtifactDir(jobId);
+    const rawSegments = transcriptRecord.source.segments.map((segment) => ({ ...segment, speaker: undefined }));
+
+    const diarization = await applyOptionalDiarization(
+      job.normalizedAudioPath,
+      path.join(workingDir, "diarization"),
+      rawSegments,
+      {
+        durationSeconds: job.durationSeconds,
+        onLog: (line) => applyTelemetryUpdate(jobId, telemetry, {
+          stage: action.stageLabel,
+          stageKey: "diarize",
+          logLine: `[diarize-retry] ${line}`
+        }),
+        onProgress: (stagePct) => applyTelemetryUpdate(jobId, telemetry, {
+          stage: action.stageLabel,
+          stageKey: "diarize",
+          stagePct
+        })
+      }
+    );
+
+    transcriptRecord.source.segments = diarization.segments;
+    await writeJsonFile(job.transcriptPath, transcriptRecord);
+    jobStore.setTranscript(jobId, transcriptRecord);
+
+    applyTelemetryUpdate(jobId, telemetry, {
+      stage: action.exportLabel,
+      stageKey: "export",
+      stagePct: 20
+    });
+
+    const artifacts = await writeArtifacts(transcriptRecord, artifactDir);
+    const hasSpeakers = diarization.segments.some((segment) => segment.speaker);
+
+    await updateJobImmediate(jobId, (current) => {
+      current.artifacts = artifacts;
+      current.warnings = current.warnings.filter((warning) => !warning.toLowerCase().includes("diarization"));
+      current.warnings.push(...diarization.warnings);
+    });
+
+    await completePostCompletionAction(jobId, action, {
+      stageStatus: hasSpeakers
+        ? { status: "completed" }
+        : { status: "failed", error: "Diarization did not produce speaker labels" }
+    });
+  } catch (error) {
+    await failPostCompletionAction(
+      jobId,
+      action,
+      error instanceof Error ? error.message : "Speaker identification retry failed."
+    );
+  }
+}
+
+async function processTranslationRetry(jobId: string): Promise<void> {
+  const job = jobStore.get(jobId);
+  if (!job?.transcriptPath || !job.normalizedAudioPath) {
+    throw new Error("No cached transcript or audio available.");
+  }
+
+  const action: PostCompletionAction = {
+    stageKey: "translate",
+    stageLabel: "Generating English translation",
+    exportLabel: "Writing enhanced artifacts"
+  };
+  const processingProfile = {
+    ...(job.processing ?? buildDefaultProcessing()),
+    translationEnabled: true
+  };
+  const telemetry = buildEnhancementTelemetryContext(["translate"], processingProfile, job.durationSeconds);
+
+  try {
+    const transcriptRecord = await readJsonFile<TranscriptRecord>(job.transcriptPath);
+    const jobDir = jobStore.getJobDir(jobId);
+    const workingDir = path.join(jobDir, "working");
+    const artifactDir = jobStore.getArtifactDir(jobId);
+
+    const english = await translateTranscript(transcriptRecord.source, {
+      onLog: (line) => applyTelemetryUpdate(jobId, telemetry, {
+        stage: action.stageLabel,
+        stageKey: "translate",
+        logLine: `[translate-retry] ${line}`
+      }),
+      onProgress: (stagePct) => applyTelemetryUpdate(jobId, telemetry, {
+        stage: action.stageLabel,
+        stageKey: "translate",
+        stagePct
+      })
+    });
+
+    transcriptRecord.english = english;
+    await writeJsonFile(job.transcriptPath, transcriptRecord);
+    jobStore.setTranscript(jobId, transcriptRecord);
+
+    applyTelemetryUpdate(jobId, telemetry, {
+      stage: action.exportLabel,
+      stageKey: "export",
+      stagePct: 20
+    });
+
+    const artifacts = await writeArtifacts(transcriptRecord, artifactDir);
+
+    await updateJobImmediate(jobId, (current) => {
+      current.artifacts = artifacts;
+      current.processing = {
+        ...(current.processing ?? buildDefaultProcessing()),
+        translationEnabled: true
+      };
+    });
+
+    await completePostCompletionAction(jobId, action);
+  } catch (error) {
+    await failPostCompletionAction(
+      jobId,
+      action,
+      error instanceof Error ? error.message : "Translation retry failed."
+    );
   }
 }
 
@@ -1147,41 +1475,15 @@ app.post("/api/jobs/:jobId/retry/summarize", async (req, res) => {
   }
 
   try {
-    const transcriptRecord = await readJsonFile<TranscriptRecord>(job.transcriptPath);
-    const jobDir = jobStore.getJobDir(jobId);
-
-    const summaryResult = await generateSummary(transcriptRecord, {
-      onLog: (line) =>
-        updateJobDebounced(jobId, (current) => {
-          appendLog(current, `[summary-retry] ${line}`);
-        })
+    await startPostCompletionAction(jobId, {
+      stageKey: "summarize",
+      stageLabel: "Regenerating AI summary"
     });
-
-    if (summaryResult.summary) {
-      transcriptRecord.summary = summaryResult.summary;
-      transcriptRecord.summaryDiagnostics = summaryResult.summaryDiagnostics;
-      const summaryPath = path.join(jobDir, "summary.json");
-      await writeJsonFile(summaryPath, summaryResult.summary);
-      await writeJsonFile(job.transcriptPath, transcriptRecord);
-      jobStore.setTranscript(jobId, transcriptRecord);
-
-      await updateJobImmediate(jobId, (current) => {
-        current.summaryPath = summaryPath;
-        current.summaryDiagnostics = summaryResult.summaryDiagnostics;
-        // Remove the old summary warning if present
-        current.warnings = current.warnings.filter(w => !w.startsWith("AI summary skipped"));
-        current.warnings.push(...summaryResult.warnings);
-      });
-
-      res.json({
-        summary: summaryResult.summary,
-        summaryDiagnostics: summaryResult.summaryDiagnostics
-      });
-    } else {
-      res.status(500).json({ error: summaryResult.warnings.join("; ") || "Summary generation failed." });
-    }
+    jobQueue.enqueue(() => processSummaryRetry(jobId));
+    res.status(202).json(makeJobResponse(jobStore.get(jobId)!));
   } catch (error) {
-    res.status(500).send(error instanceof Error ? error.message : "Retry failed.");
+    const message = error instanceof Error ? error.message : "Retry failed.";
+    res.status(message.includes("already running") ? 409 : 500).send(message);
   }
 });
 
@@ -1200,32 +1502,44 @@ app.post("/api/jobs/:jobId/retry/diarize", async (req, res) => {
   }
 
   try {
-    const transcriptRecord = await readJsonFile<TranscriptRecord>(job.transcriptPath);
-    const jobDir = jobStore.getJobDir(jobId);
-    const workingDir = path.join(jobDir, "working");
-
-    // Strip old speaker labels before re-diarizing
-    const rawSegments = transcriptRecord.source.segments.map(s => ({ ...s, speaker: undefined }));
-
-    const diarization = await applyOptionalDiarization(
-      job.normalizedAudioPath,
-      path.join(workingDir, "diarization"),
-      rawSegments
-    );
-
-    transcriptRecord.source.segments = diarization.segments;
-    await writeJsonFile(job.transcriptPath, transcriptRecord);
-    jobStore.setTranscript(jobId, transcriptRecord);
-
-    await updateJobImmediate(jobId, (current) => {
-      // Remove old diarization warnings
-      current.warnings = current.warnings.filter(w => !w.includes("diarization"));
-      current.warnings.push(...diarization.warnings);
+    await startPostCompletionAction(jobId, {
+      stageKey: "diarize",
+      stageLabel: "Re-running speaker identification",
+      exportLabel: "Writing enhanced artifacts"
     });
-
-    res.json({ warnings: diarization.warnings, segmentCount: diarization.segments.length });
+    jobQueue.enqueue(() => processDiarizationRetry(jobId));
+    res.status(202).json(makeJobResponse(jobStore.get(jobId)!));
   } catch (error) {
-    res.status(500).send(error instanceof Error ? error.message : "Retry failed.");
+    const message = error instanceof Error ? error.message : "Retry failed.";
+    res.status(message.includes("already running") ? 409 : 500).send(message);
+  }
+});
+
+app.post("/api/jobs/:jobId/retry/translate", async (req, res) => {
+  const jobId = req.params.jobId;
+  const job = jobStore.get(jobId);
+
+  if (!job || job.status !== "completed") {
+    res.status(400).send("Job must be completed before retrying translation.");
+    return;
+  }
+
+  if (!job.transcriptPath || !job.normalizedAudioPath) {
+    res.status(400).send("No cached transcript or audio available.");
+    return;
+  }
+
+  try {
+    await startPostCompletionAction(jobId, {
+      stageKey: "translate",
+      stageLabel: "Generating English translation",
+      exportLabel: "Writing enhanced artifacts"
+    });
+    jobQueue.enqueue(() => processTranslationRetry(jobId));
+    res.status(202).json(makeJobResponse(jobStore.get(jobId)!));
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Retry failed.";
+    res.status(message.includes("already running") ? 409 : 500).send(message);
   }
 });
 
