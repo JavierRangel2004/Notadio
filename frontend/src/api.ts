@@ -251,7 +251,7 @@ export async function getSummary(jobId: string, signal?: AbortSignal): Promise<M
 
 export async function retrySummarize(
   jobId: string
-): Promise<{ summary: MeetingSummary | null; summaryDiagnostics?: SummaryDiagnostics }> {
+): Promise<JobPayload> {
   const response = await fetch(`${API_BASE}/jobs/${jobId}/retry/summarize`, { method: "POST" });
   if (!response.ok) {
     const text = await response.text();
@@ -260,11 +260,20 @@ export async function retrySummarize(
   return response.json();
 }
 
-export async function retryDiarize(jobId: string): Promise<{ warnings: string[]; segmentCount: number }> {
+export async function retryDiarize(jobId: string): Promise<JobPayload> {
   const response = await fetch(`${API_BASE}/jobs/${jobId}/retry/diarize`, { method: "POST" });
   if (!response.ok) {
     const text = await response.text();
     throw new Error(text || "Retry diarization failed");
+  }
+  return response.json();
+}
+
+export async function retryTranslate(jobId: string): Promise<JobPayload> {
+  const response = await fetch(`${API_BASE}/jobs/${jobId}/retry/translate`, { method: "POST" });
+  if (!response.ok) {
+    const text = await response.text();
+    throw new Error(text || "Retry translation failed");
   }
   return response.json();
 }

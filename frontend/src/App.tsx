@@ -15,6 +15,7 @@ import {
   MeetingSummary,
   retryDiarize,
   retrySummarize,
+  retryTranslate,
   SourceOrigin,
   StageTiming,
   submitEnhancements,
@@ -215,6 +216,155 @@ const PRESET_DESCRIPTIONS: Record<SummaryPreset, { label: string; description: s
   whatsappVoiceNote: { label: "WhatsApp Voice Note", description: "Concise recap with intent, asks, and deadlines", defaultDiarize: false },
   genericMedia: { label: "Generic Audio/Video", description: "Neutral recap with key points and notable moments", defaultDiarize: false }
 };
+
+function getRunningEnhancementStage(job?: JobPayload | null): EnhancementStageKey | null {
+  if (!job?.enhancementStages) {
+    return null;
+  }
+
+  const activeEntry = Object.entries(job.enhancementStages).find(([, state]) => state.status === "running");
+  return (activeEntry?.[0] as EnhancementStageKey | undefined) ?? null;
+}
+
+function isPostProcessingActive(job?: JobPayload | null): boolean {
+  return Boolean(job && getRunningEnhancementStage(job) && job.status === "completed");
+}
+
+function getStageActionLabel(stageKey: EnhancementStageKey | null): string {
+  switch (stageKey) {
+    case "summarize":
+      return "Regenerate Summary";
+    case "diarize":
+      return "Re-run Speaker ID";
+    case "translate":
+      return "Translate to English";
+    default:
+      return "Post-processing";
+  }
+}
+
+function getStageProgress(job: JobPayload | null, stageKey: EnhancementStageKey): number | null {
+  if (!job) {
+    return null;
+  }
+
+  const stageState = job.enhancementStages?.[stageKey];
+  if (stageState?.status !== "running") {
+    return null;
+  }
+
+  if (job.progress?.stageKey === stageKey || job.progress?.stageKey === "export") {
+    return Math.round(job.progress.overallPct);
+  }
+
+  return 0;
+}
+
+function LogsPanel({
+  logs,
+  title,
+  defaultExpanded
+}: {
+  logs: string[];
+  title: string;
+  defaultExpanded: boolean;
+}) {
+  const [isOpen, setIsOpen] = useState(defaultExpanded);
+
+  useEffect(() => {
+    setIsOpen(defaultExpanded);
+  }, [defaultExpanded, title]);
+
+  if (logs.length === 0) {
+    return null;
+  }
+
+  return (
+    <div className="glass-panel">
+      <div className="section-header">
+        <div>
+          <h4 style={{ marginBottom: "0.2rem" }}>{title}</h4>
+          <div style={{ color: "var(--text-muted)", fontSize: "0.8rem" }}>{logs.length} entries</div>
+        </div>
+        <div className="section-actions">
+          <button className="btn-secondary" type="button" onClick={() => copyText(logs.join("\n"))}>
+            Copy all
+          </button>
+          <button className="btn-secondary" type="button" onClick={() => setIsOpen((current) => !current)}>
+            {isOpen ? "Hide" : "Show"}
+          </button>
+        </div>
+      </div>
+      {isOpen && <div className="log-box">{logs.join("\n")}</div>}
+    </div>
+  );
+}
+
+function InlineProgressPanel({
+  job,
+  stageKey
+}: {
+  job: JobPayload;
+  stageKey: EnhancementStageKey | null;
+}) {
+  if (!stageKey || !job.progress) {
+    return null;
+  }
+
+  return (
+    <div className="inline-progress-panel">
+      <div className="section-header" style={{ marginBottom: "0.75rem" }}>
+        <div>
+          <strong>{getStageActionLabel(stageKey)}</strong>
+          <div style={{ color: "var(--text-muted)", fontSize: "0.8rem" }}>{job.stage}</div>
+        </div>
+        <div style={{ color: "var(--text-muted)", fontFamily: "var(--font-mono)" }}>
+          {Math.round(job.progress.overallPct)}%
+        </div>
+      </div>
+      <div className="progress-track">
+        <div className="progress-fill" style={{ width: `${job.progress.overallPct}%` }} />
+      </div>
+      <div className="progress-meta">
+        <span>{formatStageLabel(job.progress.stageKey)}</span>
+        <span>{job.progress.etaSeconds !== undefined ? `ETA ${formatTime(job.progress.etaSeconds)}` : "Working"}</span>
+      </div>
+    </div>
+  );
+}
+
+function ConfirmModal({
+  open,
+  title,
+  description,
+  confirmLabel,
+  onConfirm,
+  onCancel
+}: {
+  open: boolean;
+  title: string;
+  description: string;
+  confirmLabel: string;
+  onConfirm: () => void;
+  onCancel: () => void;
+}) {
+  if (!open) {
+    return null;
+  }
+
+  return (
+    <div className="modal-backdrop" role="presentation">
+      <div className="modal-card" role="dialog" aria-modal="true" aria-labelledby="confirm-modal-title">
+        <h3 id="confirm-modal-title">{title}</h3>
+        <p style={{ color: "var(--text-muted)", marginBottom: "1.5rem" }}>{description}</p>
+        <div className="modal-actions">
+          <button className="btn-secondary" type="button" onClick={onCancel}>Cancel</button>
+          <button className="btn-primary" type="button" onClick={onConfirm}>{confirmLabel}</button>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 function WorkspaceView({ onSelectJob }: { onSelectJob: (job: JobPayload) => void }) {
   const [jobs, setJobs] = useState<JobPayload[]>([]);
@@ -628,19 +778,31 @@ export function App() {
   const [error, setError] = useState<string | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [selectedVariant, setSelectedVariant] = useState<"source" | "english">("source");
-  const [retryingStage, setRetryingStage] = useState<string | null>(null);
   const [copiedState, setCopiedState] = useState<"summary" | "transcript" | null>(null);
-  const [liveMessage, setLiveMessage] = useState("");
   const [isDragOver, setIsDragOver] = useState(false);
   const [view, setView] = useState<AppView>("upload");
-  const logPanelRef = useRef<HTMLDivElement | null>(null);
+  const [showTranslateConfirm, setShowTranslateConfirm] = useState(false);
+  const [autoSwitchToEnglish, setAutoSwitchToEnglish] = useState(false);
   const audioPlayerRef = useRef<{ seek: (t: number) => void }>(null);
+  const autoSwitchToEnglishRef = useRef(false);
+  const activePostStage = getRunningEnhancementStage(job);
 
   useEffect(() => {
-    if (!job || (job.status !== "queued" && job.status !== "processing")) return;
+    autoSwitchToEnglishRef.current = autoSwitchToEnglish;
+  }, [autoSwitchToEnglish]);
+
+  useEffect(() => {
+    if (!job) return;
+    const shouldSubscribe =
+      job.status === "queued" ||
+      job.status === "processing" ||
+      Boolean(activePostStage && job.status === "completed");
+    if (!shouldSubscribe) return;
     const unsubscribe = subscribeToJob(
       job.id,
       (updatedJob) => {
+        const wasPostProcessingActive = isPostProcessingActive(job);
+        const isNowPostProcessingActive = isPostProcessingActive(updatedJob);
         setJob(updatedJob);
         if (
           updatedJob.transcriptReady &&
@@ -652,6 +814,23 @@ export function App() {
             .catch(() => {});
           setView("enhancements");
         }
+        if (wasPostProcessingActive && !isNowPostProcessingActive && updatedJob.status === "completed") {
+          Promise.all([
+            getTranscript(updatedJob.id),
+            getSummary(updatedJob.id).catch(() => null)
+          ])
+            .then(([transcriptPayload, summaryPayload]) => {
+              setTranscript(transcriptPayload);
+              setSummary(summaryPayload ?? transcriptPayload.summary ?? null);
+              if (autoSwitchToEnglishRef.current && transcriptPayload.english) {
+                setSelectedVariant("english");
+              }
+              setAutoSwitchToEnglish(false);
+            })
+            .catch((loadError) => {
+              setError(loadError instanceof Error ? loadError.message : "Failed to refresh transcript");
+            });
+        }
       },
       () => {
         void getJob(job.id)
@@ -662,7 +841,7 @@ export function App() {
       }
     );
     return unsubscribe;
-  }, [job?.id, job?.status, view]);
+  }, [job?.id, job?.status, activePostStage, view]);
 
   useEffect(() => {
     if (!job || job.status !== "completed") return;
@@ -683,11 +862,6 @@ export function App() {
       });
     return () => controller.abort();
   }, [job?.id, job?.status, view]);
-
-  useEffect(() => {
-    if (!logPanelRef.current) return;
-    logPanelRef.current.scrollTop = logPanelRef.current.scrollHeight;
-  }, [job?.logs]);
 
   useEffect(() => {
     if (!copiedState) return;
@@ -748,39 +922,33 @@ export function App() {
 
   async function handleRetrySummarize() {
     if (!job) return;
-    setRetryingStage("summarize");
     try {
-      const result = await retrySummarize(job.id);
-      const refreshedJob = await getJob(job.id);
-      setJob(refreshedJob);
-      setSummary(result.summary);
-      setTranscript((current) =>
-        current
-          ? {
-            ...current,
-            summary: result.summary ?? undefined,
-            summaryDiagnostics: result.summaryDiagnostics
-          }
-          : current
-      );
+      const updatedJob = await retrySummarize(job.id);
+      setJob(updatedJob);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Retry failed");
-    } finally {
-      setRetryingStage(null);
     }
   }
 
   async function handleRetryDiarize() {
     if (!job) return;
-    setRetryingStage("diarize");
     try {
-      await retryDiarize(job.id);
-      const refreshed = await getTranscript(job.id);
-      setTranscript(refreshed);
+      const updatedJob = await retryDiarize(job.id);
+      setJob(updatedJob);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Retry diarization failed");
-    } finally {
-      setRetryingStage(null);
+    }
+  }
+
+  async function handleRetryTranslate() {
+    if (!job) return;
+    try {
+      const updatedJob = await retryTranslate(job.id);
+      setJob(updatedJob);
+      setAutoSwitchToEnglish(true);
+      setShowTranslateConfirm(false);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Retry translation failed");
     }
   }
 
@@ -797,6 +965,8 @@ export function App() {
     setSummary(null);
     setSourceMode("upload");
     setSourceOrigin("upload");
+    setShowTranslateConfirm(false);
+    setAutoSwitchToEnglish(false);
   }
 
   const visibleTranscript: TranscriptVariant | undefined =
@@ -824,16 +994,24 @@ export function App() {
   const isProcessing = job?.status === "processing" || job?.status === "queued";
   const isCompleted = job?.status === "completed";
   const isAwaitingEnhancements = job?.enhancementStatus === "awaiting_selection";
+  const postProcessingActive = isPostProcessingActive(job);
+  const controlsDisabled = Boolean(activePostStage);
 
-  function announce(message: string) {
-    setLiveMessage("");
-    window.setTimeout(() => setLiveMessage(message), 10);
+  function handleSelectEnglish() {
+    if (transcript?.english) {
+      setSelectedVariant("english");
+      return;
+    }
+
+    if (postProcessingActive) {
+      return;
+    }
+
+    setShowTranslateConfirm(true);
   }
 
   return (
     <div className="app-shell" style={{ padding: '2rem', maxWidth: '1400px', margin: '0 auto', width: '100%' }}>
-      <div className="sr-only" aria-live="polite">{liveMessage}</div>
-
       <div className="main-app-container">
         <nav className="app-nav">
           <div className="app-nav-logo" onClick={resetToUpload} style={{ cursor: "pointer" }}>
@@ -1031,12 +1209,7 @@ export function App() {
                 </div>
               </div>
 
-              <div className="glass-panel">
-                <h4 style={{ marginBottom: '1rem' }}>Live Logs</h4>
-                <div className="log-box" ref={logPanelRef}>
-                  {logs.join('\n')}
-                </div>
-              </div>
+              <LogsPanel logs={logs} title="Live Logs" defaultExpanded={true} />
             </div>
           )}
 
@@ -1066,6 +1239,7 @@ export function App() {
                 </div>
 
                 <AudioPlayer ref={audioPlayerRef} jobId={job.id} duration={job.durationSeconds} />
+                <InlineProgressPanel job={job} stageKey={activePostStage} />
 
                 <div className="transcript-body">
                   {groupedSegments.map((group, index) => (
@@ -1094,20 +1268,13 @@ export function App() {
           )}
 
           {view === "results" && job && job.status === "failed" && (
-            <div className="processing-dash">
+              <div className="processing-dash">
               <div className="glass-panel" style={{ borderLeft: '4px solid var(--danger)' }}>
                 <h3 style={{ color: 'var(--danger)', marginBottom: '1rem' }}>Processing Failed</h3>
                 <p style={{ marginBottom: '1rem' }}>{job.error}</p>
                 <button className="btn-secondary" onClick={resetToUpload}>Try Again</button>
               </div>
-              {logs.length > 0 && (
-                <div className="glass-panel">
-                  <h4 style={{ marginBottom: '1rem' }}>Logs</h4>
-                  <div className="log-box" ref={logPanelRef}>
-                    {logs.join('\n')}
-                  </div>
-                </div>
-              )}
+              <LogsPanel logs={logs} title="Logs" defaultExpanded={true} />
             </div>
           )}
 
@@ -1274,17 +1441,21 @@ export function App() {
                       </div>
                     )}
 
-                    <div className="glass-panel">
+                  <div className="glass-panel">
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
                         <button className="btn-secondary" onClick={() => {
                           copyText(JSON.stringify(displaySummary, null, 2));
                           setCopiedState("summary");
                         }}>{copiedState === "summary" ? "Copied!" : "Copy Summary JSON"}</button>
-                        <button className="btn-secondary" onClick={handleRetrySummarize} disabled={retryingStage !== null}>
-                          {retryingStage === 'summarize' ? 'Regenerating...' : 'Regenerate Summary'}
+                        <button className="btn-secondary" onClick={handleRetrySummarize} disabled={controlsDisabled}>
+                          {getStageProgress(job, "summarize") !== null
+                            ? `Regenerating... ${getStageProgress(job, "summarize")}%`
+                            : "Regenerate Summary"}
                         </button>
-                        <button className="btn-secondary" onClick={handleRetryDiarize} disabled={retryingStage !== null}>
-                          {retryingStage === 'diarize' ? 'Running ID...' : 'Re-run Speaker ID'}
+                        <button className="btn-secondary" onClick={handleRetryDiarize} disabled={controlsDisabled}>
+                          {getStageProgress(job, "diarize") !== null
+                            ? `Running ID... ${getStageProgress(job, "diarize")}%`
+                            : "Re-run Speaker ID"}
                         </button>
                       </div>
                     </div>
@@ -1292,8 +1463,10 @@ export function App() {
                 ) : (
                   <div className="glass-panel">
                     <p style={{ color: 'var(--text-muted)' }}>No summary available.</p>
-                    <button className="btn-secondary" onClick={handleRetrySummarize} disabled={retryingStage !== null} style={{ marginTop: '1rem', width: '100%' }}>
-                      Generate Summary
+                    <button className="btn-secondary" onClick={handleRetrySummarize} disabled={controlsDisabled} style={{ marginTop: '1rem', width: '100%' }}>
+                      {getStageProgress(job, "summarize") !== null
+                        ? `Generating Summary... ${getStageProgress(job, "summarize")}%`
+                        : "Generate Summary"}
                     </button>
                   </div>
                 )}
@@ -1356,11 +1529,12 @@ export function App() {
                         </button>
                         <button
                           className={`control-btn ${selectedVariant === 'english' ? 'active' : ''}`}
-                          onClick={() => setSelectedVariant('english')}
-                          disabled={!transcript.english}
+                          onClick={handleSelectEnglish}
                           type="button"
                         >
-                          Translation
+                          {getStageProgress(job, "translate") !== null
+                            ? `Translation ${getStageProgress(job, "translate")}%`
+                            : "Translation"}
                         </button>
                       </div>
 
@@ -1377,6 +1551,7 @@ export function App() {
                   </div>
 
                   <AudioPlayer ref={audioPlayerRef} jobId={job.id} duration={job.durationSeconds} />
+                  <InlineProgressPanel job={job} stageKey={activePostStage} />
 
                   <div className="transcript-body">
                     {groupedSegments.map((group, index) => (
@@ -1406,18 +1581,21 @@ export function App() {
                   </div>
                 </div>
 
-                {logs.length > 0 && (
-                  <div className="glass-panel" style={{ marginTop: '1.5rem' }}>
-                    <h4 style={{ marginBottom: '1rem' }}>Processing Logs</h4>
-                    <div className="log-box">
-                      {logs.join('\n')}
-                    </div>
-                  </div>
-                )}
+                <div style={{ gridColumn: "1 / -1" }}>
+                  <LogsPanel logs={logs} title="Processing Logs" defaultExpanded={false} />
+                </div>
             </div>
           )}
         </div>
       </div>
+      <ConfirmModal
+        open={showTranslateConfirm}
+        title="Translate transcript to English?"
+        description="This transcript was not translated during the original run. Start English translation now and show progress here?"
+        confirmLabel="Translate to English"
+        onCancel={() => setShowTranslateConfirm(false)}
+        onConfirm={handleRetryTranslate}
+      />
     </div>
   );
 }

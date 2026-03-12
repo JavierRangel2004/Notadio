@@ -372,6 +372,20 @@ a {
   gap: 2rem;
 }
 
+.section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.section-actions {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
 .stat-block span {
   display: block;
   font-size: 0.8rem;
@@ -395,6 +409,42 @@ a {
   max-height: 200px;
   overflow-y: auto;
   white-space: pre-wrap;
+}
+
+.inline-progress-panel {
+  margin: 1rem 1.5rem 0;
+  padding: 1rem 1.1rem;
+  border: 1px solid rgba(var(--accent-primary-rgb), 0.18);
+  border-radius: var(--radius-sm);
+  background:
+    linear-gradient(135deg, rgba(var(--accent-primary-rgb), 0.08) 0%, rgba(255, 255, 255, 0.02) 100%);
+}
+
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(5, 8, 14, 0.7);
+  backdrop-filter: blur(8px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.5rem;
+  z-index: 1000;
+}
+
+.modal-card {
+  width: min(100%, 32rem);
+  background: linear-gradient(180deg, rgba(15, 23, 36, 0.98) 0%, rgba(10, 16, 26, 0.98) 100%);
+  border: 1px solid var(--border-hover);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-soft);
+  padding: 1.5rem;
+}
+
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.75rem;
 }
 
 /* Results State */
@@ -741,6 +791,11 @@ a {
     margin: 0 1rem;
     padding-left: 0;
     padding-right: 0;
+  }
+
+  .inline-progress-panel {
+    margin-left: 1rem;
+    margin-right: 1rem;
   }
 
   .audio-controls {
