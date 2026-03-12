@@ -10,6 +10,9 @@
     "dev": "npm-run-all --parallel dev:backend dev:frontend",
     "dev:backend": "npm --workspace backend run dev",
     "dev:frontend": "npm --workspace frontend run dev",
+    "doctor": "npm --workspace backend run doctor",
+    "diff:log": "npm --workspace backend exec tsx ../scripts/generateDiff.ts",
+    "setup:diarization": "bash scripts/setup-diarization.sh",
     "build": "npm-run-all build:backend build:frontend",
     "build:backend": "npm --workspace backend run build",
     "build:frontend": "npm --workspace frontend run build"

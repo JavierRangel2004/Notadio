@@ -38,16 +38,19 @@ async function writeVariantArtifacts(
   const srtPath = path.join(variantDir, "transcript.srt");
   const jsonPath = path.join(variantDir, "transcript.json");
 
-  await fs.writeFile(txtPath, buildTxt(variant), "utf-8");
-  await fs.writeFile(srtPath, buildSrt(variant), "utf-8");
-  await writeJsonFile(jsonPath, {
-    jobId: record.jobId,
-    sourceMedia: record.sourceMedia,
-    durationSeconds: record.durationSeconds,
-    detectedLanguage: record.detectedLanguage,
-    warnings: record.warnings,
-    variant
-  });
+  await Promise.all([
+    fs.writeFile(txtPath, buildTxt(variant), "utf-8"),
+    fs.writeFile(srtPath, buildSrt(variant), "utf-8"),
+    writeJsonFile(jsonPath, {
+      jobId: record.jobId,
+      sourceMedia: record.sourceMedia,
+      durationSeconds: record.durationSeconds,
+      detectedLanguage: record.detectedLanguage,
+      warnings: record.warnings,
+      variant,
+      summary: record.summary
+    })
+  ]);
 
   return [txtPath, srtPath, jsonPath];
 }
@@ -62,10 +65,12 @@ export async function writeArtifacts(record: TranscriptRecord, targetDir: string
   await ensureDir(sourceDir);
   await ensureDir(englishDir);
 
-  const sourceArtifacts = await writeVariantArtifacts(record, record.source, sourceDir);
-  const englishArtifacts = record.english
-    ? await writeVariantArtifacts(record, record.english, englishDir)
-    : [];
+  const [sourceArtifacts, englishArtifacts] = await Promise.all([
+    writeVariantArtifacts(record, record.source, sourceDir),
+    record.english
+      ? writeVariantArtifacts(record, record.english, englishDir)
+      : Promise.resolve([] as string[])
+  ]);
 
   return {
     source: sourceArtifacts,
