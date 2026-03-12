@@ -2,7 +2,9 @@
 
 **Local-first audio and video transcription — powered by `whisper.cpp`.**
 
-Notadio lets you upload audio or video files, transcribe them locally with Whisper, optionally label speakers (diarization), and export results as `TXT`, `SRT`, or `JSON`.
+Notadio lets you upload audio or video files—or record directly from your microphone—to transcribe them locally with Whisper, optionally label speakers (diarization), and export results as `TXT`, `SRT`, or `JSON`. 
+
+It also includes an advanced, fully local AI summarization pipeline powered by Ollama, capable of handling extremely long transcripts via chunking and MapReduce workflows.
 
 🌐 **Live app:** `https://app.notadio.yourdomain.com` *(replace with your deployed URL)*  
 📦 **Repo:** [github.com/JavierRangel2004/Notadio](https://github.com/JavierRangel2004/Notadio)
@@ -11,12 +13,15 @@ Notadio lets you upload audio or video files, transcribe them locally with Whisp
 
 ## Features
 
-- Upload audio or video files (any format `ffmpeg` can read)
-- Transcribe locally with `whisper.cpp` — no API key, no cloud costs
-- Optional English translation output
-- Optional speaker diarization (speaker labeling)
-- Export `TXT`, `SRT`, `JSON` artifacts
-- Live progress telemetry: elapsed time, ETA, Whisper backend (CPU/GPU)
+- **Upload & Record:** Upload audio/video files (any format `ffmpeg` can read) or record directly from your microphone in the browser.
+- **Local Transcription:** Transcribe locally with `whisper.cpp` — no API key, no cloud costs.
+- **Smart Summarization (Ollama):** Choose from presets (Meeting, WhatsApp Voice Note, Generic Media). Automatically chunks long transcripts, summarizes concurrently, and reduces them into a cohesive executive recap. Fallbacks to a smart extractive summary if the LLM is unavailable.
+- **Speaker Diarization:** Optional speaker labeling to identify who said what.
+- **English Translation:** Optional English translation output on top of the original language.
+- **Post-processing Enhancements:** Base transcription runs first; you can optionally trigger Summarization, Diarization, or Translation later.
+- **Workspace Management:** View, manage, and delete multiple transcription jobs in your local workspace.
+- **Export Artifacts:** Download `TXT`, `SRT`, or `JSON` formats for source or translated variants.
+- **Live Progress Telemetry:** View elapsed time, ETA, Whisper backend (CPU/GPU) usage, and advanced pipeline timings directly in the UI.
 
 ---
 
@@ -28,6 +33,8 @@ Notadio lets you upload audio or video files, transcribe them locally with Whisp
 | Backend | Express + TypeScript |
 | Media pipeline | `ffmpeg` |
 | Transcription | `whisper.cpp` via CLI |
+| Summarization | `Ollama` |
+| Diarization | Local Python environment |
 
 ---
 
@@ -164,19 +171,6 @@ npm run dev
 
 ---
 
-## First-Run Success Criteria
-
-A successful first run means **all** of the following are true:
-
-- The job reaches `Transcript ready`
-- `GET /api/jobs/:id/transcript` returns non-empty `source.text` and `source.segments`
-- The UI shows transcript content (not an empty transcript warning)
-- Downloaded TXT/SRT/JSON artifacts contain real text
-
-> If the UI shows an empty transcript but the job shows 100% complete, treat this as a backend failure and check the live process logs.
-
----
-
 ## Configuration Reference (`.env`)
 
 ```env
@@ -213,6 +207,7 @@ ENABLE_ENGLISH_TRANSLATION=true
 JOB_LOG_LIMIT=300
 
 # Optional diarization (speaker labeling) command
+# Leave blank until you run `bash scripts/setup-diarization.sh`
 DIARIZATION_COMMAND=
 DIARIZATION_ARGS="{projectRoot}/scripts/diarize_audio.py" --input "{input}" --output "{outputFile}"
 
@@ -220,6 +215,10 @@ DIARIZATION_ARGS="{projectRoot}/scripts/diarize_audio.py" --input "{input}" --ou
 OLLAMA_BASE_URL=http://localhost:11434
 OLLAMA_MODEL=llama3.2
 ENABLE_SUMMARY=true
+# How many chunks to process in parallel for long transcripts
+SUMMARY_CHUNK_CONCURRENCY=2
+# Minimum chunks needed to trigger a "Reduce" stage. If fewer chunks, it merges locally.
+SUMMARY_REDUCE_MIN_PARTIALS=3
 
 # Concurrency controls
 WHISPER_PARALLEL=false
@@ -228,21 +227,24 @@ MAX_CONCURRENT_JOBS=1
 
 ---
 
+## AI Summarization Workflow
+
+Notadio features an advanced pipeline designed for transcripts of any length. 
+- **Short transcripts:** Get a direct, single-pass executive summary from Ollama.
+- **Long transcripts:** Split into chunks and summarized concurrently (`SUMMARY_CHUNK_CONCURRENCY`). Partial chunks are reduced into one final, cohesive summary. If fewer chunks are found than `SUMMARY_REDUCE_MIN_PARTIALS`, Notadio merges them locally without hitting Ollama again.
+- **Failures / Sparse Context:** If Ollama goes down or fails to output a usable JSON schema, Notadio falls back to a locally generated, extractive summary that isolates key terms, queries, and decisions based on term frequency within the transcript. 
+- **Summary Presets:** During the "Enhancements" phase, users can tailor the output style (Meeting Recap, Voice Note, Generic Media).
+
+---
+
 ## Performance & Live Telemetry
 
 The frontend shows per-job live telemetry:
-
-- Overall weighted progress
-- Elapsed time and ETA
-- Detected processing profile and thread recommendation
-- Actual Whisper runtime backend: `cpu`, `gpu`, or `pending` (inferred from Whisper logs)
-- Bounded live logs from `ffmpeg`, `whisper-cli`, and diarization
-
-To disable translation for long jobs (saves ~50% of processing time):
-
-```env
-ENABLE_ENGLISH_TRANSLATION=false
-```
+- Overall weighted progress across pipeline stages (transcribe, translate, diarize, summarize).
+- Elapsed time and ETA.
+- Detected processing profile and thread recommendation.
+- Live Whisper runtime backend: `cpu`, `gpu`, or `pending`.
+- Pipeline timings and summary diagnostics (useful for debugging chunk lengths, LLM calls, and strategy fallbacks).
 
 ---
 
@@ -259,16 +261,6 @@ DIARIZATION_ARGS="{projectRoot}/scripts/diarize_audio.py" --input "{input}" --ou
 `DIARIZATION_COMMAND` and `WHISPER_MODEL_PATH` may be absolute paths or project-root-relative paths.
 `{projectRoot}` in `DIARIZATION_ARGS` is replaced automatically by the backend.
 
-The command must write JSON to `{outputFile}` in one of these formats:
-
-```json
-{ "segments": [{ "start": 0.0, "end": 4.2, "speaker": "Speaker 1" }] }
-```
-or
-```json
-[{ "start": 0.0, "end": 4.2, "speaker": "Speaker 1" }]
-```
-
 If diarization is unavailable, transcription still succeeds and returns a warning.
 
 ---
@@ -283,6 +275,7 @@ If diarization is unavailable, transcription still succeeds and returns a warnin
 | CORS errors / API unreachable | Confirm `WEB_ORIGIN` in `.env` matches your frontend URL |
 | Job shows 100% but transcript is empty | Backend processing failure — check the live logs in the UI for the specific error |
 | GPU detected but runtime shows `cpu` | Your `whisper-cli` binary was not compiled with CUDA/Metal support |
+| AI Summary fails / skipped | Check Ollama is running (`ollama serve`). View "Summary Diagnostics" on the job page to check for JSON parsing or sparse output failures. Adjust `OLLAMA_MODEL`. |
 
 ### Whisper Runtime Diagnostic Script
 
@@ -332,4 +325,4 @@ Notadio/
 
 - v1 is single-user; jobs are stored locally under `data/`.
 - Backend and frontend are in separate npm workspaces for easy independent deployment.
-- No external API keys required — all transcription runs locally.
+- No external API keys required — all processing runs locally.
