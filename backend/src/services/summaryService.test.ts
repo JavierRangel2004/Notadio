@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { generateSummary } from "./summaryService.js";
 import { config } from "../config.js";
-import { TranscriptRecord } from "../types.js";
+import { SummaryPreset, TranscriptRecord } from "../types.js";
 
 type FetchStep = {
   payload?: string;
@@ -392,5 +392,159 @@ test("generateSummary falls back to merged chunk summaries when final reduce fai
     assert.equal(Boolean(result.summary?.brief), true);
   } finally {
     restore();
+  }
+});
+
+test("generateSummary uses whatsappVoiceNote preset in prompt", async () => {
+  const transcript = createTranscriptRecord([
+    "Oye necesito que me envíes el documento antes del viernes por favor."
+  ]);
+  const { restore, requestBodies } = installFetchSteps([
+    {
+      payload: JSON.stringify({
+        headline: "Solicitud de documento",
+        brief: "El hablante solicita un documento antes del viernes.",
+        keyDecisions: [],
+        actionItems: [{ task: "Enviar documento", deadline: "viernes" }],
+        sections: []
+      })
+    }
+  ]);
+
+  try {
+    const result = await generateSummary(transcript, {}, { preset: "whatsappVoiceNote" });
+    const prompt = String(requestBodies()[0]?.body.prompt ?? "");
+
+    assert.equal(prompt.includes("notas de voz"), true);
+    assert.equal(prompt.includes("solo hay un hablante"), true);
+    assert.equal(Boolean(result.summary), true);
+  } finally {
+    restore();
+  }
+});
+
+test("generateSummary uses genericMedia preset in prompt", async () => {
+  const transcript = createTranscriptRecord([
+    "En este video tutorial vamos a ver cómo configurar un servidor de desarrollo."
+  ]);
+  const { restore, requestBodies } = installFetchSteps([
+    {
+      payload: JSON.stringify({
+        headline: "Tutorial de configuración",
+        brief: "Video tutorial sobre configuración de servidor de desarrollo.",
+        keyDecisions: [],
+        actionItems: [],
+        sections: [{ title: "Setup", summary: "Pasos de configuración", bullets: ["Instalar dependencias"] }]
+      })
+    }
+  ]);
+
+  try {
+    const result = await generateSummary(transcript, {}, { preset: "genericMedia" });
+    const prompt = String(requestBodies()[0]?.body.prompt ?? "");
+
+    assert.equal(prompt.includes("audio y video"), true);
+    assert.equal(prompt.includes("neutral"), true);
+    assert.equal(Boolean(result.summary), true);
+  } finally {
+    restore();
+  }
+});
+
+test("generateSummary meeting preset uses executive meeting context", async () => {
+  const transcript = createTranscriptRecord([
+    "Revisamos las prioridades del sprint y los bloqueos pendientes."
+  ]);
+  const { restore, requestBodies } = installFetchSteps([
+    {
+      payload: JSON.stringify({
+        headline: "Sprint review",
+        brief: "Se revisaron prioridades y bloqueos del sprint.",
+        keyDecisions: ["Priorizar feature X"],
+        actionItems: [{ task: "Desbloquear integración", assignee: "Backend" }],
+        sections: []
+      })
+    }
+  ]);
+
+  try {
+    await generateSummary(transcript, {}, { preset: "meeting" });
+    const prompt = String(requestBodies()[0]?.body.prompt ?? "");
+
+    assert.equal(prompt.includes("reuniones ejecutivas"), true);
+    assert.equal(prompt.includes("tono ejecutivo y narrativo"), true);
+  } finally {
+    restore();
+  }
+});
+
+test("generateSummary meeting guardrails promote missing decisions/actions/questions and canonical sections", async () => {
+  const transcript = createTranscriptRecord([
+    "Decidimos cerrar la etapa actual y hacer handover solo con propuesta formal.",
+    "Hay que enviar propuesta economica entre manana y viernes.",
+    "Como se va a ejecutar la transicion con el nuevo recurso?"
+  ]);
+
+  const { restore } = installFetchSteps([
+    {
+      payload: JSON.stringify({
+        headline: "Cierre de etapa",
+        brief: "Se trato la salida del colaborador y una posible transicion.",
+        overview:
+          "Se decidio no continuar en la empresa. Hay que enviar propuesta economica formal entre manana y viernes. Como se ejecutara la transicion con nuevo recurso?",
+        keyDecisions: [],
+        actionItems: [],
+        openQuestions: [],
+        sections: []
+      })
+    }
+  ]);
+
+  try {
+    const result = await generateSummary(transcript, {}, { preset: "meeting" });
+
+    assert.equal((result.summary?.keyDecisions.length ?? 0) > 0, true);
+    assert.equal((result.summary?.actionItems.length ?? 0) > 0, true);
+    assert.equal((result.summary?.openQuestions.length ?? 0) > 0, true);
+    assert.equal(result.summary?.sections.some((section) => section.title === "Postura y decisiones"), true);
+    assert.equal(result.summary?.sections.some((section) => section.title === "Acuerdos y siguientes pasos"), true);
+  } finally {
+    restore();
+  }
+});
+
+test("generateSummary with force flag bypasses enableSummary config", async () => {
+  const transcript = createTranscriptRecord(["Contenido de prueba para forzar resumen."]);
+  const originalEnableSummary = config.enableSummary;
+
+  try {
+    (config as Record<string, unknown>).enableSummary = false;
+
+    const withoutForce = await generateSummary(transcript);
+    assert.equal(withoutForce.summary, undefined);
+    assert.equal(withoutForce.warnings.length, 0);
+
+    const { restore, requestBodies } = installFetchSteps([
+      {
+        payload: JSON.stringify({
+          headline: "Forced summary",
+          brief: "Resumen forzado con contenido útil.",
+          keyDecisions: ["Decisión de prueba"],
+          actionItems: [{ task: "Tarea forzada", assignee: "Test" }],
+          sections: [{ title: "Sección", summary: "Resumen de sección", bullets: ["Punto 1"] }]
+        })
+      }
+    ]);
+
+    try {
+      const withForce = await generateSummary(transcript, {}, { force: true });
+      assert.equal(requestBodies().length > 0, true, "Force flag should trigger Ollama call");
+      assert.equal(withForce.summaryDiagnostics?.requestCount, 1);
+      assert.notEqual(withForce.summary, undefined);
+    } finally {
+      restore();
+    }
+  } finally {
+    (config as Record<string, unknown>).enableSummary = originalEnableSummary;
   }
 });

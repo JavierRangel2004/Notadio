@@ -5,8 +5,73 @@ import {
   MeetingSummarySection,
   SummaryChunkDiagnostic,
   SummaryDiagnostics,
+  SummaryPreset,
   TranscriptRecord
 } from "../types.js";
+
+export type SummaryOptions = {
+  preset?: SummaryPreset;
+  force?: boolean;
+};
+
+type PresetContext = {
+  systemRole: string;
+  objectivePrefix: string;
+  extraRules: string[];
+  reduceContext: string;
+};
+
+const MEETING_CANONICAL_SECTIONS = [
+  "Postura y decisiones",
+  "Reacciones y riesgos",
+  "Handover y alcance técnico",
+  "Acuerdos y siguientes pasos",
+  "Cierre / notas relacionales"
+] as const;
+
+function getPresetContext(preset?: SummaryPreset): PresetContext {
+  switch (preset) {
+    case "whatsappVoiceNote":
+      return {
+        systemRole: "Eres un asistente que resume notas de voz de manera concisa y directa.",
+        objectivePrefix: "Redacta un resumen conciso de esta nota de voz, enfocándote en la intención del hablante, peticiones, plazos y compromisos. No uses jerga de reuniones.",
+        extraRules: [
+          "Si solo hay un hablante, omite la identificación de speakers y enfócate en el contenido.",
+          "Enfócate en la intención y los puntos clave del mensaje, no en estructura de reunión.",
+          "Usa 'brief' para un resumen de 1-2 oraciones del mensaje principal.",
+          "Prioriza deadlines, compromisos y preguntas directas en los actionItems."
+        ],
+        reduceContext: "Fusiona los resúmenes parciales de esta nota de voz en un único resumen conciso."
+      };
+    case "genericMedia":
+      return {
+        systemRole: "Eres un asistente que analiza contenido de audio y video para extraer información relevante.",
+        objectivePrefix: "Redacta un resumen neutral del contenido, destacando puntos clave, momentos notables y cualquier información accionable.",
+        extraRules: [
+          "Mantén un tono neutral y descriptivo.",
+          "Si hay múltiples temas, agrúpalos en secciones claras.",
+          "Incluye referencias temporales cuando sean relevantes.",
+          "Si no hay tareas explícitas, deja actionItems vacío en lugar de inventar."
+        ],
+        reduceContext: "Fusiona los resúmenes parciales de este contenido de audio/video en un único resumen cohesivo."
+      };
+    case "meeting":
+    default:
+      return {
+        systemRole: "Eres un asistente experto en reuniones ejecutivas.",
+        objectivePrefix:
+          "Redacta un resumen claro y útil para operación real, con tono ejecutivo y narrativo: qué se decidió, por qué, qué queda pendiente y qué sigue.",
+        extraRules: [
+          "Incluye explícitamente decisiones irrevocables y su racional principal cuando aparezcan.",
+          "Captura condiciones de handover/transición, límites de alcance y contraprestaciones acordadas.",
+          "Refleja estado técnico concreto (ej. ya en producción vs pendiente) dentro de sections o keyDecisions.",
+          "Si hay compromisos de fecha o ventanas de tiempo, conviértelos en actionItems y followUps.",
+          "Incluye acuerdos de comunicación/proceso y el tono de cierre en operationalNotes o sección de cierre."
+        ],
+        reduceContext: "Fusiona la información repetida sin perder decisiones, riesgos, preguntas y tareas concretas. Prioriza el hallazgo o problema dominante en \"headline\" y \"brief\"."
+      };
+  }
+}
 
 const SUMMARY_PLACEHOLDER_BRIEF = "No brief generated.";
 const SUMMARY_FALLBACK_WARNING = "AI summary lacked usable content; generated a transcript-based fallback summary.";
@@ -489,7 +554,147 @@ function buildSummaryWarning(errorMessage: string): string {
   return `AI summary skipped: Summary generation failed (${errorMessage}).`;
 }
 
-function buildSummary(parsed: Record<string, unknown>): MeetingSummary {
+function detectLikelyMeetingPreset(preset?: SummaryPreset): boolean {
+  return !preset || preset === "meeting";
+}
+
+function rankDistinctLines(lines: string[]): string[] {
+  return [...new Set(lines.map((line) => normalizeText(line)).filter(Boolean))];
+}
+
+function extractSignalLines(summary: MeetingSummary): string[] {
+  return rankDistinctLines([
+    summary.headline ?? "",
+    summary.brief,
+    summary.overview ?? "",
+    summary.narrative ?? "",
+    ...summary.sections.flatMap((section) => [section.title, section.summary, ...section.bullets])
+  ]);
+}
+
+function promoteMissingSignals(summary: MeetingSummary): MeetingSummary {
+  const sourceLines = extractSignalLines(summary);
+  const decisionRegex = /\b(decid|acord|defin|resolv|conclu|se cierra|salida)\b/i;
+  const actionRegex = /\b(hay que|se debe|pendient|enviar|prepar|coordinar|revisar|implementar|avisar|propuesta)\b/i;
+  const questionRegex = /\?|^\s*(como|cómo|cuando|cuándo|quien|quién|cual|cuál)\b/i;
+
+  if (summary.keyDecisions.length === 0) {
+    summary.keyDecisions = sourceLines.filter((line) => decisionRegex.test(line)).slice(0, 5);
+  }
+
+  if (summary.actionItems.length === 0) {
+    summary.actionItems = sourceLines
+      .filter((line) => actionRegex.test(line))
+      .slice(0, 6)
+      .map((task) => ({ task }));
+  }
+
+  if (summary.openQuestions.length === 0) {
+    summary.openQuestions = sourceLines.filter((line) => questionRegex.test(line)).slice(0, 4);
+  }
+
+  return summary;
+}
+
+function classifyMeetingSection(section: MeetingSummarySection): (typeof MEETING_CANONICAL_SECTIONS)[number] {
+  const joined = normalizeTokenSource(`${section.title} ${section.summary} ${section.bullets.join(" ")}`);
+
+  if (/(handover|transicion|transicion|capacitacion|recurso|entrega|paypal|tarjeta|produccion)/.test(joined)) {
+    return "Handover y alcance técnico";
+  }
+
+  if (/(acuerdo|siguiente|propuesta|viernes|manana|mañana|coordinar|contacto|seguimiento)/.test(joined)) {
+    return "Acuerdos y siguientes pasos";
+  }
+
+  if (/(riesgo|bloque|preocup|inquietud|problema)/.test(joined)) {
+    return "Reacciones y riesgos";
+  }
+
+  if (/(gracias|cierre|orgullo|recomendacion|talento|cordial)/.test(joined)) {
+    return "Cierre / notas relacionales";
+  }
+
+  return "Postura y decisiones";
+}
+
+function enforceMeetingSectionOrder(summary: MeetingSummary): MeetingSummary {
+  const grouped = new Map<(typeof MEETING_CANONICAL_SECTIONS)[number], string[]>();
+  for (const title of MEETING_CANONICAL_SECTIONS) {
+    grouped.set(title, []);
+  }
+
+  for (const section of summary.sections) {
+    const targetTitle = classifyMeetingSection(section);
+    const current = grouped.get(targetTitle) ?? [];
+    const lines = [section.summary, ...section.bullets].filter(Boolean);
+    grouped.set(targetTitle, [...current, ...lines]);
+  }
+
+  if (summary.keyDecisions.length > 0) {
+    const current = grouped.get("Postura y decisiones") ?? [];
+    grouped.set("Postura y decisiones", [...current, ...summary.keyDecisions]);
+  }
+
+  if (summary.actionItems.length > 0 || summary.followUps.length > 0) {
+    const current = grouped.get("Acuerdos y siguientes pasos") ?? [];
+    const actionLines = summary.actionItems.map((item) => {
+      const meta = [item.assignee, item.deadline].filter(Boolean).join(" · ");
+      return meta ? `${item.task} (${meta})` : item.task;
+    });
+    grouped.set("Acuerdos y siguientes pasos", [...current, ...actionLines, ...summary.followUps]);
+  }
+
+  if (summary.risks.length > 0 || summary.openQuestions.length > 0) {
+    const current = grouped.get("Reacciones y riesgos") ?? [];
+    grouped.set("Reacciones y riesgos", [...current, ...summary.risks, ...summary.openQuestions]);
+  }
+
+  if (summary.operationalNotes.length > 0) {
+    const current = grouped.get("Cierre / notas relacionales") ?? [];
+    grouped.set("Cierre / notas relacionales", [...current, ...summary.operationalNotes]);
+  }
+
+  const rebuilt: MeetingSummarySection[] = [];
+
+  for (const title of MEETING_CANONICAL_SECTIONS) {
+    const bullets = rankDistinctLines(grouped.get(title) ?? []).slice(0, 6);
+    if (bullets.length === 0) {
+      continue;
+    }
+
+    rebuilt.push({
+      title,
+      summary: bullets[0],
+      bullets
+    });
+  }
+
+  if (rebuilt.length > 0) {
+    summary.sections = rebuilt;
+  }
+
+  return summary;
+}
+
+function applyMeetingGuardrails(summary: MeetingSummary, preset?: SummaryPreset): MeetingSummary {
+  if (!detectLikelyMeetingPreset(preset)) {
+    return summary;
+  }
+
+  promoteMissingSignals(summary);
+  enforceMeetingSectionOrder(summary);
+  summary.sections = deriveFallbackSections(summary);
+  summary.narrative = deriveNarrative({
+    brief: summary.brief,
+    overview: summary.overview ?? "",
+    sections: summary.sections
+  });
+
+  return summary;
+}
+
+function buildSummary(parsed: Record<string, unknown>, preset?: SummaryPreset): MeetingSummary {
   const rawActionItems = [
     ...(Array.isArray(parsed.actionItems) ? parsed.actionItems : []),
     ...(Array.isArray(parsed.tasks) ? parsed.tasks : []),
@@ -538,7 +743,7 @@ function buildSummary(parsed: Record<string, unknown>): MeetingSummary {
     sections: summary.sections
   });
 
-  return summary;
+  return applyMeetingGuardrails(summary, preset);
 }
 
 function isPlaceholderBrief(value: string): boolean {
@@ -707,7 +912,7 @@ function dedupeBy<T>(items: T[], makeKey: (item: T) => string): T[] {
   return unique;
 }
 
-function mergePartialSummaries(partials: MeetingSummary[]): MeetingSummary {
+function mergePartialSummaries(partials: MeetingSummary[], preset?: SummaryPreset): MeetingSummary {
   const sections = dedupeBy(
     partials.flatMap((summary) => summary.sections),
     (section) => `${section.title} ${section.summary} ${section.bullets.join(" ")}`
@@ -760,7 +965,7 @@ function mergePartialSummaries(partials: MeetingSummary[]): MeetingSummary {
     sections: merged.sections
   });
 
-  return merged;
+  return applyMeetingGuardrails(merged, preset);
 }
 
 function chunkTranscriptText(transcriptText: string, maxChars: number): string[] {
@@ -830,13 +1035,15 @@ function buildSchemaInstructions(): string {
 }`;
 }
 
-function buildChunkPrompt(transcriptText: string, chunkIndex: number, totalChunks: number): string {
-  return `Eres un asistente experto en reuniones ejecutivas. Analiza SOLO este fragmento ${chunkIndex} de ${totalChunks} de una transcripción más larga y devuelve SOLO un objeto JSON válido.
+function buildChunkPrompt(transcriptText: string, chunkIndex: number, totalChunks: number, preset?: SummaryPreset): string {
+  const ctx = getPresetContext(preset);
+  return `${ctx.systemRole} Analiza SOLO este fragmento ${chunkIndex} de ${totalChunks} de una transcripción más larga y devuelve SOLO un objeto JSON válido.
 
 Objetivo:
 - Resume únicamente la información presente en este fragmento.
 - Conserva decisiones, tareas, riesgos, avisos y preguntas aunque todavía estén incompletos.
 - Si un hallazgo parece tentativo o parcial, exprésalo como tal.
+- Prioriza: postura/decisiones, límites del handover, estado técnico, próximos pasos y dudas abiertas.
 
 ${buildSchemaInstructions()}
 
@@ -845,6 +1052,7 @@ Reglas:
 2. No escribas markdown ni texto fuera del JSON.
 3. Usa arrays vacíos cuando falte información.
 4. Mantén nombres propios, roles y citas clave lo más específicos posible.
+5. Si hay fechas o ventanas de tiempo, conviértelas en actionItems/followUps.
 
 Fragmento ${chunkIndex}/${totalChunks}:
 ${transcriptText}`;
@@ -881,24 +1089,26 @@ function compactSummaryForReduce(summary: MeetingSummary): Record<string, unknow
   };
 }
 
-function buildReducePrompt(partials: MeetingSummary[]): string {
+function buildReducePrompt(partials: MeetingSummary[], preset?: SummaryPreset): string {
+  const ctx = getPresetContext(preset);
   const serializedPartials = partials
     .map((summary, index) => `Fragmento ${index + 1}:\n${JSON.stringify(compactSummaryForReduce(summary), null, 2)}`)
     .join("\n\n");
 
-  return `Eres un asistente experto en reuniones ejecutivas. Combina estos resúmenes parciales en un SOLO resumen ejecutivo consolidado y devuelve SOLO un objeto JSON válido.
+  return `${ctx.systemRole} Combina estos resúmenes parciales en un SOLO resumen ejecutivo consolidado y devuelve SOLO un objeto JSON válido.
 
 Objetivo:
-- Fusiona la información repetida sin perder decisiones, riesgos, preguntas y tareas concretas.
-- Prioriza el hallazgo o problema dominante en "headline" y "brief".
+- ${ctx.reduceContext}
 - Si varios fragmentos aportan contexto, intégralos en "overview" y "sections".
+- Mantén una narrativa tipo recap ejecutivo: qué se decidió, por qué, qué sigue y qué queda pendiente.
 
 ${buildSchemaInstructions()}
 
 Reglas:
 1. No escribas markdown ni texto fuera del JSON.
 2. Deduplica decisiones, tareas y riesgos repetidos.
-3. Mantén el tono ejecutivo y accionable.
+3. Mantén el tono accionable.
+4. Asegura cobertura explícita de keyDecisions, actionItems y openQuestions cuando exista evidencia.
 
 Resúmenes parciales:
 ${serializedPartials}`;
@@ -986,15 +1196,18 @@ async function mapWithConcurrency<T, TResult>(
   return results;
 }
 
-function buildPrompt(transcriptText: string): string {
-  return `Eres un asistente experto en reuniones ejecutivas. Analiza la transcripción y devuelve SOLO un objeto JSON válido.
+function buildPrompt(transcriptText: string, preset?: SummaryPreset): string {
+  const ctx = getPresetContext(preset);
+  const extraRules = ctx.extraRules.map((rule, i) => `${i + 4}. ${rule}`).join("\n");
+
+  return `${ctx.systemRole} Analiza la transcripción y devuelve SOLO un objeto JSON válido.
 
 Objetivo:
-- Redacta un resumen claro y útil para operación real, con el tono de un recap ejecutivo bien aterrizado.
+- ${ctx.objectivePrefix}
 - Si la transcripción está en español, responde en español natural.
 - Detecta prioridades, acuerdos, decisiones, pendientes, tareas, avisos, bloqueos, riesgos y dudas abiertas.
 - Convierte tareas o todos implícitos en actionItems concretos.
-- Usa secciones narrativas similares a un resumen ejecutivo detallado, con títulos específicos como "Prioridad absoluta: estabilizar el MVP" cuando aplique.
+- Integra contexto tipo Notebook recap: postura, reacción, alcance técnico/handover, acuerdos y cierre.
 
 ${buildSchemaInstructions()}
 
@@ -1002,10 +1215,7 @@ Reglas:
 1. No escribas markdown, encabezados sueltos ni texto fuera del JSON.
 2. Usa arrays vacíos cuando falte información.
 3. Mantén nombres propios, roles y acuerdos lo más específicos posible.
-4. Si hay prioridades claras, refléjalas tanto en headline como en sections/actionItems.
-5. Si aparecen acuerdos sobre proceso, comunicación, QA, diseño o coordinación, inclúyelos en sections u operationalNotes.
-6. Si una tarea solo es implícita pero claramente acordada, inclúyela como actionItem.
-7. Cuando existan avisos logísticos, ausencias o restricciones de disponibilidad, inclúyelos en operationalNotes.
+${extraRules}
 
 Transcripción:
 ${transcriptText}`;
@@ -1016,9 +1226,10 @@ export async function generateSummary(
   callbacks: {
     onLog?: (line: string) => void;
     onProgress?: (stagePct: number) => void;
-  } = {}
+  } = {},
+  options?: SummaryOptions
 ): Promise<SummaryGenerationResult> {
-  if (!config.enableSummary) {
+  if (!config.enableSummary && !options?.force) {
     return { warnings: [] };
   }
 
@@ -1089,11 +1300,11 @@ export async function generateSummary(
     let summary: MeetingSummary;
     if (transcriptChunks.length <= 1) {
       callbacks.onProgress?.(80);
-      const directRequest = await requestStructuredSummaryTimed(buildPrompt(transcriptText));
+      const directRequest = await requestStructuredSummaryTimed(buildPrompt(transcriptText, options?.preset));
       diagnostics.requestCount = 1;
       diagnostics.directDurationMs = directRequest.durationMs;
       callbacks.onLog?.(`[summary-metrics] direct summary request completed in ${formatDurationMs(directRequest.durationMs)}.`);
-      summary = buildSummary(directRequest.payload);
+      summary = buildSummary(directRequest.payload, options?.preset);
       diagnostics.partialCount = 1;
       diagnostics.chunks = [
         {
@@ -1122,8 +1333,8 @@ export async function generateSummary(
         const chunkStartedAt = Date.now();
 
         try {
-          const request = await requestStructuredSummaryTimed(buildChunkPrompt(chunk, index + 1, transcriptChunks.length));
-          const partial = buildSummary(request.payload);
+          const request = await requestStructuredSummaryTimed(buildChunkPrompt(chunk, index + 1, transcriptChunks.length, options?.preset));
+          const partial = buildSummary(request.payload, options?.preset);
           const diagnostic: SummaryChunkDiagnostic = {
             chunkIndex: index + 1,
             inputChars: chunk.length,
@@ -1202,28 +1413,28 @@ export async function generateSummary(
           `[summary-metrics] final reduce skipped for ${partials.length} partial summaries; merging locally instead.`
         );
         const mergeStartedAt = Date.now();
-        summary = mergePartialSummaries(partials);
+        summary = mergePartialSummaries(partials, options?.preset);
         diagnostics.mergeDurationMs = Date.now() - mergeStartedAt;
       } else {
         callbacks.onLog?.(`Combining ${partials.length} chunk summaries into one final recap...`);
         callbacks.onProgress?.(82);
         diagnostics.requestCount += 1;
         try {
-          const reduceRequest = await requestStructuredSummaryTimed(buildReducePrompt(partials));
+          const reduceRequest = await requestStructuredSummaryTimed(buildReducePrompt(partials, options?.preset));
           diagnostics.usedReduce = true;
           diagnostics.reduceDurationMs = reduceRequest.durationMs;
           callbacks.onLog?.(
             `[summary-metrics] final reduce completed in ${formatDurationMs(reduceRequest.durationMs)}.`
           );
 
-          const reduced = buildSummary(reduceRequest.payload);
+          const reduced = buildSummary(reduceRequest.payload, options?.preset);
           if (hasMeaningfulSummaryContent(reduced)) {
             summary = reduced;
           } else {
             diagnostics.usedMergedPartials = true;
             callbacks.onLog?.("[summary-metrics] final reduce returned sparse JSON. Falling back to merged chunk summaries.");
             const mergeStartedAt = Date.now();
-            summary = mergePartialSummaries(partials);
+            summary = mergePartialSummaries(partials, options?.preset);
             diagnostics.mergeDurationMs = Date.now() - mergeStartedAt;
           }
         } catch (error) {
@@ -1231,7 +1442,7 @@ export async function generateSummary(
           callbacks.onLog?.(`Final summary consolidation failed: ${errorMessage}. Falling back to merged chunk summaries.`);
           diagnostics.usedMergedPartials = true;
           const mergeStartedAt = Date.now();
-          summary = mergePartialSummaries(partials);
+          summary = mergePartialSummaries(partials, options?.preset);
           diagnostics.mergeDurationMs = Date.now() - mergeStartedAt;
         }
       }
