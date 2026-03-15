@@ -1,0 +1,148 @@
+{
+  "headline": "Desafíos en startups tecnológicas: explotación laboral, liderazgo ineficaz y dinámica de poder",
+  "brief": "Las startups tecnológicas enfrentan desafíos significativos, incluyendo la explotación laboral, el liderazgo ineficaz y la dinámica de poder en la tecnología.",
+  "overview": "La explotación laboral, el liderazgo ineficaz y la dinámica de poder en la tecnología son tres de los desafíos más significativos que enfrentan las startups tecnológicas. Es importante replantear cómo valoramos el conocimiento estructural frente a la simple generación de código y cómo abordar la dinámica de poder de manera efectiva.",
+  "narrative": "La explotación laboral, el liderazgo ineficaz y la dinámica de poder en la tecnología son tres de los desafíos más significativos que enfrentan las startups tecnológicas. Es importante replantear cómo valoramos el conocimiento estructural frente a la simple generación de código y cómo abordar la dinámica de poder de manera efectiva.",
+  "keyDecisions": [
+    "exigir un contrato laboral justo",
+    "replanteo de valor del conocimiento estructural",
+    "garantizar una contropreestación justa"
+  ],
+  "actionItems": [
+    {
+      "task": "Documentar cada aportación y auditar periódicamente los repositorios",
+      "assignee": "la empresa",
+      "deadline": "inmediato",
+      "priority": "alta",
+      "status": "pendiente",
+      "notes": "importancia de la trazabilidad"
+    },
+    {
+      "task": "Revisar y analizar la dinámica de poder en la tecnología",
+      "priority": "alta"
+    }
+  ],
+  "topics": [
+    "explotación laboral",
+    "liderazgo ineficaz",
+    "dinámica de poder en la tecnología"
+  ],
+  "sections": [
+    {
+      "title": "La explotación laboral",
+      "summary": "La explotación laboral es un problema grave en las startups tecnológicas, donde los empleados son explotados sin protección justa.",
+      "bullets": [
+        "dependencia en un solo desarrollador",
+        "falta de conocimientos técnicos en el socio",
+        "explotación laboral"
+      ],
+      "priority": "alta"
+    },
+    {
+      "title": "El liderazgo ineficaz",
+      "summary": "El liderazgo ineficaz es un problema común en las startups tecnológicas, donde los líderes no tienen las habilidades técnicas necesarias para tomar decisiones informadas.",
+      "bullets": [
+        "punto 1",
+        "punto 2"
+      ],
+      "priority": "alta"
+    },
+    {
+      "title": "La dinámica de poder en la tecnología",
+      "summary": "La dinámica de poder en la tecnología es un tema complejo que requiere replantear cómo valoramos el conocimiento estructural frente a la simple generación de código.",
+      "bullets": [
+        "punto 1",
+        "punto 2"
+      ],
+      "priority": "alta"
+    }
+  ],
+  "followUps": [
+    "revisar los contratos y los repositorios de código",
+    "Revisar y analizar la dinámica de poder en la tecnología"
+  ],
+  "risks": [
+    "explotación laboral",
+    "liderazgo ineficaz",
+    "Riesgo de que la dinámica de poder no sea abordada de manera efectiva"
+  ],
+  "operationalNotes": [
+    "la importancia de proteger el talento técnico",
+    "Agradecimiento a los participantes por su tiempo y participación"
+  ],
+  "openQuestions": [
+    "¿cómo se puede evitar la explotación laboral en startups tecnológicas?",
+    "¿Cómo abordar la dinámica de poder en la tecnología de manera efectiva?"
+  ]
+}
+
+Summary Diagnostics
+Strategy
+Chunked summary (4 chunks, concurrency 2)
+Total
+183.6 s
+LLM Calls
+5
+Direct
+n/a
+Reduce
+59.3 s
+Local Merge
+n/a
+Fallback
+n/a
+Primary structured summary succeeded. Final reduce request used. Full selected transcript blocks were used.
+Chunk timing details (4)
+Chunk 1
+68.7 s
+completed
+7980 chars
+1 sections
+1 action items
+Chunk 2
+33.1 s
+completed
+7639 chars
+1 sections
+1 action items
+Chunk 3
+72.7 s
+completed
+7908 chars
+1 sections
+1 action items
+Chunk 4
+55.6 s
+completed
+391 chars
+1 sections
+1 action items
+Pipeline Timings
+Queued
+0 ms
+Normalizing media for transcription
+completed
+Normalize
+1.66 s
+Normalizing media for transcription
+completed
+Transcribe
+33.3 s
+Running local Whisper transcription
+completed
+Translate
+29.5 s
+Generating English translation
+completed
+Diarize
+203.1 s
+Applying speaker diarization
+completed
+Summarize
+183.6 s
+Generating AI meeting summary
+completed
+Export
+2 ms
+Writing transcript artifacts
+completed

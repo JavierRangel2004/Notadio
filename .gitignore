@@ -8,6 +8,8 @@ coverage/
 .nyc_output/
 *.tsbuildinfo
 .vite/
+.local/
+logs/
 
 # Runtime/storage artifacts
 data/
@@ -47,3 +49,4 @@ Desktop.ini
 .claude-flow/
 .cursor/
 .swarm/
+DEPLOYMENT_PLAN.md

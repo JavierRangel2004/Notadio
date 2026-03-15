@@ -6,6 +6,13 @@ import { JobProcessingProfile, TranscriptSegment, TranscriptVariant } from "../t
 import { ensureDir, readJsonFile } from "../utils/fs.js";
 import { parseArgs, runCommand } from "../utils/process.js";
 
+type TranscribeResult = {
+  source: TranscriptVariant;
+  english?: TranscriptVariant;
+  warnings: string[];
+  processing: JobProcessingProfile;
+};
+
 type WhisperTranscriptionEntry = {
   text?: unknown;
   start?: unknown;
@@ -34,6 +41,10 @@ type WhisperTaskOptions = {
   processingProfile: JobProcessingProfile;
   allowEmpty?: boolean;
 } & WhisperCallbacks;
+
+const WHISPER_SEGMENT_LOG_PATTERN = /^\[\d{2}:\d{2}(?::\d{2})?\.\d+\s+-->\s+\d{2}:\d{2}(?::\d{2})?\.\d+\]/;
+const TRANSLATION_BATCH_MAX_SEGMENTS = 12;
+const TRANSLATION_BATCH_MAX_CHARS = 2200;
 
 function toNumber(value: unknown): number {
   return typeof value === "number" ? value : Number(value ?? 0);
@@ -150,6 +161,168 @@ function parseProgressLine(line: string): number | undefined {
   return Number.isFinite(value) ? Math.max(0, Math.min(100, value)) : undefined;
 }
 
+function shouldSurfaceWhisperLogLine(line: string): boolean {
+  return !WHISPER_SEGMENT_LOG_PATTERN.test(line.trim());
+}
+
+function extractJsonCandidate(response: string): string {
+  const fencedMatch = response.match(/```(?:json)?\s*([\s\S]*?)\s*```/i);
+  if (fencedMatch) {
+    return fencedMatch[1].trim();
+  }
+
+  const trimmed = response.trim();
+  if (trimmed.startsWith("{") || trimmed.startsWith("[")) {
+    return trimmed;
+  }
+
+  const objectStart = trimmed.indexOf("{");
+  const objectEnd = trimmed.lastIndexOf("}");
+  if (objectStart !== -1 && objectEnd > objectStart) {
+    return trimmed.slice(objectStart, objectEnd + 1).trim();
+  }
+
+  const arrayStart = trimmed.indexOf("[");
+  const arrayEnd = trimmed.lastIndexOf("]");
+  if (arrayStart !== -1 && arrayEnd > arrayStart) {
+    return trimmed.slice(arrayStart, arrayEnd + 1).trim();
+  }
+
+  return trimmed;
+}
+
+function repairJson(jsonString: string): string {
+  return jsonString
+    .replace(/^\uFEFF/, "")
+    .replace(/[“”]/g, "\"")
+    .replace(/[‘’]/g, "'")
+    .replace(/,\s*([}\]])/g, "$1");
+}
+
+function parseJsonFromLlmResponse(response: string): Record<string, unknown> {
+  const jsonString = extractJsonCandidate(response);
+
+  try {
+    return JSON.parse(jsonString) as Record<string, unknown>;
+  } catch {
+    try {
+      return JSON.parse(repairJson(jsonString)) as Record<string, unknown>;
+    } catch {
+      throw new Error("Failed to parse translation response as JSON.");
+    }
+  }
+}
+
+function chunkSegments(segments: TranscriptSegment[]): TranscriptSegment[][] {
+  const chunks: TranscriptSegment[][] = [];
+  let currentChunk: TranscriptSegment[] = [];
+  let currentChars = 0;
+
+  for (const segment of segments) {
+    const segmentChars = segment.text.length;
+    const nextChars = currentChars + segmentChars;
+    if (
+      currentChunk.length > 0 &&
+      (currentChunk.length >= TRANSLATION_BATCH_MAX_SEGMENTS || nextChars > TRANSLATION_BATCH_MAX_CHARS)
+    ) {
+      chunks.push(currentChunk);
+      currentChunk = [];
+      currentChars = 0;
+    }
+
+    currentChunk.push(segment);
+    currentChars += segmentChars;
+  }
+
+  if (currentChunk.length > 0) {
+    chunks.push(currentChunk);
+  }
+
+  return chunks;
+}
+
+function buildTranslationPrompt(batch: TranscriptSegment[]): string {
+  const serializedBatch = JSON.stringify(
+    batch.map((segment, index) => ({
+      index,
+      speaker: segment.speaker ?? null,
+      start: segment.start,
+      end: segment.end,
+      text: segment.text
+    })),
+    null,
+    2
+  );
+
+  return `You translate transcript segments from Spanish to English.
+Return ONLY valid JSON with this exact shape:
+{"translations":[{"index":0,"text":"..."}]}
+
+Rules:
+1. Keep exactly one output item per input segment.
+2. Preserve the original ordering and indexes.
+3. Translate only the text field into natural English.
+4. Do not summarize, merge, omit, add timestamps, or add speaker labels.
+5. If a segment is already English, keep it natural English.
+
+Segments:
+${serializedBatch}`;
+}
+
+async function requestStructuredTranslation(batch: TranscriptSegment[]): Promise<string[]> {
+  const prompt = buildTranslationPrompt(batch);
+  const response = await fetch(`${config.ollamaBaseUrl}/api/generate`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      model: config.ollamaModel,
+      prompt,
+      format: "json",
+      stream: false,
+      options: {
+        temperature: 0.1
+      }
+    })
+  });
+
+  if (!response.ok) {
+    throw new Error(`Ollama HTTP ${response.status}: ${await response.text()}`);
+  }
+
+  const data = await response.json();
+  if (typeof data?.response !== "string" || !data.response.trim()) {
+    throw new Error("Ollama returned an empty translation response.");
+  }
+
+  const payload = parseJsonFromLlmResponse(data.response);
+  const translationsRaw = payload.translations;
+  if (!Array.isArray(translationsRaw)) {
+    throw new Error("Translation response did not include a translations array.");
+  }
+
+  if (translationsRaw.length !== batch.length) {
+    throw new Error(`Translation returned ${translationsRaw.length} segments for ${batch.length} inputs.`);
+  }
+
+  return translationsRaw.map((item, index) => {
+    if (!item || typeof item !== "object") {
+      throw new Error(`Translation item ${index} is not an object.`);
+    }
+
+    const candidate = item as Record<string, unknown>;
+    if (candidate.index !== index) {
+      throw new Error(`Translation item index mismatch at position ${index}.`);
+    }
+
+    const text = typeof candidate.text === "string" ? candidate.text.trim() : "";
+    if (!text) {
+      throw new Error(`Translation item ${index} is empty.`);
+    }
+
+    return text;
+  });
+}
+
 async function runWhisperTask(
   inputPath: string,
   outputBase: string,
@@ -189,7 +362,9 @@ async function runWhisperTask(
   try {
     await runCommand(config.whisperCommand, args, {
       onStdoutLine: (line) => {
-        options.onLog?.(line);
+        if (shouldSurfaceWhisperLogLine(line)) {
+          options.onLog?.(line);
+        }
         const pct = parseProgressLine(line);
         if (pct !== undefined) {
           lastExplicitPct = pct;
@@ -197,7 +372,9 @@ async function runWhisperTask(
         }
       },
       onStderrLine: (line) => {
-        options.onLog?.(line);
+        if (shouldSurfaceWhisperLogLine(line)) {
+          options.onLog?.(line);
+        }
         const pct = parseProgressLine(line);
         if (pct !== undefined) {
           lastExplicitPct = pct;
@@ -216,6 +393,65 @@ async function runWhisperTask(
   return variant;
 }
 
+export async function translateAudio(
+  inputPath: string,
+  workDir: string,
+  options: {
+    durationSeconds?: number;
+    processingProfile?: JobProcessingProfile;
+    onLog?: (line: string) => void;
+    onProgress?: (stagePct: number) => void;
+  } = {}
+): Promise<TranscriptVariant> {
+  await ensureDir(workDir);
+  const processing = options.processingProfile ?? detectProcessingProfile();
+
+  return runWhisperTask(inputPath, path.join(workDir, "english"), "translate", {
+    durationSeconds: options.durationSeconds,
+    processingProfile: processing,
+    onLog: options.onLog,
+    onProgress: options.onProgress,
+    allowEmpty: true
+  });
+}
+
+export async function translateTranscript(
+  source: TranscriptVariant,
+  options: {
+    onLog?: (line: string) => void;
+    onProgress?: (stagePct: number) => void;
+  } = {}
+): Promise<TranscriptVariant> {
+  if (source.segments.length === 0) {
+    throw new Error("Source transcript has no segments to translate.");
+  }
+
+  const batches = chunkSegments(source.segments);
+  const translatedSegments: TranscriptSegment[] = [];
+  options.onLog?.(`Translating transcript text to English in ${batches.length} batch${batches.length === 1 ? "" : "es"}.`);
+  options.onProgress?.(0);
+
+  for (const [batchIndex, batch] of batches.entries()) {
+    options.onLog?.(`Translating transcript batch ${batchIndex + 1}/${batches.length} (${batch.length} segments).`);
+    const translatedTexts = await requestStructuredTranslation(batch);
+    translatedSegments.push(
+      ...batch.map((segment, index) => ({
+        ...segment,
+        text: translatedTexts[index]!
+      }))
+    );
+
+    const progress = Math.round(((batchIndex + 1) / batches.length) * 100);
+    options.onProgress?.(progress);
+  }
+
+  return {
+    language: "en",
+    text: translatedSegments.map((segment) => segment.text).join(" ").trim(),
+    segments: translatedSegments
+  };
+}
+
 export async function transcribeAudio(
   inputPath: string,
   workDir: string,
@@ -227,28 +463,24 @@ export async function transcribeAudio(
     onTranslationLog?: (line: string) => void;
     onTranslationProgress?: (stagePct: number) => void;
   } = {}
-): Promise<{
-  source: TranscriptVariant;
-  english?: TranscriptVariant;
-  warnings: string[];
-  processing: JobProcessingProfile;
-}> {
+): Promise<TranscribeResult> {
   await ensureDir(workDir);
   const warnings: string[] = [];
   const processing = options.processingProfile ?? detectProcessingProfile();
-  const source = await runWhisperTask(inputPath, path.join(workDir, "source"), "transcribe", {
+
+  const sourceTaskOptions: WhisperTaskOptions = {
     durationSeconds: options.durationSeconds,
     processingProfile: processing,
     onLog: options.onSourceLog,
     onProgress: options.onSourceProgress
-  });
+  };
+
+  const source = await runWhisperTask(inputPath, path.join(workDir, "source"), "transcribe", sourceTaskOptions);
 
   let english: TranscriptVariant | undefined;
   if (processing.translationEnabled) {
     try {
-      english = await runWhisperTask(inputPath, path.join(workDir, "english"), "translate", {
-        durationSeconds: options.durationSeconds,
-        processingProfile: processing,
+      english = await translateTranscript(source, {
         onLog: options.onTranslationLog,
         onProgress: options.onTranslationProgress
       });
