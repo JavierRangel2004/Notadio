@@ -1,0 +1,142 @@
+Upload stored. Waiting for worker start.
+Detected processing profile: speed (win32 | x64 | 16 logical cores | NVIDIA GPU detected)
+ffmpeg version 7.1-essentials_build-www.gyan.dev Copyright (c) 2000-2024 the FFmpeg developers
+built with gcc 14.2.0 (Rev1, Built by MSYS2 project)
+configuration: --enable-gpl --enable-version3 --enable-static --disable-w32threads --disable-autodetect --enable-fontconfig --enable-iconv --enable-gnutls --enable-libxml2 --enable-gmp --enable-bzlib --enable-lzma --enable-zlib --enable-libsrt --enable-libssh --enable-libzmq --enable-avisynth --enable-sdl2 --enable-libwebp --enable-libx264 --enable-libx265 --enable-libxvid --enable-libaom --enable-libopenjpeg --enable-libvpx --enable-mediafoundation --enable-libass --enable-libfreetype --enable-libfribidi --enable-libharfbuzz --enable-libvidstab --enable-libvmaf --enable-libzimg --enable-amf --enable-cuda-llvm --enable-cuvid --enable-dxva2 --enable-d3d11va --enable-d3d12va --enable-ffnvcodec --enable-libvpl --enable-nvdec --enable-nvenc --enable-vaapi --enable-libgme --enable-libopenmpt --enable-libopencore-amrwb --enable-libmp3lame --enable-libtheora --enable-libvo-amrwbenc --enable-libgsm --enable-libopencore-amrnb --enable-libopus --enable-libspeex --enable-libvorbis --enable-librubberband
+libavutil      59. 39.100 / 59. 39.100
+libavcodec     61. 19.100 / 61. 19.100
+libavformat    61.  7.100 / 61.  7.100
+libavdevice    61.  3.100 / 61.  3.100
+libavfilter    10.  4.100 / 10.  4.100
+libswscale      8.  3.100 /  8.  3.100
+libswresample   5.  3.100 /  5.  3.100
+libpostproc    58.  3.100 / 58.  3.100
+Input #0, matroska,webm, from 'C:\Users\javar\GITHUB\Notadio\data\jobs\a7d13af6-39f9-4c7e-b0ee-6195892c817f\uploads\source.mkv':
+Metadata:
+ENCODER         : Lavf60.16.100
+Duration: 00:11:04.57, start: 0.000000, bitrate: 2628 kb/s
+Stream #0:0: Video: h264 (High), yuv420p(tv, bt709, progressive), 1280x720 [SAR 1:1 DAR 16:9], 30 fps, 30 tbr, 1k tbn
+Metadata:
+DURATION        : 00:11:04.566000000
+Stream #0:1: Audio: aac (LC), 48000 Hz, stereo, fltp
+Metadata:
+title           : simple_aac
+DURATION        : 00:11:04.448000000
+Stream mapping:
+Stream #0:1 -> #0:0 (aac (native) -> pcm_s16le (native))
+Press [q] to stop, [?] for help
+Output #0, wav, to 'C:\Users\javar\GITHUB\Notadio\data\jobs\a7d13af6-39f9-4c7e-b0ee-6195892c817f\working\normalized.wav':
+Metadata:
+ISFT            : Lavf61.7.100
+Stream #0:0: Audio: pcm_s16le ([1][0][0][0] / 0x0001), 16000 Hz, mono, s16, 256 kb/s
+Metadata:
+title           : simple_aac
+DURATION        : 00:11:04.448000000
+encoder         : Lavc61.19.100 pcm_s16le
+[out#0/wav @ 0000027a68532c40] video:0KiB audio:20764KiB subtitle:0KiB other streams:0KiB global headers:0KiB muxing overhead: 0.000367%
+size=   20764KiB time=00:11:04.44 bitrate= 256.0kbits/s speed=1.55e+03x
+Whisper thread recommendation: 15
+ggml_cuda_init: found 1 CUDA devices:
+Device 0: NVIDIA GeForce RTX 3060 Ti, compute capability 8.6, VMM: yes
+whisper_init_from_file_with_params_no_state: loading model from 'C:/Users/javar/GITHUB/whisper.cpp/ggml-large-v3.bin'
+whisper_init_with_params_no_state: use gpu    = 1
+whisper_init_with_params_no_state: flash attn = 1
+whisper_init_with_params_no_state: gpu_device = 0
+whisper_init_with_params_no_state: dtw        = 0
+whisper_init_with_params_no_state: devices    = 2
+whisper_init_with_params_no_state: backends   = 2
+whisper_model_load: loading model
+whisper_model_load: n_vocab       = 51866
+whisper_model_load: n_audio_ctx   = 1500
+whisper_model_load: n_audio_state = 1280
+whisper_model_load: n_audio_head  = 20
+whisper_model_load: n_audio_layer = 32
+whisper_model_load: n_text_ctx    = 448
+whisper_model_load: n_text_state  = 1280
+whisper_model_load: n_text_head   = 20
+whisper_model_load: n_text_layer  = 32
+whisper_model_load: n_mels        = 128
+whisper_model_load: ftype         = 1
+whisper_model_load: qntvr         = 0
+whisper_model_load: type          = 5 (large v3)
+whisper_model_load: adding 1609 extra tokens
+whisper_model_load: n_langs       = 100
+whisper_model_load:        CUDA0 total size =  3094.36 MB
+whisper_model_load: model size    = 3094.36 MB
+whisper_backend_init_gpu: device 0: CUDA0 (type: 1)
+whisper_backend_init_gpu: found GPU device 0: CUDA0 (type: 1, cnt: 0)
+whisper_backend_init_gpu: using CUDA0 backend
+whisper_init_state: kv self size  =   83.89 MB
+whisper_init_state: kv cross size =  251.66 MB
+whisper_init_state: kv pad  size  =    7.86 MB
+whisper_init_state: compute buffer (conv)   =   37.69 MB
+whisper_init_state: compute buffer (encode) =   55.35 MB
+whisper_init_state: compute buffer (cross)  =    9.27 MB
+whisper_init_state: compute buffer (decode) =  100.04 MB
+system_info: n_threads = 15 / 16 | WHISPER : COREML = 0 | OPENVINO = 0 | CUDA : ARCHS = 860 | PEER_MAX_BATCH_SIZE = 128 | CPU : SSE3 = 1 | SSSE3 = 1 | AVX = 1 | AVX2 = 1 | F16C = 1 | FMA = 1 | OPENMP = 1 | REPACK = 1 |
+main: processing 'C:\Users\javar\GITHUB\Notadio\data\jobs\a7d13af6-39f9-4c7e-b0ee-6195892c817f\working\normalized.wav' (10631168 samples, 664.4 sec), 15 threads, 1 processors, 5 beams + best of 5, lang = auto, task = transcribe, timestamps = 1 ...
+whisper_full_with_state: auto-detected language: es (p = 0.532528)
+output_srt: saving output to 'C:\Users\javar\GITHUB\Notadio\data\jobs\a7d13af6-39f9-4c7e-b0ee-6195892c817f\working\whisper\source.srt'
+output_json: saving output to 'C:\Users\javar\GITHUB\Notadio\data\jobs\a7d13af6-39f9-4c7e-b0ee-6195892c817f\working\whisper\source.json'
+whisper_print_timings:     load time =  7582.81 ms
+whisper_print_timings:     fallbacks =   6 p /  22 h
+whisper_print_timings:      mel time =   296.19 ms
+whisper_print_timings:   sample time = 10493.09 ms / 15386 runs (     0.68 ms per run)
+whisper_print_timings:   encode time =  3582.55 ms /    25 runs (   143.30 ms per run)
+whisper_print_timings:   decode time =  8833.80 ms /   654 runs (    13.51 ms per run)
+whisper_print_timings:   batchd time = 55325.16 ms / 14612 runs (     3.79 ms per run)
+whisper_print_timings:   prompt time =   911.48 ms /  4687 runs (     0.19 ms per run)
+whisper_print_timings:    total time = 87970.29 ms
+Base transcription complete. Waiting for enhancement selection.
+Starting enhancements: translate, diarize, summarize
+Translating transcript text to English in 13 batches.
+Translating transcript batch 1/13 (12 segments).
+Calling local Ollama LLM (llama3.2) at http://localhost:11434...
+Summarizing 152 transcript segments across 14 transcript blocks.
+[summary-metrics] prompt limits: direct=12000 chars, chunk=8000 chars, max-input=48000 chars.
+Summarization failed: fetch failed
+Falling back to an extractive summary built from the transcript.
+[summary-metrics] total summary stage completed in 8ms.
+Enhancement processing complete.
+[translate-retry] Started.
+[translate-retry] Translating transcript text to English in 13 batches.
+[translate-retry] Translating transcript batch 1/13 (12 segments).
+[translate-retry] fetch failed
+[translate-retry] Started.
+[translate-retry] Translating transcript text to English in 13 batches.
+[translate-retry] Translating transcript batch 1/13 (12 segments).
+[translate-retry] fetch failed
+
+{
+  "headline": "Cuando fanoteo soles escene, mavene quasena malinconia, sotto fenesta torrestaria.",
+  "brief": "Cuando fanoteo soles escene, mavene quasena malinconia, sotto fenesta torrestaria. O sole mio, sai fronte a te, sai fronte a te, my night. un abrazo una regaza, después de que había llorado, luego se cerró la voz y comenzó el canto.",
+  "overview": "Cuando fanoteo soles escene, mavene quasena malinconia, sotto fenesta torrestaria. O sole mio, sai fronte a te, sai fronte a te, my night. un abrazo una regaza, después de que había llorado, luego se cerró la voz y comenzó el canto. Y me gusta bien, ¿sabes? Y me gusta bien, ¿sabes? Y me gusta bien, ¿sabes?",
+  "narrative": "Cuando fanoteo soles escene, mavene quasena malinconia, sotto fenesta torrestaria. O sole mio, sai fronte a te, sai fronte a te, my night. un abrazo una regaza, después de que había llorado, luego se cerró la voz y comenzó el canto. Y me gusta bien, ¿sabes? Y me gusta bien, ¿sabes? Y me gusta bien, ¿sabes?",
+  "keyDecisions": [],
+  "actionItems": [],
+  "topics": [],
+  "sections": [
+    {
+      "title": "Puntos destacados",
+      "summary": "Cuando fanoteo soles escene, mavene quasena malinconia, sotto fenesta torrestaria. O sole mio, sai fronte a te, sai fronte a te, my night. un abrazo una regaza, después de que había llorado, luego se cerró la voz y comenzó el canto.",
+      "bullets": [
+        "Cuando fanoteo soles escene, mavene quasena malinconia, sotto fenesta torrestaria.",
+        "O sole mio, sai fronte a te, sai fronte a te, my night.",
+        "un abrazo una regaza, después de que había llorado, luego se cerró la voz y comenzó el canto.",
+        "Y me gusta bien, ¿sabes?",
+        "Y me gusta bien, ¿sabes?",
+        "Y me gusta bien, ¿sabes?"
+      ]
+    }
+  ],
+  "followUps": [],
+  "risks": [],
+  "operationalNotes": [
+    "Idioma detectado: es.",
+    "Duración procesada: 10:59."
+  ],
+  "openQuestions": [
+    "Y me gusta bien, ¿sabes?",
+    "Pero tanto todo bien, ¿sabes?"
+  ]
+}
