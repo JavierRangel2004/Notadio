@@ -10,7 +10,15 @@ import {
   uploadMedia
 } from "./api";
 
-const ACCEPTED_TYPES = "audio/*,video/*";
+const ACCEPTED_TYPES = "audio/*,video/*,.mkv";
+const mojibakePattern = /[ÃÂÐÑÌÒÙ]/;
+
+type SegmentGroup = {
+  speaker?: string;
+  start: number;
+  end: number;
+  segments: TranscriptSegment[];
+};
 
 function formatTime(seconds: number): string {
   const total = Math.max(0, Math.floor(seconds));
