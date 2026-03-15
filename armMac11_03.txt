@@ -1,0 +1,597 @@
+
+NOTADIO
+Workspace
+New Session ↑
+recording-1773278516077.webmmic
+Size:11.6 MB
+Duration:12:57
+Language:es
+New Session
+Overview
+Decisión de salida de Javi
+
+Javi decide dejar su puesto como socio y colaborador operativo, pero se compromete a hacer una transición mínima y puntual.
+
+Key Decisions
+Javi decide dejar su puesto
+Transición mínima y puntual
+Action Items
+Hacer una transición mínima y puntual
+
+@Javi
+pendiente
+Postura y decisiones
+Javi explica que ha estado pensando en su relación con la empresa y ha llegado a la decisión de dejar su puesto.
+
+Javi explica que ha estado pensando en su relación con la empresa y ha llegado a la decisión de dejar su puesto.
+Pensamiento en la relación con la empresa
+Decisión de salir
+Javi decide dejar su puesto
+Transición mínima y puntual
+Reacciones y riesgos
+Riesgo de que Javi no cumpla con su compromiso
+
+Riesgo de que Javi no cumpla con su compromiso
+¿Cómo se realizará la transición?
+Acuerdos y siguientes pasos
+Hacer una transición mínima y puntual (Javi · Pronto)
+
+Hacer una transición mínima y puntual (Javi · Pronto)
+Verificar el estado de la transición
+Cierre / notas relacionales
+Agradecimiento a Javi por su compromiso
+
+Agradecimiento a Javi por su compromiso
+Planificación de la transición
+Open Questions
+¿Cómo se realizará la transición?
+Summary Diagnostics
+Strategy
+Direct single-pass summary
+Total
+34.4 s
+LLM Calls
+1
+Direct
+34.4 s
+Reduce
+n/a
+Local Merge
+n/a
+Fallback
+n/a
+Primary structured summary succeeded. Final reduce request skipped. Full selected transcript blocks were used.
+Chunk timing details (1)
+Chunk 1
+34.4 s
+completed
+9436 chars
+4 sections
+1 action items
+Pipeline Timings
+Queued
+0 ms
+Normalizing media for transcription
+completed
+Normalize
+1.12 s
+Normalizing media for transcription
+completed
+Transcribe
+19.8 s
+Running local Whisper transcription
+completed
+Translate
+15.3 s
+Generating English translation
+completed
+Diarize
+56.1 s
+Applying speaker diarization
+completed
+Summarize
+36.8 s
+Generating AI summary
+completed
+Export
+4 ms
+Writing enhanced artifacts
+completed
+Copy Summary JSON
+Regenerate Summary
+Re-run Speaker ID
+Source transcript
+Transcript
+Source
+Translation
+Copy
+TXT
+SRT
+JSON
+
+Session audio
+Use transcript timestamps to jump to the recording.
+00:00
+Seek through uploaded audio
+12:57
+Javier
+00:00
+- ¡Pero! - ¡Hola, Iko!
+
+- ¡Yo más he recortado! - ¡Todo bien, ¿y tú?
+
+- ¡O bien, al paráverlo! - ¡No!
+
+- ¿Me escuchas? - ¡Sí, tú!
+
+- ¡Sí, sí! - ¡Yo más, cuéntame!
+
+- ¡Más! - Pues...
+
+Ahora sí que he estado pensando, pues digo ya,
+
+desde que tuvimos como esa primera intracción el lunes
+
+para agendar la reunión y luego, pues, ayer,
+
+que fue la llamada y los mensajes.
+
+Y, pues, honestamente, creo que...
+
+es el mensaje que me mandaste visita, notó muchas cosas.
+
+Una de ellas que, tanto tú como yo,
+
+creo que ya no nos estamos sintiendo muy bien,
+
+es con esta relación y después de...
+
+sí, de pensarlo, de estar lo reflexionando.
+
+Pues sí, ahora sí que llegué la decisión definitiva,
+
+de pues, ya no continuar como tal en la empresa,
+
+ni como socio, ni como colaborador operativo.
+
+O sea, ahora sí que sí sería a partir de este momento,
+
+no asumir ninguna responsabilidad,
+
+desarrollo, soporte, reunión o responsabilidad adicional.
+
+Y, pues sí, o sea, solo estaría dispuesto
+
+como hacer una transición mínima y puntual,
+
+y, pues, como que, muy bien delimitada,
+
+si existe alguna contrapresentación, pues, adecuada
+
+y, principalmente, por escrita y formalizada.
+
+Si no es así, pues, ahora sí que mi salida es total
+
+y respecto a cualquier apoyo futuro.
+
+La decisión como tal siento que no es impulsiva,
+
+es causal de toda la falta de condiciones suficientes
+
+para, pues sí, o sea, como continuar y,
+
+se detanen a la necesidad de cerrar esta etapa con claridad
+
+y, pues, vaya con seriedad.
+
+Ana
+02:06
+Sí, sí, sí, sí.
+
+Está bien sabido, creo que lo más importante aquí es
+
+que todos los tuyos o los personas
+
+Javier
+02:17
+nos gusta hablar como nos dirá, y se reinecta.
+
+Sí.
+
+Ana
+02:22
+Entonces es sucro que siempre salvo que poder hacer y es perfecto, respeto publicante.
+
+Y la situación ha sido que no es salvo que no es oste.
+
+Pero en este momento no nos te publican, ¿a qué te quedes?
+
+Porque no con estos.
+
+Ya con el tipo de relación que saben ir formando no ya es perfecto.
+
+Creo que al culo más proveente sí es que nos aparemos, ¿no?
+
+O sea, ¿qué es lo que… ¿qué y ver particular cuánto es lo que tú has recibido esta estación para hacer centré a formación?
+
+Javier
+03:15
+Honestamente tendría que ser como completamente soferta, y ya como que considerarlo, no tengo alguna cantidad de mente.
+
+Ana
+03:25
+Pero ya más que nada pues me gustaría escucharte y… ¿qué es lo que tienes en mente?
+
+Que hay que hacer cosas en el sentido de la entre.
+
+¿Cuánto tiempo es… ¿dos hacen explicaros también para saber yo exactamente qué es lo que hace el saltanzario? ¿Cuánto tiempo va a durar?
+
+Javier
+03:55
+Como tal la lo que me refiero a entrega es lo que comúnmente se le llama como handover.
+
+En donde sería que tú consigas a un recurso nuevo, y pues yo poder presentarle no tanto en entrenamiento, pero sí ahora sí que hacer esa transición lo más profesional y también completo.
+
+O sea que pueda apoyar de alguna manera en que eso sea… ahora sí que es ficiente, rápido, cómodo.
+
+Eso obviamente depende de… ¿cuándo puedas conseguir ese nuevo recurso? ¿Cómo tal lo que sí…
+
+Ahora sí que me gustaría aclarar es desarrollo nuevo o… o sea extra ya no haría.
+
+O sea creo que cerramos bastante bien el martes con ese último push up producción.
+
+Entonces la decisión sería más que nada de apoyo a una tipo capacitación, no completa, pero tipo capacitación de un nuevo recurso que consigues.
+
+Ana
+04:57
+Es un nuevo recurso de desarrollo de capacitación. Ah, ya intento. O sea básicamente voy a tener que… ¿por qué? ¿Sabán? ¿Pelse bien? ¿Pelse bien?
+
+La evidentemente de los desarrolladores no son algo que crees que hay de los arroles, es que es algo que va a tener que buscar, ¿no?
+
+Porque tenemos que buscar a alguien y no es algo redactivo en el medierto, es algo que entonces no te pediría, ¿ok? O sea yo me encargo y presentarte, entonces es una cantidad para tu salida.
+
+Pero pues al mismo tiempo te pide por favor los espeles, con lo sabe que unos dos sepion que te quieres, pero que cuando yo ya haya conseguido alguien, te aviso y en ese momento podríamos silenciar pues desejando, ¿sabes?
+
+Por que ahorita, técnicamente, no hay nadie aquí, no puedo hacer jano, ¿sabes? Entonces lo único que te queda, ¿eh?
+
+Javier
+06:10
+Sí, obviamente pues estaría independiente, digo esta propuesta, me imagino la vas a pensar y me las es saber pues más o menos pronto o ya lo tienes, o sea me la puedes decir ahorita.
+
+Sí, sí, sí, sí, sí, no, ahora sí que estaría independiente de pues tanto esa propuesta, como pues en cuanto me digas ya consiguié alguien y en cuanto me digas ya consiguié alguien pues ya sería obviamente engendar tiempos, pues creo que tú ya tienes esa parte mía, entonces puedes identificar cuando podré estar un disponible, pero si nada más haría avisarme esas dos cosas y pues ya te tendrías tu respuesta.
+
+Ana
+06:51
+Porque es más, más va buenísimo, es muy bien, creo que más, entonces me encargo diferente de la pensada, esto me salgo con su topor.
+
+En este caso, o sea, trae sobre algo que se haya quedado pendiente, o es que justo eso o sea, sabes que si me preocupa, sí, el tema de PayPal que se haya quedado pendiente, o sea, me interesa que es la persona que entre,
+
+se pueda con que retomar el en lo que tú te quedaste, a ver, a acabar la situación.
+
+Javier
+07:40
+Sí, sí, digo como tal, o sea, así que de nuevo explicando como quedó, es justo el nuevo momento de pago de PayPal igual, o sea, eso ya está, fue lo que se subió literalmente el martes, entonces ahora sí que es lo que seguiría después de eso,
+
+que de nuevo ya no formaría parte, yo de su implementación, sería lo, el tema de tarjetas.
+
+Obviamente, pues hacer todo ese handover, no solamente mostrar el código, sino mostrarles pues qué se estaba haciendo, un poco del como, y ves cualquier como que duda, aclaración, que pueda resolver este, pues en ese momento.
+
+Obviamente, sería como que más, específicamente, con forma gaya, no pasando las reuniones, yo también tengo que planear un poquito, su acaso, como estructurar toda esa información para darse la de la manera más eficiente posible.
+
+Ana
+08:37
+Sí, sí. Ok, hola, le va, a mi gran sabit, lo haré mucho. Ok, ok, va, superme la C, entonces le he hecho una pensada, demando la propuesta, y pues aguántame lo que consiguió alguien, cuando lo haya hecho, estábizo, para que...
+
+Y respecto a los daily, bueno, así, si está en lo que hay algo, creo que no hay ningún tema de baqué, entonces la micro tranquilo en ese sentido.
+
+Entonces, pues, bueno, pues ya va a sacar el grupo, ya nada lo necesitamos entre tu y yo, y pues bueno, déjame dejarse de hecho una pensada, yo creo que tener esta propuesta entre mañana y el viernes, ¿vale?
+
+¿Ok? ¿De acuerdo? Hola, bueno, super, pues mi gracia que habéis, estamos en contacto de verdad por hablarle con eso en esta edad, y pues por acá las cosas bien, algo que agradezco mucho.
+
+Javier
+09:56
+Sí, no, creo que, pues de igual manera, obviamente, gracias por el tiempo, gracias por dar una manera muy romántico, pero fue lindo mientras duró,
+
+creo que hicimos una implementación bastante completa, y sí, o sea, como que muy bien estructurada, muy bien fundada, entonces,
+
+eso es que nada más que decir lo mejor, agradeceden no es como que todo el reto o si acaso como el espacio de aprendizaje que me dieron y eso es que nada más que lo mejor.
+
+Ana
+10:37
+Ya vengan a una recomendación o lo que sea ningún tema, es al que no lo creo yo creo que eres muy talentoso y solito la tuta delento por ti.
+
+Y también gratis por habernos dado, gratis por habernos los oportunidades también, igual por el tiempo en mi que duró, agradezco muchísimo esa confianza que su momento de positarse, creo que logramos algo muy padre, la verdad.
+
+Creo que eso siempre nos lo hace por sentir orgullosos, todos nosotros tuyo, todos, por lo que logramos, que evidentemente va a crecer más, se volverá algo increíble.
+
+Pero por si al helia, o sea, es algo muy padre lo que legramos, si nos podemos sentir muy orgullosos, te agradezco muchísimo, Javi, ahora está en el equipo, y eso es todo tu compromiso sin duda, pues de honesto, cuando me dijiste antes de que entrada quedas al mí que se clara muy, muy a fondo en lo que hacía,
+
+si cuenta que sí es real, y es una sorpresa muy, muy gratis, ¿no? Entonces, pues bueno Javi, es verbo de que acabemos bien, saltando una propuesta para que te quedes tranquilo.
+
+O sea, creo que hay que ser, hay que considerar a nosotros, o sea, considerar a nosotros, ¿no? Es que hay que ser tan realistas, no con esa cantidad, o creemekestión, o ser justo, y hay que ver en el mundo.
+
+Javier
+12:22
+Vale, de nuevo, muchas gracias. Javi, pues estamos en contact.
+
+Vale, cuídate mucho. ¡Abrazos! ¡Amen, saludos! ¡Amen, saludos!
+
+Processing Logs
+200 entries
+Copy all
+Hide
+Upload stored. Waiting for worker start.
+Detected processing profile: balanced (Apple Silicon | darwin | arm64 | 8 logical cores)
+ffmpeg version 8.0.1 Copyright (c) 2000-2025 the FFmpeg developers
+built with Apple clang version 17.0.0 (clang-1700.6.3.2)
+configuration: --prefix=/opt/homebrew/Cellar/ffmpeg/8.0.1_4 --enable-shared --enable-pthreads --enable-version3 --cc=clang --host-cflags= --host-ldflags= --enable-ffplay --enable-gpl --enable-libsvtav1 --enable-libopus --enable-libx264 --enable-libmp3lame --enable-libdav1d --enable-libvpx --enable-libx265 --enable-openssl --enable-videotoolbox --enable-audiotoolbox --enable-neon
+libavutil      60.  8.100 / 60.  8.100
+libavcodec     62. 11.100 / 62. 11.100
+libavformat    62.  3.100 / 62.  3.100
+libavdevice    62.  1.100 / 62.  1.100
+libavfilter    11.  4.100 / 11.  4.100
+libswscale      9.  1.100 /  9.  1.100
+libswresample   6.  1.100 /  6.  1.100
+Input #0, matroska,webm, from '/Users/javierrangel/github/Notadio/data/jobs/c89900f3-3e1f-4a37-b622-8c2abadc1b80/uploads/source.webm':
+Metadata:
+encoder         : Chrome
+Duration: N/A, start: 0.000000, bitrate: N/A
+Stream #0:0(eng): Audio: opus, 48000 Hz, mono, fltp (default)
+Stream mapping:
+Stream #0:0 -> #0:0 (opus (native) -> pcm_s16le (native))
+Press [q] to stop, [?] for help
+Output #0, wav, to '/Users/javierrangel/github/Notadio/data/jobs/c89900f3-3e1f-4a37-b622-8c2abadc1b80/working/normalized.wav':
+Metadata:
+ISFT            : Lavf62.3.100
+Stream #0:0(eng): Audio: pcm_s16le ([1][0][0][0] / 0x0001), 16000 Hz, mono, s16, 256 kb/s (default)
+Metadata:
+encoder         : Lavc62.11.100 pcm_s16le
+size=   11776KiB time=00:06:20.15 bitrate= 253.8kbits/s speed= 753x elapsed=0:00:00.50
+[opus @ 0xbed020700] Error parsing Opus packet header.
+[out#0/wav @ 0xbecc68180] video:0KiB audio:23593KiB subtitle:0KiB other streams:0KiB global headers:0KiB muxing overhead: 0.000323%
+size=   23593KiB time=00:12:34.97 bitrate= 256.0kbits/s speed= 748x elapsed=0:00:01.00
+Whisper thread recommendation: 6
+whisper_init_from_file_with_params_no_state: loading model from '/Users/javierrangel/github/Notadio/.local/models/ggml-base.bin'
+whisper_init_with_params_no_state: use gpu    = 1
+whisper_init_with_params_no_state: flash attn = 1
+whisper_init_with_params_no_state: gpu_device = 0
+whisper_init_with_params_no_state: dtw        = 0
+ggml_metal_device_init: tensor API disabled for pre-M5 and pre-A19 devices
+ggml_metal_library_init: using embedded metal library
+ggml_metal_library_init: loaded in 0.032 sec
+ggml_metal_rsets_init: creating a residency set collection (keep_alive = 180 s)
+ggml_metal_device_init: GPU name:   Apple M2
+ggml_metal_device_init: GPU family: MTLGPUFamilyApple8  (1008)
+ggml_metal_device_init: GPU family: MTLGPUFamilyCommon3 (3003)
+ggml_metal_device_init: GPU family: MTLGPUFamilyMetal4  (5002)
+ggml_metal_device_init: simdgroup reduction   = true
+ggml_metal_device_init: simdgroup matrix mul. = true
+ggml_metal_device_init: has unified memory    = true
+ggml_metal_device_init: has bfloat            = true
+ggml_metal_device_init: has tensor            = false
+ggml_metal_device_init: use residency sets    = true
+ggml_metal_device_init: use shared buffers    = true
+ggml_metal_device_init: recommendedMaxWorkingSetSize  =  5726.63 MB
+whisper_init_with_params_no_state: devices    = 3
+whisper_init_with_params_no_state: backends   = 3
+whisper_model_load: loading model
+whisper_model_load: n_vocab       = 51865
+whisper_model_load: n_audio_ctx   = 1500
+whisper_model_load: n_audio_state = 512
+whisper_model_load: n_audio_head  = 8
+whisper_model_load: n_audio_layer = 6
+whisper_model_load: n_text_ctx    = 448
+whisper_model_load: n_text_state  = 512
+whisper_model_load: n_text_head   = 8
+whisper_model_load: n_text_layer  = 6
+whisper_model_load: n_mels        = 80
+whisper_model_load: ftype         = 1
+whisper_model_load: qntvr         = 0
+whisper_model_load: type          = 2 (base)
+whisper_model_load: adding 1608 extra tokens
+whisper_model_load: n_langs       = 99
+whisper_model_load:        Metal total size =   147.37 MB
+whisper_model_load: model size    =  147.37 MB
+whisper_backend_init_gpu: device 0: Metal (type: 1)
+whisper_backend_init_gpu: found GPU device 0: Metal (type: 1, cnt: 0)
+whisper_backend_init_gpu: using Metal backend
+ggml_metal_init: allocating
+ggml_metal_init: found device: Apple M2
+ggml_metal_init: picking default device: Apple M2
+ggml_metal_init: use fusion         = true
+ggml_metal_init: use concurrency    = true
+ggml_metal_init: use graph optimize = true
+whisper_backend_init: using BLAS backend
+whisper_init_state: kv self size  =    6.29 MB
+whisper_init_state: kv cross size =   18.87 MB
+whisper_init_state: kv pad  size  =    3.15 MB
+whisper_init_state: compute buffer (conv)   =   17.24 MB
+whisper_init_state: compute buffer (encode) =   26.31 MB
+whisper_init_state: compute buffer (cross)  =   10.81 MB
+whisper_init_state: compute buffer (decode) =   97.29 MB
+system_info: n_threads = 6 / 8 | WHISPER : COREML = 0 | OPENVINO = 0 | Metal : EMBED_LIBRARY = 1 | CPU : NEON = 1 | ARM_FMA = 1 | FP16_VA = 1 | DOTPROD = 1 | ACCELERATE = 1 | REPACK = 1 |
+main: processing '/Users/javierrangel/github/Notadio/data/jobs/c89900f3-3e1f-4a37-b622-8c2abadc1b80/working/normalized.wav' (12079680 samples, 755.0 sec), 6 threads, 1 processors, 5 beams + best of 5, lang = auto, task = transcribe, timestamps = 1 ...
+whisper_full_with_state: auto-detected language: es (p = 0.899600)
+output_srt: saving output to '/Users/javierrangel/github/Notadio/data/jobs/c89900f3-3e1f-4a37-b622-8c2abadc1b80/working/whisper/source.srt'
+output_json: saving output to '/Users/javierrangel/github/Notadio/data/jobs/c89900f3-3e1f-4a37-b622-8c2abadc1b80/working/whisper/source.json'
+whisper_print_timings:     load time =   148.55 ms
+whisper_print_timings:     fallbacks =   6 p /  22 h
+whisper_print_timings:      mel time =   261.65 ms
+whisper_print_timings:   sample time =  4168.57 ms / 18318 runs (     0.23 ms per run)
+whisper_print_timings:   encode time =  2451.15 ms /    39 runs (    62.85 ms per run)
+whisper_print_timings:   decode time =   314.59 ms /   112 runs (     2.81 ms per run)
+whisper_print_timings:   batchd time = 10800.76 ms / 18003 runs (     0.60 ms per run)
+whisper_print_timings:   prompt time =   830.41 ms /  8648 runs (     0.10 ms per run)
+whisper_print_timings:    total time = 19632.96 ms
+ggml_metal_free: deallocating
+Base transcription complete. Waiting for enhancement selection.
+Starting enhancements: diarize, summarize
+Loading diarization models (this may download weights on first run)...
+Processing audio: /Users/javierrangel/github/Notadio/data/jobs/c89900f3-3e1f-4a37-b622-8c2abadc1b80/working/normalized.wav
+/Users/javierrangel/github/Notadio/.local/diarize-venv/lib/python3.9/site-packages/silero_vad/utils_vad.py:143: UserWarning: torchaudio.sox_effects.sox_effects.apply_effects_file has been deprecated. This deprecation is part of a large refactoring effort to transition TorchAudio into a maintenance phase. Please see https://github.com/pytorch/audio/issues/3902 for more information. It will be removed from the 2.9 release.
+wav, sr = torchaudio.sox_effects.apply_effects_file(path, effects=effects)
+/Users/javierrangel/github/Notadio/.local/diarize-venv/lib/python3.9/site-packages/torchaudio/_backend/utils.py:213: UserWarning: In 2.9, this function's implementation will be changed to use torchaudio.load_with_torchcodec` under the hood. Some parameters like ``normalize``, ``format``, ``buffer_size``, and ``backend`` will be ignored. We recommend that you port your code to rely directly on TorchCodec's decoder instead: https://docs.pytorch.org/torchcodec/stable/generated/torchcodec.decoders.AudioDecoder.html#torchcodec.decoders.AudioDecoder.
+warnings.warn(
+Diarization complete. Found 253 segments.
+Calling local Ollama LLM (llama3.2) at http://localhost:11434...
+Summarizing 86 transcript segments across 40 transcript blocks.
+[summary-metrics] prompt limits: direct=12000 chars, chunk=8000 chars, max-input=48000 chars.
+[summary-metrics] direct summary request completed in 36.8s.
+Meeting summary generated successfully.
+[summary-metrics] total summary stage completed in 36.8s.
+Enhancement processing complete.
+[summary-retry] Calling local Ollama LLM (llama3.2) at http://localhost:11434...
+[summary-retry] Summarizing 86 transcript segments across 40 transcript blocks.
+[summary-retry] [summary-metrics] prompt limits: direct=12000 chars, chunk=8000 chars, max-input=48000 chars.
+[summary-retry] [summary-metrics] direct summary request completed in 34.4s.
+[summary-retry] Meeting summary generated successfully.
+[summary-retry] [summary-metrics] total summary stage completed in 34.4s.
+[translate-retry] Started.
+[translate-retry] whisper_init_from_file_with_params_no_state: loading model from '/Users/javierrangel/github/Notadio/.local/models/ggml-base.bin'
+[translate-retry] whisper_init_with_params_no_state: use gpu    = 1
+[translate-retry] whisper_init_with_params_no_state: flash attn = 1
+[translate-retry] whisper_init_with_params_no_state: gpu_device = 0
+[translate-retry] whisper_init_with_params_no_state: dtw        = 0
+[translate-retry] ggml_metal_device_init: tensor API disabled for pre-M5 and pre-A19 devices
+[translate-retry] ggml_metal_library_init: using embedded metal library
+[translate-retry] ggml_metal_library_init: loaded in 0.031 sec
+[translate-retry] ggml_metal_rsets_init: creating a residency set collection (keep_alive = 180 s)
+[translate-retry] ggml_metal_device_init: GPU name:   Apple M2
+[translate-retry] ggml_metal_device_init: GPU family: MTLGPUFamilyApple8  (1008)
+[translate-retry] ggml_metal_device_init: GPU family: MTLGPUFamilyCommon3 (3003)
+[translate-retry] ggml_metal_device_init: GPU family: MTLGPUFamilyMetal4  (5002)
+[translate-retry] ggml_metal_device_init: simdgroup reduction   = true
+[translate-retry] ggml_metal_device_init: simdgroup matrix mul. = true
+[translate-retry] ggml_metal_device_init: has unified memory    = true
+[translate-retry] ggml_metal_device_init: has bfloat            = true
+[translate-retry] ggml_metal_device_init: has tensor            = false
+[translate-retry] ggml_metal_device_init: use residency sets    = true
+[translate-retry] ggml_metal_device_init: use shared buffers    = true
+[translate-retry] ggml_metal_device_init: recommendedMaxWorkingSetSize  =  5726.63 MB
+[translate-retry] whisper_init_with_params_no_state: devices    = 3
+[translate-retry] whisper_init_with_params_no_state: backends   = 3
+[translate-retry] whisper_model_load: loading model
+[translate-retry] whisper_model_load: n_vocab       = 51865
+[translate-retry] whisper_model_load: n_audio_ctx   = 1500
+[translate-retry] whisper_model_load: n_audio_state = 512
+[translate-retry] whisper_model_load: n_audio_head  = 8
+[translate-retry] whisper_model_load: n_audio_layer = 6
+[translate-retry] whisper_model_load: n_text_ctx    = 448
+[translate-retry] whisper_model_load: n_text_state  = 512
+[translate-retry] whisper_model_load: n_text_head   = 8
+[translate-retry] whisper_model_load: n_text_layer  = 6
+[translate-retry] whisper_model_load: n_mels        = 80
+[translate-retry] whisper_model_load: ftype         = 1
+[translate-retry] whisper_model_load: qntvr         = 0
+[translate-retry] whisper_model_load: type          = 2 (base)
+[translate-retry] whisper_model_load: adding 1608 extra tokens
+[translate-retry] whisper_model_load: n_langs       = 99
+[translate-retry] whisper_model_load:        Metal total size =   147.37 MB
+[translate-retry] whisper_model_load: model size    =  147.37 MB
+[translate-retry] whisper_backend_init_gpu: device 0: Metal (type: 1)
+[translate-retry] whisper_backend_init_gpu: found GPU device 0: Metal (type: 1, cnt: 0)
+[translate-retry] whisper_backend_init_gpu: using Metal backend
+[translate-retry] ggml_metal_init: allocating
+[translate-retry] ggml_metal_init: found device: Apple M2
+[translate-retry] ggml_metal_init: picking default device: Apple M2
+[translate-retry] ggml_metal_init: use fusion         = true
+[translate-retry] ggml_metal_init: use concurrency    = true
+[translate-retry] ggml_metal_init: use graph optimize = true
+[translate-retry] whisper_backend_init: using BLAS backend
+[translate-retry] whisper_init_state: kv self size  =    6.29 MB
+[translate-retry] whisper_init_state: kv cross size =   18.87 MB
+[translate-retry] whisper_init_state: kv pad  size  =    3.15 MB
+[translate-retry] whisper_init_state: compute buffer (conv)   =   17.24 MB
+[translate-retry] whisper_init_state: compute buffer (encode) =   26.31 MB
+[translate-retry] whisper_init_state: compute buffer (cross)  =   10.81 MB
+[translate-retry] whisper_init_state: compute buffer (decode) =   97.29 MB
+[translate-retry] system_info: n_threads = 6 / 8 | WHISPER : COREML = 0 | OPENVINO = 0 | Metal : EMBED_LIBRARY = 1 | CPU : NEON = 1 | ARM_FMA = 1 | FP16_VA = 1 | DOTPROD = 1 | ACCELERATE = 1 | REPACK = 1 |
+[translate-retry] main: processing '/Users/javierrangel/github/Notadio/data/jobs/c89900f3-3e1f-4a37-b622-8c2abadc1b80/working/normalized.wav' (12079680 samples, 755.0 sec), 6 threads, 1 processors, 5 beams + best of 5, lang = auto, task = translate, timestamps = 1 ...
+[translate-retry] whisper_full_with_state: auto-detected language: es (p = 0.899600)
+[translate-retry] output_json: saving output to '/Users/javierrangel/github/Notadio/data/jobs/c89900f3-3e1f-4a37-b622-8c2abadc1b80/working/whisper/english.json'
+[translate-retry] whisper_print_timings:     load time =   186.18 ms
+[translate-retry] whisper_print_timings:     fallbacks =   2 p /  13 h
+[translate-retry] whisper_print_timings:      mel time =   284.90 ms
+[translate-retry] whisper_print_timings:   sample time =  3265.68 ms / 14345 runs (     0.23 ms per run)
+[translate-retry] whisper_print_timings:   encode time =  1871.69 ms /    29 runs (    64.54 ms per run)
+[translate-retry] whisper_print_timings:   decode time =   340.99 ms /   122 runs (     2.80 ms per run)
+[translate-retry] whisper_print_timings:   batchd time =  8160.05 ms / 14077 runs (     0.58 ms per run)
+[translate-retry] whisper_print_timings:   prompt time =   437.46 ms /  6338 runs (     0.07 ms per run)
+[translate-retry] whisper_print_timings:    total time = 15065.75 ms
+[translate-retry] ggml_metal_free: deallocating
+[translate-retry] Completed.
+
+{
+  "headline": "Decisión de salida de Javi",
+  "brief": "Javi decide dejar su puesto como socio y colaborador operativo, pero se compromete a hacer una transición mínima y puntual.",
+  "overview": "Javi explica que ha estado pensando en su relación con la empresa y ha llegado a la decisión de dejar su puesto. Aunque se compromete a hacer una transición mínima y puntual, Javi explica que su salida es total y que no se compromete a continuar trabajando en la empresa.",
+  "narrative": "Javi explica que ha estado pensando en su relación con la empresa y ha llegado a la decisión de dejar su puesto. Aunque se compromete a hacer una transición mínima y puntual, Javi explica que su salida es total y que no se compromete a continuar trabajando en la empresa.",
+  "keyDecisions": [
+    "Javi decide dejar su puesto",
+    "Transición mínima y puntual"
+  ],
+  "actionItems": [
+    {
+      "task": "Hacer una transición mínima y puntual",
+      "assignee": "Javi",
+      "deadline": "Pronto",
+      "priority": "alta",
+      "status": "pendiente",
+      "notes": "Javi se compromete a hacer una transición mínima y puntual"
+    }
+  ],
+  "topics": [
+    "Salida de Javi",
+    "Transición mínima y puntual"
+  ],
+  "sections": [
+    {
+      "title": "Postura y decisiones",
+      "summary": "Javi explica que ha estado pensando en su relación con la empresa y ha llegado a la decisión de dejar su puesto.",
+      "bullets": [
+        "Javi explica que ha estado pensando en su relación con la empresa y ha llegado a la decisión de dejar su puesto.",
+        "Pensamiento en la relación con la empresa",
+        "Decisión de salir",
+        "Javi decide dejar su puesto",
+        "Transición mínima y puntual"
+      ]
+    },
+    {
+      "title": "Reacciones y riesgos",
+      "summary": "Riesgo de que Javi no cumpla con su compromiso",
+      "bullets": [
+        "Riesgo de que Javi no cumpla con su compromiso",
+        "¿Cómo se realizará la transición?"
+      ]
+    },
+    {
+      "title": "Acuerdos y siguientes pasos",
+      "summary": "Hacer una transición mínima y puntual (Javi · Pronto)",
+      "bullets": [
+        "Hacer una transición mínima y puntual (Javi · Pronto)",
+        "Verificar el estado de la transición"
+      ]
+    },
+    {
+      "title": "Cierre / notas relacionales",
+      "summary": "Agradecimiento a Javi por su compromiso",
+      "bullets": [
+        "Agradecimiento a Javi por su compromiso",
+        "Planificación de la transición"
+      ]
+    }
+  ],
+  "followUps": [
+    "Verificar el estado de la transición"
+  ],
+  "risks": [
+    "Riesgo de que Javi no cumpla con su compromiso"
+  ],
+  "operationalNotes": [
+    "Agradecimiento a Javi por su compromiso",
+    "Planificación de la transición"
+  ],
+  "openQuestions": [
+    "¿Cómo se realizará la transición?"
+  ]
+}
