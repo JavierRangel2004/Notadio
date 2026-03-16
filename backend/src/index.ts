@@ -444,24 +444,33 @@ function applyTelemetryUpdate(
       const processing = job.processing ?? buildDefaultProcessing();
 
       if (normalizedLine.includes("whisper_backend_init_gpu: no gpu found")) {
-        const hasHostGpuHint = processing.hostGpuDetected || processing.deviceSummary.toLowerCase().includes("nvidia gpu detected");
-        const capabilityWarnings = [...(processing.capabilityWarnings ?? [])];
-        const warning =
-          "Host GPU detected, but the current whisper runtime fell back to CPU. Verify that WHISPER_COMMAND points to a GPU-enabled whisper.cpp build.";
-        if (hasHostGpuHint && !capabilityWarnings.includes(warning)) {
-          capabilityWarnings.push(warning);
-          if (!job.warnings.includes(warning)) {
-            job.warnings.push(warning);
-          }
-        }
+        // The Silero VAD pass (whisper_vad) always reports "no gpu found" because it
+        // is CPU-only. Only flag the warning if the main Whisper process has NOT
+        // already reported a successful CUDA/Metal/GPU backend.
+        const gpuAlreadyConfirmed = processing.runtimeBackend === "cuda"
+          || processing.runtimeBackend === "metal"
+          || processing.runtimeBackend === "gpu";
 
-        job.processing = {
-          ...processing,
-          runtimeBackend: "cpu",
-          runtimeSummary: "Whisper runtime reported CPU fallback",
-          readinessStatus: "warn",
-          capabilityWarnings
-        };
+        if (!gpuAlreadyConfirmed) {
+          const hasHostGpuHint = processing.hostGpuDetected || processing.deviceSummary.toLowerCase().includes("nvidia gpu detected");
+          const capabilityWarnings = [...(processing.capabilityWarnings ?? [])];
+          const warning =
+            "Host GPU detected, but the current whisper runtime fell back to CPU. Verify that WHISPER_COMMAND points to a GPU-enabled whisper.cpp build.";
+          if (hasHostGpuHint && !capabilityWarnings.includes(warning)) {
+            capabilityWarnings.push(warning);
+            if (!job.warnings.includes(warning)) {
+              job.warnings.push(warning);
+            }
+          }
+
+          job.processing = {
+            ...processing,
+            runtimeBackend: "cpu",
+            runtimeSummary: "Whisper runtime reported CPU fallback",
+            readinessStatus: "warn",
+            capabilityWarnings
+          };
+        }
       } else if (normalizedLine.includes("device 0: cpu")) {
         job.processing = {
           ...processing,

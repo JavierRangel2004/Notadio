@@ -203,9 +203,9 @@ export async function getReadinessReport(): Promise<ReadinessReport> {
 
     if (config.whisperEnableVad) {
       results.push({
-        status: /\b--vad\b/i.test(whisperCheck.output) ? "ok" : "fail",
+        status: /--vad\b/i.test(whisperCheck.output) ? "ok" : "fail",
         label: "Whisper VAD support",
-        detail: /\b--vad\b/i.test(whisperCheck.output)
+        detail: /--vad\b/i.test(whisperCheck.output)
           ? "Whisper help output includes VAD support."
           : "Configured whisper build does not appear to support --vad."
       });

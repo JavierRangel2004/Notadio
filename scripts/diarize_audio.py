@@ -3,6 +3,12 @@ import json
 import os
 import sys
 import traceback
+import warnings
+
+# Suppress torchaudio deprecation warnings (sox_effects, backend loading)
+# that pollute processing logs until libraries are updated to torchcodec.
+warnings.filterwarnings("ignore", category=UserWarning, module="torchaudio")
+warnings.filterwarnings("ignore", category=FutureWarning, module="torchaudio")
 
 
 def load_diarize_runner():
