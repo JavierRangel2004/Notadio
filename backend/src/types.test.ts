@@ -86,8 +86,8 @@ test("All EnhancementStatus values are valid", () => {
 });
 
 test("All SummaryPreset values are valid", () => {
-  const presets: SummaryPreset[] = ["meeting", "whatsappVoiceNote", "genericMedia"];
-  assert.equal(presets.length, 3);
+  const presets: SummaryPreset[] = ["meeting", "whatsappVoiceNote", "genericMedia", "contentCreation"];
+  assert.equal(presets.length, 4);
 });
 
 test("All SourceOrigin values are valid", () => {

@@ -39,19 +39,34 @@ function getPresetContext(preset?: SummaryPreset): PresetContext {
           "Si solo hay un hablante, omite la identificación de speakers y enfócate en el contenido.",
           "Enfócate en la intención y los puntos clave del mensaje, no en estructura de reunión.",
           "Usa 'brief' para un resumen de 1-2 oraciones del mensaje principal.",
-          "Prioriza deadlines, compromisos y preguntas directas en los actionItems."
+          "Prioriza deadlines, compromisos y preguntas directas en los actionItems.",
+          "Si no hay tareas, decisiones ni preguntas explícitas, devuelve arrays vacíos [] para actionItems, keyDecisions y openQuestions. NO inventes tareas corporativas para contenido informal."
         ],
         reduceContext: "Fusiona los resúmenes parciales de esta nota de voz en un único resumen conciso."
       };
+    case "contentCreation":
+      return {
+        systemRole: "Eres un asistente que analiza contenido de entretenimiento, streams, podcasts y creación de contenido. BAJO NINGUNA CIRCUNSTANCIA interpretes este contenido como una reunión de trabajo ni inventes tareas o decisiones corporativas.",
+        objectivePrefix: "Redacta un resumen del contenido captando el tono, los temas principales, las interacciones con la audiencia y los momentos destacados. Usa un tono casual y fiel al contexto original.",
+        extraRules: [
+          "CRÍTICO: Este NO es un contexto corporativo. NUNCA uses jerga de reuniones. NUNCA fuerces estructura de reunión ejecutiva.",
+          "Si el audio es un stream o podcast, describe la dinámica del contenido, los temas de conversación y las interacciones con el chat o la audiencia.",
+          "OBLIGATORIO: Devuelve arrays vacíos [] para keyDecisions, actionItems, followUps, risks y openQuestions SIEMPRE, a menos que alguien diga literalmente 'me comprometo a hacer X' o 'voy a hacer X el martes'. Chistes, bromas y comentarios casuales NO son compromisos.",
+          "Interpreta el lenguaje coloquial en contexto: 'tarjeta' junto a 'donar/bits/mamá/dinero' = tarjeta de crédito/débito. 'Tatuaje' en broma = humor, no una decisión real.",
+          "Si hay interacción con chat (donaciones, suscripciones, bits, menciones), captúrala en sections o en operationalNotes como dinámica de la comunidad."
+        ],
+        reduceContext: "Fusiona los resúmenes parciales de este contenido de entretenimiento/stream en un único resumen cohesivo, manteniendo el tono informal y sin imponer estructura corporativa."
+      };
     case "genericMedia":
       return {
-        systemRole: "Eres un asistente que analiza contenido de audio y video para extraer información relevante.",
-        objectivePrefix: "Redacta un resumen neutral del contenido, destacando puntos clave, momentos notables y cualquier información accionable.",
+        systemRole: "Eres un asistente que analiza contenido de audio y video para extraer información relevante. Primero identifica el tipo de contenido (reunión, stream, podcast, conferencia, conversación casual) y adapta tu resumen al contexto real.",
+        objectivePrefix: "Redacta un resumen neutral del contenido, destacando puntos clave, momentos notables y cualquier información accionable. Adapta el tono y la estructura al tipo real de contenido.",
         extraRules: [
           "Mantén un tono neutral y descriptivo.",
           "Si hay múltiples temas, agrúpalos en secciones claras.",
           "Incluye referencias temporales cuando sean relevantes.",
-          "Si no hay tareas explícitas, deja actionItems vacío en lugar de inventar."
+          "Si el contenido es informal (stream, podcast, conversación casual), NO inventes decisiones corporativas ni tareas de trabajo. Devuelve arrays vacíos [] para actionItems, keyDecisions y openQuestions si no existen explícitamente.",
+          "Usa 'overview' como resumen descriptivo de alto nivel (TL;DR de 1-2 párrafos). Usa 'narrative' solo si hay suficiente contenido para una narración cronológica más detallada; de lo contrario déjalo vacío."
         ],
         reduceContext: "Fusiona los resúmenes parciales de este contenido de audio/video en un único resumen cohesivo."
       };
@@ -66,7 +81,8 @@ function getPresetContext(preset?: SummaryPreset): PresetContext {
           "Captura condiciones de handover/transición, límites de alcance y contraprestaciones acordadas.",
           "Refleja estado técnico concreto (ej. ya en producción vs pendiente) dentro de sections o keyDecisions.",
           "Si hay compromisos de fecha o ventanas de tiempo, conviértelos en actionItems y followUps.",
-          "Incluye acuerdos de comunicación/proceso y el tono de cierre en operationalNotes o sección de cierre."
+          "Incluye acuerdos de comunicación/proceso y el tono de cierre en operationalNotes o sección de cierre.",
+          "Si el contenido NO es una reunión de trabajo (ej. un stream, podcast o conversación casual), NO inventes actionItems, keyDecisions ni openQuestions. Devuelve arrays vacíos [] para campos que no apliquen."
         ],
         reduceContext: "Fusiona la información repetida sin perder decisiones, riesgos, preguntas y tareas concretas. Prioriza el hallazgo o problema dominante en \"headline\" y \"brief\"."
       };
@@ -1007,7 +1023,8 @@ function buildSchemaInstructions(): string {
 {
   "headline": "Frase breve con el hallazgo o prioridad dominante",
   "brief": "Resumen ejecutivo de 2 a 4 oraciones",
-  "overview": "Resumen detallado en uno o varios párrafos",
+  "overview": "TL;DR en 1-2 párrafos: qué pasó y cuál es el punto principal",
+  "narrative": "Narración cronológica más detallada SOLO si aporta información diferente al overview. Si la narración sería idéntica o muy similar al overview, devuelve null o cadena vacía \"\"",
   "topics": ["tema 1", "tema 2"],
   "sections": [
     {
@@ -1017,10 +1034,10 @@ function buildSchemaInstructions(): string {
       "priority": "alta | media | baja"
     }
   ],
-  "keyDecisions": ["decisión 1", "decisión 2"],
+  "keyDecisions": ["SOLO decisiones explícitas que alguien tomó. Si no hay decisiones reales, devuelve []"],
   "actionItems": [
     {
-      "task": "acción concreta",
+      "task": "acción a la que alguien se comprometió EXPLÍCITAMENTE",
       "assignee": "persona responsable si existe",
       "deadline": "fecha o momento si existe",
       "priority": "alta | media | baja",
@@ -1031,7 +1048,7 @@ function buildSchemaInstructions(): string {
   "followUps": ["seguimiento 1"],
   "risks": ["riesgo o bloqueo 1"],
   "operationalNotes": ["nota operativa, aviso, ausencia o acuerdo de trabajo"],
-  "openQuestions": ["pregunta o tema pendiente por aclarar"]
+  "openQuestions": ["SOLO preguntas que quedaron sin respuesta en la conversación. Si no hay, devuelve []"]
 }`;
 }
 
@@ -1050,9 +1067,10 @@ ${buildSchemaInstructions()}
 Reglas:
 1. No inventes datos de otros fragmentos.
 2. No escribas markdown ni texto fuera del JSON.
-3. Usa arrays vacíos cuando falte información.
+3. Usa arrays vacíos cuando falte información. NUNCA inventes actionItems, keyDecisions ni openQuestions si no existen explícitamente en el texto.
 4. Mantén nombres propios, roles y citas clave lo más específicos posible.
 5. Si hay fechas o ventanas de tiempo, conviértelas en actionItems/followUps.
+6. Si "narrative" sería igual a "overview", devuelve null o cadena vacía para "narrative".
 
 Fragmento ${chunkIndex}/${totalChunks}:
 ${transcriptText}`;
@@ -1198,7 +1216,7 @@ async function mapWithConcurrency<T, TResult>(
 
 function buildPrompt(transcriptText: string, preset?: SummaryPreset): string {
   const ctx = getPresetContext(preset);
-  const extraRules = ctx.extraRules.map((rule, i) => `${i + 4}. ${rule}`).join("\n");
+  const extraRules = ctx.extraRules.map((rule, i) => `${i + 6}. ${rule}`).join("\n");
 
   return `${ctx.systemRole} Analiza la transcripción y devuelve SOLO un objeto JSON válido.
 
@@ -1206,15 +1224,16 @@ Objetivo:
 - ${ctx.objectivePrefix}
 - Si la transcripción está en español, responde en español natural.
 - Detecta prioridades, acuerdos, decisiones, pendientes, tareas, avisos, bloqueos, riesgos y dudas abiertas.
-- Convierte tareas o todos implícitos en actionItems concretos.
-- Integra contexto tipo Notebook recap: postura, reacción, alcance técnico/handover, acuerdos y cierre.
+- Si no existen tareas, decisiones o preguntas explícitas en el texto, devuelve arrays vacíos []. NO inventes ni fuerces contenido que no existe.
 
 ${buildSchemaInstructions()}
 
 Reglas:
 1. No escribas markdown, encabezados sueltos ni texto fuera del JSON.
-2. Usa arrays vacíos cuando falte información.
+2. Usa arrays vacíos cuando falte información. BAJO NINGUNA CIRCUNSTANCIA inventes actionItems, keyDecisions u openQuestions si nadie se comprometió explícitamente a algo. Una conversación casual o un stream NO tienen actionItems.
 3. Mantén nombres propios, roles y acuerdos lo más específicos posible.
+4. Si "narrative" sería idéntico o muy similar a "overview", devuelve null o cadena vacía para "narrative".
+5. Interpreta el lenguaje en su contexto real: en un stream, "tarjeta" junto a "donar", "bits", "mamá" o "dinero" significa tarjeta de crédito/débito, NO tarjeta de identificación. Respeta el contexto original.
 ${extraRules}
 
 Transcripción:

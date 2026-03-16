@@ -2,7 +2,7 @@ export type JobStatus = "queued" | "processing" | "completed" | "failed";
 
 export type SourceOrigin = "upload" | "recording";
 
-export type SummaryPreset = "meeting" | "whatsappVoiceNote" | "genericMedia";
+export type SummaryPreset = "meeting" | "whatsappVoiceNote" | "genericMedia" | "contentCreation";
 
 export type EnhancementStageKey = "translate" | "diarize" | "summarize";
 
