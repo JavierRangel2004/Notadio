@@ -16,6 +16,7 @@
     "doctor": "npm --workspace backend run doctor",
     "diff:log": "npm --workspace backend exec tsx ../scripts/generateDiff.ts",
     "setup:diarization": "bash scripts/setup-diarization.sh",
+    "setup:diarization:windows": "powershell -ExecutionPolicy Bypass -File scripts/setup-diarization.ps1",
     "build": "npm-run-all build:backend build:frontend",
     "build:backend": "npm --workspace backend run build",
     "build:frontend": "npm --workspace frontend run build"

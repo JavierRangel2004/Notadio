@@ -15,7 +15,7 @@ def load_diarize_runner():
         print(f"  Import error: {exc}", file=sys.stderr)
         traceback.print_exc(file=sys.stderr)
         print(
-            "Please run scripts/setup-diarization.sh and ensure DIARIZATION_COMMAND points to the venv python.",
+            "Please run scripts/setup-diarization.sh on macOS/Linux or scripts/setup-diarization.ps1 on Windows, then ensure DIARIZATION_COMMAND points to the venv python.",
             file=sys.stderr,
         )
         sys.exit(1)
