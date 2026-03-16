@@ -215,6 +215,7 @@ function hasUsableSummary(summary: MeetingSummary | null | undefined): summary i
 
 const PRESET_DESCRIPTIONS: Record<SummaryPreset, { label: string; description: string; defaultDiarize: boolean }> = {
   meeting: { label: "Meeting / Daily Standup", description: "Extract action items, decisions, blockers, and follow-ups", defaultDiarize: true },
+  contentCreation: { label: "Content Creation / Stream", description: "Stream, podcast, or content recap — no corporate jargon", defaultDiarize: false },
   whatsappVoiceNote: { label: "WhatsApp Voice Note", description: "Concise recap with intent, asks, and deadlines", defaultDiarize: false },
   genericMedia: { label: "Generic Audio/Video", description: "Neutral recap with key points and notable moments", defaultDiarize: false }
 };
@@ -460,27 +461,33 @@ function WorkspaceView({ onSelectJob }: { onSelectJob: (job: JobPayload) => void
     }
   }
 
-  if (loading) return <div style={{ padding: '2rem' }}>Loading workspace...</div>;
-  if (jobs.length === 0) return <div style={{ padding: '2rem' }}>No jobs found in your workspace.</div>;
+  if (loading) return <div style={{ padding: '2rem', color: 'var(--text-muted)' }}>Loading workspace...</div>;
+  if (jobs.length === 0) return <div style={{ padding: '2rem', color: 'var(--text-muted)' }}>No jobs found in your workspace.</div>;
 
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '1.5rem', padding: '1rem 0' }}>
-      {jobs.map(job => (
-        <div key={job.id} onClick={() => onSelectJob(job)} className="glass-panel" style={{ cursor: 'pointer', transition: 'transform 0.1s', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-            <strong style={{ fontSize: '1.1rem' }}>{job.sourceMedia?.originalName || 'Untitled Session'}</strong>
-            <button onClick={(e) => handleDelete(job.id, e)} style={{ background: 'transparent', border: 'none', color: 'var(--danger)', cursor: 'pointer', padding: '4px' }}>×</button>
+    <div>
+      <div className="workspace-header">
+        <h2>Workspace</h2>
+        <span style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>{jobs.length} session{jobs.length !== 1 ? 's' : ''}</span>
+      </div>
+      <div className="workspace-grid">
+        {jobs.map(job => (
+          <div key={job.id} onClick={() => onSelectJob(job)} className="job-card">
+            <div className="job-card-header">
+              <span className="job-card-name">{job.sourceMedia?.originalName || 'Untitled Session'}</span>
+              <button onClick={(e) => handleDelete(job.id, e)} className="job-card-delete" aria-label="Delete job">×</button>
+            </div>
+            <div className="job-card-date">
+              {new Date(job.createdAt).toLocaleString()}
+            </div>
+            <div className="job-card-tags">
+              <span className={`stage-badge ${job.status === 'completed' ? 'stage-badge-completed' : job.status === 'failed' ? 'stage-badge-failed' : 'stage-badge-active'}`}>{job.status}</span>
+              {job.sourceOrigin === "recording" && <span className="stage-badge stage-badge-pending">mic</span>}
+              {job.detectedLanguage && <span className="stage-badge stage-badge-pending">{job.detectedLanguage}</span>}
+            </div>
           </div>
-          <div style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>
-            {new Date(job.createdAt).toLocaleString()}
-          </div>
-          <div style={{ display: 'flex', gap: '0.5rem', marginTop: 'auto', paddingTop: '1rem', flexWrap: 'wrap' }}>
-            <span className="tag-outline" style={{ fontSize: '0.75rem', padding: '0.1rem 0.5rem' }}>{job.status}</span>
-            {job.sourceOrigin === "recording" && <span className="tag-outline" style={{ fontSize: '0.75rem', padding: '0.1rem 0.5rem' }}>mic</span>}
-            {job.detectedLanguage && <span className="tag-outline" style={{ fontSize: '0.75rem', padding: '0.1rem 0.5rem' }}>{job.detectedLanguage}</span>}
-          </div>
-        </div>
-      ))}
+        ))}
+      </div>
     </div>
   );
 }
@@ -1289,11 +1296,12 @@ export function App() {
                 {job.enhancementStages && (
                   <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap", marginTop: "1rem" }}>
                     {Object.entries(job.enhancementStages).map(([key, state]) => (
-                      <span key={key} className="tag-outline" style={{
-                        fontSize: "0.75rem",
-                        padding: "0.15rem 0.5rem",
-                        color: state.status === "completed" ? "var(--accent-primary)" : state.status === "failed" ? "var(--danger)" : undefined
-                      }}>
+                      <span key={key} className={`stage-badge ${
+                        state.status === "completed" ? "stage-badge-completed" :
+                        state.status === "failed" ? "stage-badge-failed" :
+                        state.status === "running" ? "stage-badge-active" :
+                        "stage-badge-pending"
+                      }`}>
                         {formatStageLabel(key)}: {state.status}
                       </span>
                     ))}
