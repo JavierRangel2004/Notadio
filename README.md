@@ -47,6 +47,7 @@ It also includes an advanced, fully local AI summarization pipeline powered by O
 - **ffmpeg** available in your `PATH`
 - **whisper-cli** (`whisper.cpp` binary) available in your `PATH` or configured via `.env`
 - A local Whisper model file (e.g. `ggml-large-v3.bin`)
+- A local Whisper VAD model file (recommended production path for long-form media)
 - **Python 3.9+** (required only if you want to enable local speaker diarization)
 - **Ollama** (required only if you want to enable local AI meeting summaries)
 
@@ -127,6 +128,16 @@ wget https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-small.bin
 
 Set `WHISPER_MODEL_PATH` in `.env` to the absolute path of the downloaded file.
 
+#### Download the Whisper VAD model
+
+For long recordings, Notadio uses Whisper VAD plus conservative decoder defaults to reduce trailing silence hallucinations and repeated end-of-file loops.
+
+```powershell
+C:\Users\javar\GITHUB\whisper.cpp\models\download-vad-model.cmd silero-v6.2.0 .\.local\models
+```
+
+Set `WHISPER_VAD_MODEL_PATH=./.local/models/ggml-silero-v6.2.0.bin` in `.env`.
+
 ### 4) (Optional) Enable Extensions
 
 Notadio supports fully local speaker diarization and meeting summaries.
@@ -157,6 +168,7 @@ npm run doctor
 ```
 
 It checks your resolved `.env`, storage path, `ffmpeg`, `whisper-cli`, Whisper model path, optional diarization Python env, and Ollama connectivity/model availability.
+When `WHISPER_ENABLE_VAD=true`, doctor also checks for Whisper VAD support and a valid local VAD model path.
 
 ### 6) Run the app
 
@@ -193,6 +205,20 @@ WHISPER_MODEL_PATH=./.local/models/ggml-large-v3.bin
 # Whisper CLI argument templates ({model}, {input}, {outputBase} are substituted at runtime)
 WHISPER_ARGS=-m "{model}" -f "{input}" --output-json --output-srt --output-file "{outputBase}" --language auto
 WHISPER_TRANSLATE_ARGS=-m "{model}" -f "{input}" --output-json --output-file "{outputBase}" --language auto --translate
+
+# Whisper long-form quality guards
+WHISPER_ENABLE_VAD=true
+WHISPER_VAD_MODEL_PATH=./.local/models/ggml-silero-v6.2.0.bin
+WHISPER_HALLUCINATION_GUARD=true
+WHISPER_MAX_CONTEXT=0
+WHISPER_MAX_LEN=160
+WHISPER_SPLIT_ON_WORD=true
+WHISPER_SUPPRESS_NST=true
+WHISPER_NO_SPEECH_THOLD=0.72
+WHISPER_VAD_THRESHOLD=0.5
+WHISPER_VAD_MIN_SPEECH_MS=250
+WHISPER_VAD_MIN_SILENCE_MS=350
+WHISPER_VAD_SPEECH_PAD_MS=120
 
 # Performance profile: auto | speed | balanced | quality
 WHISPER_PERF_PROFILE=auto
