@@ -2,7 +2,12 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import { config } from "../config.js";
 import { detectProcessingProfile } from "./deviceProfileService.js";
-import { JobProcessingProfile, TranscriptSegment, TranscriptVariant } from "../types.js";
+import {
+  JobProcessingProfile,
+  TranscriptSegment,
+  TranscriptVariant,
+  TranslationPath
+} from "../types.js";
 import { ensureDir, readJsonFile } from "../utils/fs.js";
 import { parseArgs, runCommand } from "../utils/process.js";
 
@@ -11,6 +16,18 @@ type TranscribeResult = {
   english?: TranscriptVariant;
   warnings: string[];
   processing: JobProcessingProfile;
+  translationPath?: TranslationPath;
+};
+
+type TranslationResult = {
+  variant: TranscriptVariant;
+  path: TranslationPath;
+  warnings: string[];
+};
+
+type WhisperTaskResult = {
+  variant: TranscriptVariant;
+  warnings: string[];
 };
 
 type WhisperTranscriptionEntry = {
@@ -45,9 +62,37 @@ type WhisperTaskOptions = {
 const WHISPER_SEGMENT_LOG_PATTERN = /^\[\d{2}:\d{2}(?::\d{2})?\.\d+\s+-->\s+\d{2}:\d{2}(?::\d{2})?\.\d+\]/;
 const TRANSLATION_BATCH_MAX_SEGMENTS = 12;
 const TRANSLATION_BATCH_MAX_CHARS = 2200;
+const TRAILING_LOOP_MIN_REPEATS = 6;
+const TRAILING_LOOP_MAX_SEGMENT_SECONDS = 2;
+
+function hasArg(args: string[], ...names: string[]): boolean {
+  return args.some((arg, index) => {
+    for (const name of names) {
+      if (arg === name || arg.startsWith(`${name}=`)) {
+        return true;
+      }
+
+      if (index < args.length - 1 && arg === name) {
+        return true;
+      }
+    }
+
+    return false;
+  });
+}
 
 function toNumber(value: unknown): number {
   return typeof value === "number" ? value : Number(value ?? 0);
+}
+
+function normalizeLoopText(value: string): string {
+  return value
+    .normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^\p{L}\p{N}\s]/gu, " ")
+    .replace(/\s+/g, " ")
+    .trim()
+    .toLowerCase();
 }
 
 function normalizeSegments(rawSegments: unknown[]): TranscriptSegment[] {
@@ -126,7 +171,7 @@ export function parseWhisperOutput(payload: WhisperOutput, allowEmpty = false): 
 }
 
 function hasThreadArg(args: string[]): boolean {
-  return args.some((arg) => arg === "-t" || arg === "--threads" || arg.startsWith("--threads="));
+  return hasArg(args, "-t", "--threads");
 }
 
 function withPerformanceArgs(args: string[], profile: JobProcessingProfile): string[] {
@@ -135,6 +180,53 @@ function withPerformanceArgs(args: string[], profile: JobProcessingProfile): str
   }
 
   return [...args, "-t", String(profile.threads)];
+}
+
+function appendArgIfMissing(args: string[], names: string[], values: string[] = []): string[] {
+  if (hasArg(args, ...names)) {
+    return args;
+  }
+
+  return [...args, names[0]!, ...values];
+}
+
+export function buildWhisperArgs(
+  inputPath: string,
+  outputBase: string,
+  mode: "transcribe" | "translate",
+  processingProfile: JobProcessingProfile
+): string[] {
+  const template = mode === "translate" ? config.whisperTranslateArgs : config.whisperArgs;
+  let args = parseArgs(template, {
+    input: inputPath,
+    model: config.whisperModelPath,
+    outputBase
+  });
+
+  args = withPerformanceArgs(args, processingProfile);
+  args = appendArgIfMissing(args, ["-mc", "--max-context"], [String(config.whisperMaxContext)]);
+  args = appendArgIfMissing(args, ["-ml", "--max-len"], [String(config.whisperMaxLen)]);
+
+  if (config.whisperSplitOnWord) {
+    args = appendArgIfMissing(args, ["-sow", "--split-on-word"]);
+  }
+
+  if (config.whisperSuppressNst) {
+    args = appendArgIfMissing(args, ["-sns", "--suppress-nst"]);
+  }
+
+  args = appendArgIfMissing(args, ["-nth", "--no-speech-thold"], [String(config.whisperNoSpeechThold)]);
+
+  if (config.whisperEnableVad && config.whisperVadModelPath) {
+    args = appendArgIfMissing(args, ["--vad"]);
+    args = appendArgIfMissing(args, ["-vm", "--vad-model"], [config.whisperVadModelPath]);
+    args = appendArgIfMissing(args, ["-vt", "--vad-threshold"], [String(config.whisperVadThreshold)]);
+    args = appendArgIfMissing(args, ["-vspd", "--vad-min-speech-duration-ms"], [String(config.whisperVadMinSpeechMs)]);
+    args = appendArgIfMissing(args, ["-vsd", "--vad-min-silence-duration-ms"], [String(config.whisperVadMinSilenceMs)]);
+    args = appendArgIfMissing(args, ["-vp", "--vad-speech-pad-ms"], [String(config.whisperVadSpeechPadMs)]);
+  }
+
+  return args;
 }
 
 function estimateWhisperStagePct(
@@ -163,6 +255,81 @@ function parseProgressLine(line: string): number | undefined {
 
 function shouldSurfaceWhisperLogLine(line: string): boolean {
   return !WHISPER_SEGMENT_LOG_PATTERN.test(line.trim());
+}
+
+export function trimTrailingHallucinatedLoop(variant: TranscriptVariant): { variant: TranscriptVariant; removedCount: number } {
+  if (!config.whisperHallucinationGuard || variant.segments.length < TRAILING_LOOP_MIN_REPEATS + 1) {
+    return { variant, removedCount: 0 };
+  }
+
+  const segments = [...variant.segments];
+  const lastText = normalizeLoopText(segments.at(-1)?.text ?? "");
+  if (!lastText) {
+    return { variant, removedCount: 0 };
+  }
+
+  let suffixStart = segments.length - 1;
+  while (suffixStart >= 0) {
+    const segment = segments[suffixStart]!;
+    const duration = Math.max(0, segment.end - segment.start);
+    if (duration > TRAILING_LOOP_MAX_SEGMENT_SECONDS || normalizeLoopText(segment.text) !== lastText) {
+      break;
+    }
+    suffixStart -= 1;
+  }
+
+  const repeatedCount = segments.length - (suffixStart + 1);
+  if (repeatedCount < TRAILING_LOOP_MIN_REPEATS) {
+    return { variant, removedCount: 0 };
+  }
+
+  const keepIndex = suffixStart + 1;
+  const trimmedSegments = [...segments.slice(0, keepIndex + 1)];
+  const trimmedVariant: TranscriptVariant = {
+    ...variant,
+    text: trimmedSegments.map((segment) => segment.text).join(" ").trim(),
+    segments: trimmedSegments
+  };
+
+  return {
+    variant: trimmedVariant,
+    removedCount: repeatedCount - 1
+  };
+}
+
+function segmentOverlap(left: TranscriptSegment, right: TranscriptSegment): number {
+  const start = Math.max(left.start, right.start);
+  const end = Math.min(left.end, right.end);
+  return Math.max(0, end - start);
+}
+
+function applySpeakerLabels(variant: TranscriptVariant, reference: TranscriptVariant): TranscriptVariant {
+  if (variant.segments.length === 0 || reference.segments.length === 0) {
+    return variant;
+  }
+
+  const segments = variant.segments.map((segment) => {
+    let bestMatch: TranscriptSegment | undefined;
+    let bestScore = 0;
+
+    for (const candidate of reference.segments) {
+      const overlap = segmentOverlap(segment, candidate);
+      if (overlap > bestScore) {
+        bestScore = overlap;
+        bestMatch = candidate;
+      }
+    }
+
+    return {
+      ...segment,
+      speaker: bestMatch?.speaker
+    };
+  });
+
+  return {
+    ...variant,
+    segments
+  };
 }
 
 function extractJsonCandidate(response: string): string {
@@ -323,27 +490,27 @@ async function requestStructuredTranslation(batch: TranscriptSegment[]): Promise
   });
 }
 
+function getPreferredTranslationPath(processingProfile: JobProcessingProfile): TranslationPath {
+  if (!processingProfile.translationEnabled) {
+    return "disabled";
+  }
+
+  return processingProfile.translationPath ?? "whisper";
+}
+
 async function runWhisperTask(
   inputPath: string,
   outputBase: string,
   mode: "transcribe" | "translate",
   options: WhisperTaskOptions
-): Promise<TranscriptVariant> {
+): Promise<WhisperTaskResult> {
   if (!config.whisperModelPath) {
     throw new Error("WHISPER_MODEL_PATH is not configured.");
   }
 
   await ensureDir(path.dirname(outputBase));
 
-  const template = mode === "translate" ? config.whisperTranslateArgs : config.whisperArgs;
-  const args = withPerformanceArgs(
-    parseArgs(template, {
-      input: inputPath,
-      model: config.whisperModelPath,
-      outputBase
-    }),
-    options.processingProfile
-  );
+  const args = buildWhisperArgs(inputPath, outputBase, mode, options.processingProfile);
 
   const startedAt = Date.now();
   let lastExplicitPct = 0;
@@ -388,9 +555,16 @@ async function runWhisperTask(
 
   const jsonPath = `${outputBase}.json`;
   const payload = await readJsonFile<WhisperOutput>(jsonPath);
-  const variant = parseWhisperOutput(payload, options.allowEmpty);
+  const parsedVariant = parseWhisperOutput(payload, options.allowEmpty);
+  const { variant, removedCount } = trimTrailingHallucinatedLoop(parsedVariant);
+  const warnings: string[] = [];
+  if (removedCount > 0) {
+    const warning = `Trimmed suspected trailing Whisper hallucination loop (${removedCount} segments removed).`;
+    warnings.push(warning);
+    options.onLog?.(warning);
+  }
   options.onProgress?.(100);
-  return variant;
+  return { variant, warnings };
 }
 
 export async function translateAudio(
@@ -406,13 +580,14 @@ export async function translateAudio(
   await ensureDir(workDir);
   const processing = options.processingProfile ?? detectProcessingProfile();
 
-  return runWhisperTask(inputPath, path.join(workDir, "english"), "translate", {
+  const result = await runWhisperTask(inputPath, path.join(workDir, "english"), "translate", {
     durationSeconds: options.durationSeconds,
     processingProfile: processing,
     onLog: options.onLog,
     onProgress: options.onProgress,
     allowEmpty: true
   });
+  return result.variant;
 }
 
 export async function translateTranscript(
@@ -452,6 +627,55 @@ export async function translateTranscript(
   };
 }
 
+export async function generateEnglishTranslation(
+  inputPath: string,
+  workDir: string,
+  source: TranscriptVariant,
+  options: {
+    durationSeconds?: number;
+    processingProfile?: JobProcessingProfile;
+    onLog?: (line: string) => void;
+    onProgress?: (stagePct: number) => void;
+  } = {}
+): Promise<TranslationResult> {
+  const processing = options.processingProfile ?? detectProcessingProfile();
+  const preferredPath = getPreferredTranslationPath(processing);
+  const warnings: string[] = [];
+
+  if (preferredPath === "disabled") {
+    throw new Error("English translation is disabled.");
+  }
+
+  if (preferredPath === "whisper") {
+    try {
+      const whisperTranslation = await runWhisperTask(inputPath, path.join(workDir, "english"), "translate", {
+          durationSeconds: options.durationSeconds,
+          processingProfile: processing,
+          onLog: options.onLog,
+          onProgress: options.onProgress,
+          allowEmpty: true
+        });
+      const variant = applySpeakerLabels(
+        whisperTranslation.variant,
+        source
+      );
+
+      warnings.push(...whisperTranslation.warnings);
+      return { variant, path: "whisper", warnings };
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Whisper translation failed.";
+      warnings.push(`Whisper translation failed and fell back to Ollama: ${message}`);
+      options.onLog?.(`Whisper translation failed. Falling back to Ollama text translation. ${message}`);
+    }
+  }
+
+  const variant = await translateTranscript(source, {
+    onLog: options.onLog,
+    onProgress: options.onProgress
+  });
+  return { variant, path: "ollama", warnings };
+}
+
 export async function transcribeAudio(
   inputPath: string,
   workDir: string,
@@ -475,15 +699,23 @@ export async function transcribeAudio(
     onProgress: options.onSourceProgress
   };
 
-  const source = await runWhisperTask(inputPath, path.join(workDir, "source"), "transcribe", sourceTaskOptions);
+  const sourceTask = await runWhisperTask(inputPath, path.join(workDir, "source"), "transcribe", sourceTaskOptions);
+  const source = sourceTask.variant;
+  warnings.push(...sourceTask.warnings);
 
   let english: TranscriptVariant | undefined;
+  let translationPath: TranslationPath | undefined;
   if (processing.translationEnabled) {
     try {
-      english = await translateTranscript(source, {
+      const translated = await generateEnglishTranslation(inputPath, workDir, source, {
+        durationSeconds: options.durationSeconds,
+        processingProfile: processing,
         onLog: options.onTranslationLog,
         onProgress: options.onTranslationProgress
       });
+      english = translated.variant;
+      translationPath = translated.path;
+      warnings.push(...translated.warnings);
     } catch (error) {
       const message =
         error instanceof Error
@@ -494,5 +726,5 @@ export async function transcribeAudio(
     }
   }
 
-  return { source, english, warnings, processing };
+  return { source, english, warnings, processing, translationPath };
 }

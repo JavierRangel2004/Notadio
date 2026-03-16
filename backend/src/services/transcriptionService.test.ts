@@ -1,6 +1,13 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { parseWhisperOutput, translateTranscript } from "./transcriptionService.js";
+import { config } from "../config.js";
+import {
+  buildWhisperArgs,
+  generateEnglishTranslation,
+  parseWhisperOutput,
+  translateTranscript,
+  trimTrailingHallucinatedLoop
+} from "./transcriptionService.js";
 import { TranscriptVariant } from "../types.js";
 
 type FetchStep = {
@@ -100,8 +107,114 @@ test("parseWhisperOutput supports legacy segments arrays", () => {
   assert.equal(variant.segments.length, 2);
 });
 
+test("trimTrailingHallucinatedLoop removes repeated short suffix at end of transcript", () => {
+  const originalGuard = config.whisperHallucinationGuard;
+  config.whisperHallucinationGuard = true;
+
+  try {
+    const variant: TranscriptVariant = {
+      language: "es",
+      text: "",
+      segments: [
+        { start: 0, end: 2, text: "Introducción." },
+        { start: 2, end: 3, text: "Y ellos no conocen a nadie." },
+        { start: 3, end: 4, text: "Y ellos no conocen a nadie." },
+        { start: 4, end: 5, text: "Y ellos no conocen a nadie." },
+        { start: 5, end: 6, text: "Y ellos no conocen a nadie." },
+        { start: 6, end: 7, text: "Y ellos no conocen a nadie." },
+        { start: 7, end: 8, text: "Y ellos no conocen a nadie." },
+        { start: 8, end: 9, text: "Y ellos no conocen a nadie." }
+      ]
+    };
+    variant.text = variant.segments.map((segment) => segment.text).join(" ");
+
+    const result = trimTrailingHallucinatedLoop(variant);
+
+    assert.equal(result.removedCount, 6);
+    assert.deepEqual(result.variant.segments.map((segment) => segment.text), [
+      "Introducción.",
+      "Y ellos no conocen a nadie."
+    ]);
+  } finally {
+    config.whisperHallucinationGuard = originalGuard;
+  }
+});
+
+test("trimTrailingHallucinatedLoop preserves repeated middle content and short endings below threshold", () => {
+  const originalGuard = config.whisperHallucinationGuard;
+  config.whisperHallucinationGuard = true;
+
+  try {
+    const variant: TranscriptVariant = {
+      language: "es",
+      text: "",
+      segments: [
+        { start: 0, end: 1, text: "Sí." },
+        { start: 1, end: 2, text: "Sí." },
+        { start: 2, end: 3, text: "Sí." },
+        { start: 3, end: 4, text: "Cierre." },
+        { start: 4, end: 5, text: "Gracias." },
+        { start: 5, end: 6, text: "Gracias." },
+        { start: 6, end: 7, text: "Gracias." },
+        { start: 7, end: 8, text: "Gracias." },
+        { start: 8, end: 9, text: "Gracias." }
+      ]
+    };
+    variant.text = variant.segments.map((segment) => segment.text).join(" ");
+
+    const result = trimTrailingHallucinatedLoop(variant);
+
+    assert.equal(result.removedCount, 0);
+    assert.equal(result.variant.segments.length, variant.segments.length);
+  } finally {
+    config.whisperHallucinationGuard = originalGuard;
+  }
+});
+
 test("parseWhisperOutput throws when no supported transcript structure exists", () => {
   assert.throws(() => parseWhisperOutput({ result: { language: "en" } }), /could not be parsed/i);
+});
+
+test("buildWhisperArgs appends safety defaults without duplicating explicit overrides", () => {
+  const originalValues = {
+    whisperEnableVad: config.whisperEnableVad,
+    whisperVadModelPath: config.whisperVadModelPath,
+    whisperMaxContext: config.whisperMaxContext,
+    whisperMaxLen: config.whisperMaxLen,
+    whisperNoSpeechThold: config.whisperNoSpeechThold,
+    whisperSplitOnWord: config.whisperSplitOnWord,
+    whisperSuppressNst: config.whisperSuppressNst,
+    whisperArgs: config.whisperArgs
+  };
+
+  config.whisperEnableVad = true;
+  config.whisperVadModelPath = "C:/vad.bin";
+  config.whisperMaxContext = 0;
+  config.whisperMaxLen = 160;
+  config.whisperNoSpeechThold = 0.72;
+  config.whisperSplitOnWord = true;
+  config.whisperSuppressNst = true;
+  config.whisperArgs = '-m "{model}" -f "{input}" --output-json --output-file "{outputBase}" --language auto --max-context 32 --no-speech-thold 0.4';
+
+  try {
+    const args = buildWhisperArgs("input.wav", "output", "transcribe", {
+      profile: "speed",
+      deviceSummary: "Windows GPU",
+      threads: 8,
+      translationEnabled: false
+    });
+
+    assert.equal(args.includes("--split-on-word") || args.includes("-sow"), true);
+    assert.equal(args.includes("--suppress-nst") || args.includes("-sns"), true);
+    assert.equal(args.includes("--vad"), true);
+    assert.equal(args.includes("C:/vad.bin"), true);
+    assert.equal(args.filter((arg) => arg === "--max-context" || arg === "-mc").length, 1);
+    assert.equal(args.filter((arg) => arg === "--no-speech-thold" || arg === "-nth").length, 1);
+    assert.equal(args.includes("32"), true);
+    assert.equal(args.includes("0.4"), true);
+  } finally {
+    Object.assign(config, originalValues);
+  }
 });
 
 test("translateTranscript preserves segment timing and speakers while translating text", async () => {
@@ -154,6 +267,75 @@ test("translateTranscript fails when the model returns a mismatched segment coun
       /returned 1 segments for 3 inputs/i
     );
   } finally {
+    restore();
+  }
+});
+
+test("generateEnglishTranslation uses Ollama directly when translation path is ollama", async () => {
+  const source = createSourceVariant();
+  const { restore } = installFetchSteps([
+    {
+      payload: JSON.stringify({
+        translations: [
+          { index: 0, text: "Hello, Iko." },
+          { index: 1, text: "All good, and you?" },
+          { index: 2, text: "I already made the final decision." }
+        ]
+      })
+    }
+  ]);
+
+  try {
+    const result = await generateEnglishTranslation("unused.wav", "unused", source, {
+      processingProfile: {
+        profile: "balanced",
+        deviceSummary: "Windows CPU",
+        threads: 4,
+        translationEnabled: true,
+        translationPath: "ollama"
+      }
+    });
+
+    assert.equal(result.path, "ollama");
+    assert.equal(result.variant.language, "en");
+  } finally {
+    restore();
+  }
+});
+
+test("generateEnglishTranslation falls back to Ollama when Whisper translation fails", async () => {
+  const source = createSourceVariant();
+  const originalModelPath = config.whisperModelPath;
+  const { restore } = installFetchSteps([
+    {
+      payload: JSON.stringify({
+        translations: [
+          { index: 0, text: "Hello, Iko." },
+          { index: 1, text: "All good, and you?" },
+          { index: 2, text: "I already made the final decision." }
+        ]
+      })
+    }
+  ]);
+
+  config.whisperModelPath = "";
+
+  try {
+    const result = await generateEnglishTranslation("unused.wav", "unused", source, {
+      processingProfile: {
+        profile: "speed",
+        deviceSummary: "Windows GPU",
+        threads: 8,
+        translationEnabled: true,
+        translationPath: "whisper"
+      }
+    });
+
+    assert.equal(result.path, "ollama");
+    assert.equal(result.warnings.length > 0, true);
+    assert.match(result.warnings[0] ?? "", /fell back to Ollama/i);
+  } finally {
+    config.whisperModelPath = originalModelPath;
     restore();
   }
 });
