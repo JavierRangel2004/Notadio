@@ -103,6 +103,17 @@ function readOptionalNumber(
   return readNumber(value, parsed, options);
 }
 
+function readTranslationStrategy(value: string | undefined): "whisper-first" | "hybrid" | "ollama-first" {
+  switch (value?.trim().toLowerCase()) {
+    case "hybrid":
+      return "hybrid";
+    case "ollama-first":
+      return "ollama-first";
+    default:
+      return "whisper-first";
+  }
+}
+
 export const config = {
   backendRoot,
   projectRoot,
@@ -120,7 +131,22 @@ export const config = {
     '-m "{model}" -f "{input}" --output-json --output-file "{outputBase}" --language auto --translate',
   whisperPerfProfile: process.env.WHISPER_PERF_PROFILE ?? "auto",
   whisperThreads: process.env.WHISPER_THREADS ? Number(process.env.WHISPER_THREADS) : undefined,
+  whisperEnableVad: readBoolean(process.env.WHISPER_ENABLE_VAD, true),
+  whisperVadModelPath: process.env.WHISPER_VAD_MODEL_PATH
+    ? resolveProjectPath(process.env.WHISPER_VAD_MODEL_PATH, "")
+    : resolveProjectPath("./.local/models/ggml-silero-v6.2.0.bin", "./.local/models/ggml-silero-v6.2.0.bin"),
+  whisperHallucinationGuard: readBoolean(process.env.WHISPER_HALLUCINATION_GUARD, true),
+  whisperMaxContext: readNumber(process.env.WHISPER_MAX_CONTEXT, 0, { min: -1, max: 4096 }),
+  whisperMaxLen: readNumber(process.env.WHISPER_MAX_LEN, 160, { min: 0, max: 4096 }),
+  whisperSplitOnWord: readBoolean(process.env.WHISPER_SPLIT_ON_WORD, true),
+  whisperSuppressNst: readBoolean(process.env.WHISPER_SUPPRESS_NST, true),
+  whisperNoSpeechThold: readNumber(process.env.WHISPER_NO_SPEECH_THOLD, 0.72, { min: 0, max: 1 }),
+  whisperVadThreshold: readNumber(process.env.WHISPER_VAD_THRESHOLD, 0.5, { min: 0, max: 1 }),
+  whisperVadMinSpeechMs: readNumber(process.env.WHISPER_VAD_MIN_SPEECH_MS, 250, { min: 0, max: 60_000 }),
+  whisperVadMinSilenceMs: readNumber(process.env.WHISPER_VAD_MIN_SILENCE_MS, 350, { min: 0, max: 60_000 }),
+  whisperVadSpeechPadMs: readNumber(process.env.WHISPER_VAD_SPEECH_PAD_MS, 120, { min: 0, max: 60_000 }),
   enableEnglishTranslation: readBoolean(process.env.ENABLE_ENGLISH_TRANSLATION, true),
+  translationStrategy: readTranslationStrategy(process.env.TRANSLATION_STRATEGY),
   jobLogLimit: Number(process.env.JOB_LOG_LIMIT ?? "300"),
   diarizationCommand: resolveCommandPath(process.env.DIARIZATION_COMMAND, ""),
   diarizationArgs:

@@ -136,14 +136,42 @@ export type JobProgress = {
   elapsedSeconds: number;
 };
 
+export type RuntimeClass = "windows-gpu" | "windows-cpu" | "macos-arm" | "macos-intel" | "other";
+
+export type RuntimeBackend = "pending" | "cpu" | "cuda" | "metal" | "gpu";
+
+export type TranslationStrategy = "whisper-first" | "hybrid" | "ollama-first";
+
+export type TranslationPath = "pending" | "disabled" | "whisper" | "ollama";
+
 export type JobProcessingProfile = {
   profile: string;
   deviceSummary: string;
   threads: number;
   translationEnabled: boolean;
-  runtimeBackend?: string;
+  runtimeClass?: RuntimeClass;
+  hostGpuDetected?: boolean;
+  expectedBackend?: RuntimeBackend;
+  translationStrategy?: TranslationStrategy;
+  translationPath?: TranslationPath;
+  readinessStatus?: "ok" | "warn" | "fail";
+  runtimeBackend?: RuntimeBackend;
   runtimeSummary?: string;
   capabilityWarnings?: string[];
+};
+
+export type ReadinessCheckStatus = "ok" | "warn" | "fail";
+
+export type ReadinessCheck = {
+  status: ReadinessCheckStatus;
+  label: string;
+  detail: string;
+};
+
+export type ReadinessReport = {
+  status: ReadinessCheckStatus;
+  checks: ReadinessCheck[];
+  processing: JobProcessingProfile;
 };
 
 export type JobManifest = {

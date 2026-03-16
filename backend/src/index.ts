@@ -11,8 +11,9 @@ import { detectProcessingProfile } from "./services/deviceProfileService.js";
 import { normalizeMediaToWav } from "./services/mediaService.js";
 import { writeArtifacts } from "./services/exportService.js";
 import { applyOptionalDiarization } from "./services/diarizationService.js";
-import { transcribeAudio, translateTranscript } from "./services/transcriptionService.js";
+import { generateEnglishTranslation, transcribeAudio } from "./services/transcriptionService.js";
 import { generateSummary } from "./services/summaryService.js";
+import { getReadinessReport } from "./services/readinessService.js";
 import { jobStore } from "./store/jobStore.js";
 import { ensureDir, readJsonFile, writeJsonFile } from "./utils/fs.js";
 import {
@@ -102,6 +103,8 @@ function buildDefaultProcessing(): JobProcessingProfile {
     deviceSummary: "Detecting runtime profile",
     threads: 0,
     translationEnabled: config.enableEnglishTranslation,
+    translationStrategy: config.translationStrategy,
+    translationPath: config.enableEnglishTranslation ? "pending" : "disabled",
     runtimeBackend: "pending",
     runtimeSummary: "Waiting for Whisper runtime telemetry",
     capabilityWarnings: []
@@ -441,7 +444,7 @@ function applyTelemetryUpdate(
       const processing = job.processing ?? buildDefaultProcessing();
 
       if (normalizedLine.includes("whisper_backend_init_gpu: no gpu found")) {
-        const hasHostGpuHint = processing.deviceSummary.toLowerCase().includes("nvidia gpu detected");
+        const hasHostGpuHint = processing.hostGpuDetected || processing.deviceSummary.toLowerCase().includes("nvidia gpu detected");
         const capabilityWarnings = [...(processing.capabilityWarnings ?? [])];
         const warning =
           "Host GPU detected, but the current whisper runtime fell back to CPU. Verify that WHISPER_COMMAND points to a GPU-enabled whisper.cpp build.";
@@ -456,6 +459,7 @@ function applyTelemetryUpdate(
           ...processing,
           runtimeBackend: "cpu",
           runtimeSummary: "Whisper runtime reported CPU fallback",
+          readinessStatus: "warn",
           capabilityWarnings
         };
       } else if (normalizedLine.includes("device 0: cpu")) {
@@ -467,7 +471,25 @@ function applyTelemetryUpdate(
               ? "Whisper runtime is using CPU"
               : processing.runtimeSummary
         };
-      } else if (normalizedLine.includes("cuda") || normalizedLine.includes("gpu") && normalizedLine.includes("backend")) {
+      } else if (normalizedLine.includes("using cuda0 backend") || normalizedLine.includes("cuda : archs")) {
+        job.processing = {
+          ...processing,
+          runtimeBackend: "cuda",
+          runtimeSummary:
+            processing.runtimeSummary === "Waiting for Whisper runtime telemetry"
+              ? patch.logLine
+              : processing.runtimeSummary
+        };
+      } else if (normalizedLine.includes("using metal backend") || normalizedLine.includes("metal : embed_library")) {
+        job.processing = {
+          ...processing,
+          runtimeBackend: "metal",
+          runtimeSummary:
+            processing.runtimeSummary === "Waiting for Whisper runtime telemetry"
+              ? patch.logLine
+              : processing.runtimeSummary
+        };
+      } else if (normalizedLine.includes("gpu") && normalizedLine.includes("backend")) {
         job.processing = {
           ...processing,
           runtimeBackend: processing.runtimeBackend === "pending" ? "gpu" : processing.runtimeBackend,
@@ -772,6 +794,10 @@ async function processBaseJob(jobId: string): Promise<void> {
       current.processing = {
         ...(current.processing ?? buildDefaultProcessing()),
         runtimeBackend: current.processing?.runtimeBackend ?? "cpu",
+        translationPath:
+          transcriptVariants.translationPath ??
+          current.processing?.translationPath ??
+          processingProfile.translationPath,
         runtimeSummary:
           current.processing?.runtimeSummary ?? "Transcription finished with captured runtime telemetry"
       };
@@ -834,17 +860,32 @@ async function processEnhancements(jobId: string): Promise<void> {
         stagePct: 0
       });
       try {
-        const english = await translateTranscript(transcriptRecord.source, {
-          onLog: (line) => applyTelemetryUpdate(jobId, telemetry, {
-            stage: "Generating English translation",
-            stageKey: "translate",
-            logLine: line
-          }),
-          onProgress: (stagePct) => applyTelemetryUpdate(jobId, telemetry, {
-            stage: "Generating English translation",
-            stageKey: "translate",
-            stagePct
-          })
+        const translation = await generateEnglishTranslation(
+          job.normalizedAudioPath,
+          path.join(workingDir, "whisper"),
+          transcriptRecord.source,
+          {
+            durationSeconds: job.durationSeconds,
+            processingProfile,
+            onLog: (line) => applyTelemetryUpdate(jobId, telemetry, {
+              stage: "Generating English translation",
+              stageKey: "translate",
+              logLine: line
+            }),
+            onProgress: (stagePct) => applyTelemetryUpdate(jobId, telemetry, {
+              stage: "Generating English translation",
+              stageKey: "translate",
+              stagePct
+            })
+          }
+        );
+        const english = translation.variant;
+        warnings.push(...translation.warnings);
+        await updateJobImmediate(jobId, (current) => {
+          current.processing = {
+            ...(current.processing ?? buildDefaultProcessing()),
+            translationPath: translation.path
+          };
         });
         transcriptRecord.english = english;
         await updateJobImmediate(jobId, (current) => {
@@ -1154,20 +1195,27 @@ async function processTranslationRetry(jobId: string): Promise<void> {
     const workingDir = path.join(jobDir, "working");
     const artifactDir = jobStore.getArtifactDir(jobId);
 
-    const english = await translateTranscript(transcriptRecord.source, {
-      onLog: (line) => applyTelemetryUpdate(jobId, telemetry, {
-        stage: action.stageLabel,
-        stageKey: "translate",
-        logLine: `[translate-retry] ${line}`
-      }),
-      onProgress: (stagePct) => applyTelemetryUpdate(jobId, telemetry, {
-        stage: action.stageLabel,
-        stageKey: "translate",
-        stagePct
-      })
-    });
+    const translation = await generateEnglishTranslation(
+      job.normalizedAudioPath,
+      path.join(workingDir, "whisper"),
+      transcriptRecord.source,
+      {
+        durationSeconds: job.durationSeconds,
+        processingProfile,
+        onLog: (line) => applyTelemetryUpdate(jobId, telemetry, {
+          stage: action.stageLabel,
+          stageKey: "translate",
+          logLine: `[translate-retry] ${line}`
+        }),
+        onProgress: (stagePct) => applyTelemetryUpdate(jobId, telemetry, {
+          stage: action.stageLabel,
+          stageKey: "translate",
+          stagePct
+        })
+      }
+    );
 
-    transcriptRecord.english = english;
+    transcriptRecord.english = translation.variant;
     await writeJsonFile(job.transcriptPath, transcriptRecord);
     jobStore.setTranscript(jobId, transcriptRecord);
 
@@ -1183,8 +1231,11 @@ async function processTranslationRetry(jobId: string): Promise<void> {
       current.artifacts = artifacts;
       current.processing = {
         ...(current.processing ?? buildDefaultProcessing()),
-        translationEnabled: true
+        translationEnabled: true,
+        translationPath: translation.path
       };
+      current.warnings = current.warnings.filter((warning) => !warning.startsWith("Whisper translation failed and fell back"));
+      current.warnings.push(...translation.warnings);
     });
 
     await completePostCompletionAction(jobId, action);
@@ -1278,6 +1329,16 @@ app.delete("/api/jobs/:jobId", async (req, res) => {
   }
   await jobStore.delete(req.params.jobId);
   res.status(204).send();
+});
+
+app.get("/api/system/readiness", async (_req, res) => {
+  try {
+    const report = await getReadinessReport();
+    res.json(report);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Failed to collect readiness status.";
+    res.status(500).send(message);
+  }
 });
 
 app.post("/api/jobs/:jobId/enhancements", async (req, res) => {
