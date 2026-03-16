@@ -1,3 +1,397 @@
+
+NOTADIO
+Workspace
+New Session ↑
+2024-06-25 17-41-03.mkv
+Size:208.3 MB
+Duration:10:59
+Language:es
+New Session
+Overview
+Cuando fanoteo soles escene, mavene quasena malinconia, sotto fenesta torrestaria.
+
+Cuando fanoteo soles escene, mavene quasena malinconia, sotto fenesta torrestaria. O sole mio, sai fronte a te, sai fronte a te, my night. un abrazo una regaza, después de que había llorado, luego se cerró la voz y comenzó el canto.
+
+Puntos destacados
+Cuando fanoteo soles escene, mavene quasena malinconia, sotto fenesta torrestaria. O sole mio, sai fronte a te, sai fronte a te, my night. un abrazo una regaza, después de que había llorado, luego se cerró la voz y comenzó el canto.
+
+Cuando fanoteo soles escene, mavene quasena malinconia, sotto fenesta torrestaria.
+O sole mio, sai fronte a te, sai fronte a te, my night.
+un abrazo una regaza, después de que había llorado, luego se cerró la voz y comenzó el canto.
+Y me gusta bien, ¿sabes?
+Y me gusta bien, ¿sabes?
+Y me gusta bien, ¿sabes?
+Open Questions
+Y me gusta bien, ¿sabes?
+Pero tanto todo bien, ¿sabes?
+Summary Diagnostics
+Strategy
+Direct single-pass summary
+Total
+8 ms
+LLM Calls
+0
+Direct
+n/a
+Reduce
+n/a
+Local Merge
+n/a
+Fallback
+3 ms
+Fallback summary was used. Final reduce request skipped. Full selected transcript blocks were used.
+Pipeline Timings
+Queued
+0 ms
+Normalizing media for transcription
+completed
+Normalize
+844 ms
+Normalizing media for transcription
+completed
+Transcribe
+89.7 s
+Running local Whisper transcription
+completed
+Translate
+4 ms
+Generating English translation
+completed
+Diarize
+10 ms
+Applying speaker diarization
+completed
+Summarize
+20 ms
+Generating AI summary
+completed
+Copy Summary JSON
+Regenerate Summary
+Re-run Speaker ID
+Source transcript
+Transcript
+Source
+Translation
+Copy
+TXT
+SRT
+JSON
+
+Session audio
+Use transcript timestamps to jump to the recording.
+00:00
+Seek through uploaded audio
+10:59
+Unknown
+00:00
+me me me me
+
+vas a ver, nada más quiero ver
+
+pero entonces
+
+que bella cosa
+
+una llorada
+
+de sol
+
+un aire
+
+sereno
+
+después de una tempestad
+
+el aire
+
+fresco
+
+parece una
+
+fiesta
+
+que bella cosa
+
+una llorada
+
+de sol
+
+nada
+
+tú
+
+sabes
+
+más bella
+
+que la nieve
+
+oh sol mío
+
+estoy frente a ti
+
+oh sol
+
+oh sol
+
+mío
+
+estoy frente a ti
+
+estoy frente a ti
+
+Cuando fanoteo soles escene, mavene quasena malinconia, sotto fenesta torrestaria.
+
+Cuando fanoteo soles escene, mavene quasena malinconia, sotto fenesta torrestaria.
+
+O sole, o sole mio, sai fronte a te, sai fronte a te, my night.
+
+Sai fronte a te.
+
+O sole, o sole mio, sai fronte a te, sai fronte a te, my night.
+
+O sole mio, sai fronte a te, sai fronte a te, my night.
+
+O sole mio, sai fronte a te, sai fronte a te, my night.
+
+O sole mio, sai fronte a te, sai fronte a te, my night.
+
+O sole mio, sai fronte a te, sai fronte a te, my night.
+
+O sole mio, sai fronte a te, sai fronte a te, my night.
+
+O sole mio, sai fronte a te, sai fronte a te, my night.
+
+O sole mio, sai fronte a te, sai fronte a te, my night.
+
+O sole mio, sai fronte a te, sai fronte a te, my night.
+
+O sole mio, sai fronte a te, sai fronte a te, my night.
+
+O sole mio, sai fronte a te, sai fronte a te, my night.
+
+O sole mio, sai fronte a te, sai fronte a te, my night.
+
+O sole mio, sai fronte a te, sai fronte a te, my night.
+
+O sole mio, sai fronte a te, sai fronte a te, my night.
+
+O sole mio, sai fronte a te, sai fronte a te, my night.
+
+O sole mio, sai fronte a te, sai fronte a te, my night.
+
+O sole mio, sai fronte a te, sai fronte a te, my night.
+
+O sole mio, sai fronte a te, sai fronte a te, my night.
+
+O sole mio, sai fronte a te, sai fronte a te, my night.
+
+O sole mio, sai fronte a te, sai fronte a te, my night.
+
+O sole mio, sai fronte a te, sai fronte a te, my night.
+
+♪
+
+♪
+
+♪
+
+♪
+
+♪
+
+♪
+
+♪
+
+♪
+
+♪
+
+♪
+
+♪ ♪
+
+♪ ♪
+
+♪ ♪
+
+♪ ♪
+
+♪ ♪
+
+un abrazo una regaza, después de que había llorado, luego se cerró la voz y comenzó el canto.
+
+En la cadera ormai, que son las almas de la tierra espalda.
+
+Quedó la lucha inmensa al mar, pensó en la motina inúmerica, era no sólo la lámpada,
+
+en la blanca escena de un helicóptero.
+
+Siento el dolor en la música, salso del piano fuerte,
+
+pero cuando vi que la luna me mató, me pareció más dulce que la muerte.
+
+Miro en los ojos de la niña, esos ojos verdes,
+
+como el mar.
+
+Y de repente hay una lágrima, y él cree que se va a ahogar.
+
+Y me gusta bien, ¿sabes?
+
+Pero tanto todo bien, ¿sabes?
+
+Y me gusta bien, ¿sabes?
+
+Y me gusta bien, ¿sabes?
+
+Y me gusta bien, ¿sabes?
+
+Y me gusta bien, ¿sabes?
+
+Y me gusta bien, ¿sabes?
+
+Y me gusta bien, ¿sabes?
+
+Y me gusta bien, ¿sabes?
+
+Y me gusta bien, ¿sabes?
+
+Y me gusta bien, ¿sabes?
+
+Y me gusta bien, ¿sabes?
+
+Y me gusta bien, ¿sabes?
+
+Y me gusta bien, ¿sabes?
+
+Y me gusta bien, ¿sabes?
+
+Y me gusta bien, ¿sabes?
+
+Y me gusta bien, ¿sabes?
+
+Y me gusta bien, ¿sabes?
+
+Y me gusta bien, ¿sabes?
+
+Y me gusta bien, ¿sabes?
+
+Y me gusta bien, ¿sabes?
+
+Y me gusta bien, ¿sabes?
+
+Y me gusta bien, ¿sabes?
+
+Y me gusta bien, ¿sabes?
+
+Y me gusta bien, ¿sabes?
+
+Y me gusta bien, ¿sabes?
+
+Y me gusta bien, ¿sabes?
+
+Y me gusta bien, ¿sabes?
+
+Y me gusta bien, ¿sabes?
+
+Y me gusta bien, ¿sabes?
+
+Y me gusta bien, ¿sabes?
+
+Y me gusta bien, ¿sabes?
+
+Y me gusta bien, ¿sabes?
+
+Y me gusta bien, ¿sabes?
+
+Y me gusta bien, ¿sabes?
+
+Y me gusta bien, ¿sabes?
+
+Y me gusta bien, ¿sabes?
+
+Y me gusta bien, ¿sabes?
+
+Y me gusta bien, ¿sabes?
+
+Y me gusta bien, ¿sabes?
+
+Y me gusta bien, ¿sabes?
+
+Y me gusta bien, ¿sabes?
+
+Y me gusta bien, ¿sabes?
+
+Y me gusta bien, ¿sabes?
+
+Y me gusta bien, ¿sabes?
+
+Y me gusta bien, ¿sabes?
+
+Y me gusta bien, ¿sabes?
+
+Y me gusta bien, ¿sabes?
+
+Y me gusta bien, ¿sabes?
+
+Y me gusta bien, ¿sabes?
+
+Y me gusta bien, ¿sabes?
+
+Y me gusta bien, ¿sabes?
+
+Y me gusta bien, ¿sabes?
+
+Y me gusta bien, ¿sabes?
+
+Y me gusta bien, ¿sabes?
+
+Y me gusta bien, ¿sabes?
+
+Y me gusta bien, ¿sabes?
+
+Y me gusta bien, ¿sabes?
+
+Y me gusta bien, ¿sabes?
+
+Y me gusta bien, ¿sabes?
+
+Y me gusta bien, ¿sabes?
+
+Y me gusta bien, ¿sabes?
+
+Y me gusta bien, ¿sabes?
+
+Y me gusta bien, ¿sabes?
+
+Y me gusta bien, ¿sabes?
+
+Y me gusta bien, ¿sabes?
+
+Y me gusta bien, ¿sabes?
+
+Y me gusta bien, ¿sabes?
+
+Y me gusta bien, ¿sabes?
+
+Y me gusta bien, ¿sabes?
+
+Y me gusta bien, ¿sabes?
+
+Y me gusta bien, ¿sabes?
+
+Y me gusta bien, ¿sabes?
+
+Y me gusta bien, ¿sabes?
+
+Y me gusta bien, ¿sabes?
+
+Processing Logs
+108 entries
+Copy all
+Hide
 Upload stored. Waiting for worker start.
 Detected processing profile: speed (win32 | x64 | 16 logical cores | NVIDIA GPU detected)
 ffmpeg version 7.1-essentials_build-www.gyan.dev Copyright (c) 2000-2024 the FFmpeg developers

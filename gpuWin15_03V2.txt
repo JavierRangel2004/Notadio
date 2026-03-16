@@ -1,0 +1,1001 @@
+[00:00] SPEAKER_00: su currículum y así. El tercero, más bien, creo que el tercero es la parte de facturación
+[00:07] SPEAKER_00: y el cuarto es la parte de datos bancarios y demás, ¿no? Pero ahí, corríjanme, pero
+[00:15] SPEAKER_00: estoy casi seguro que así lo habíamos dejado. ¿Por qué es importante esto, la parte de
+[00:21] SPEAKER_00: facturación? Porque los abogados van a estar recibiendo ingresos a través de nuestra plataforma,
+[00:27] SPEAKER_00: ¿ok? Y nosotros, por ende, tenemos obligaciones fiscales como empresa para con los abogados,
+[00:34] Javi: ¿va? O sea, tenemos que hacer retenciones, tenemos que estar dando ciertos avisos a la
+[00:41] Javi: autoridad fiscal, etcétera, etcétera, ¿no? Entonces, por eso es que nosotros es importantísimo
+[00:48] SPEAKER_00: que desde el sign-up los abogados nos pasen sus datos fiscales para nosotros poder cumplir,
+[00:54] Javi: ¿no? Con las obligaciones en materia fiscal.
+[00:57] Javi: Entonces, aquí es una descripción, de hecho, aquí es un parent issue y abajo están sus
+[01:03] Javi: dos hijos, ¿no? Que es sign-up, facturación front-end y sign-up, facturación back-end,
+[01:09] Javi: ¿no? La idea de hacer un parent issue es para que primero lo lean, o sea, en lenguaje humano,
+[01:16] Javi: que esto yo lo hice, ¿no? O sea, todo esto está en lenguaje mío, ¿no? Es más o menos
+[01:22] Javi: para que se entienda.
+[01:25] Javi: Y después de eso ya se ponía la parte más técnica, ¿no? Que es la parte back-end,
+[01:31] Javi: ¿no? Todo lo que se va a necesitar y la parte del sign-up, facturación.
+[01:36] Javi: Señores, andan tú, Javi, esta parte del módulo de facturación, este, no solamente
+[01:44] Javi: es importantísimo, sino que está, es difícil, ¿va? Entonces, este, a lo mejor incluso vamos
+[01:53] Javi: a tener que averiguar varias cositas.
+[01:55] Javi: pero bueno, no, a lo mejor ahorita todavía no es necesario que busquemos ayuda
+[02:02] Javi: para temas de timbrados ni nada, pero bueno, esto es de lo más importante.
+[02:08] SPEAKER_00: Entonces, salvo su opinión, yo soy de la idea que además de estas dos issues
+[02:15] SPEAKER_00: que tenemos aquí, que es la UAP 50 y UAP 57, metamos dentro de este ciclo
+[02:21] SPEAKER_00: estas, este issue, que es la parte de facturación, y pues sí, básicamente,
+[02:33] Javi: esto lo voy a dejar aquí, en general, y esto lo voy a pasar aquí para todo.
+[02:42] SPEAKER_00: Y pues bueno, aquí obviamente yo les voy a agregar, yo los voy a poner a ustedes
+[02:49] SPEAKER_00: como encargados del área de...
+[02:52] SPEAKER_00: O sea, Anantu de front-end, Javi tú de back-end, pero, o sea, con esto no quiero que piense
+[02:57] SPEAKER_00: que, ah, ok, o sea, que cada quien lo va a hacer separado, o sea, tienen...
+[03:01] Javi: Tienen que estarse comunicando y tienen que trabajar en equipo, ¿no?
+[03:05] Javi: Entonces, sobre todo para el desarrollo, porque cuando me presenten y me digan
+[03:08] SPEAKER_00: ya, ya hicimos esto, o sea, tiene que funcionar de la mano el front y el back, ¿no?
+[03:13] SPEAKER_00: Este, no sé si hasta ahorita te han dado un comentario.
+[03:18] SPEAKER_00: Eh, no.
+[03:21] Javi: ¿Tú, Javi?
+[03:21] Javi: No, todavía.
+[03:22] Javi: Ah, perfecto.
+[03:24] Javi: ¿Qué se va a quedar pendiente?
+[03:26] Javi: Mira, entonces este es front-end, se lo voy a agregar a este Anantu, y a ti, Javi, te
+[03:30] Javi: voy a agregar la parte del back.
+[03:31] SPEAKER_00: Ok, ¿qué se va a quedar de tarea?
+[03:33] SPEAKER_00: Necesito que le pongan los story points a todas estas, digo, esta ya tiene story points,
+[03:38] SPEAKER_00: que es la, que es en general esta, este, esto creo que se lo había puesto este Emi,
+[03:43] SPEAKER_00: entonces, este, Javi, tú estás familiarizado con la escala de los story points, ¿no?
+[03:51] Javi: Sí, me parece, sí, o sea, era como más o menos de dificultad.
+[03:55] Javi: Sí, o sea, de que, mira, story points, o sea, nosotros estamos usando esta de aquí,
+[04:02] Javi: yo te la voy a mandar, pero, o sea, son estos, ¿no?
+[04:07] Javi: Entonces, un story point B, es básicamente esfuerzo requerido bajo, bajo, bajo.
+[04:11] SPEAKER_00: Es algo muy trivial, etcétera.
+[04:14] SPEAKER_00: Bueno, de hecho, los story points van, en cierto sentido, de la mano con, eh,
+[04:21] SPEAKER_00: la urgencia, la prioridad que, que se le tiene que poner,
+[04:25] SPEAKER_00: pero, este, también, también es para que todos nosotros nos demos una idea,
+[04:31] SPEAKER_00: y tú también, de la complejidad de la issue en la que vas a estar trabajando.
+[04:36] SPEAKER_00: Entonces, por ejemplo, si nos traes dailies, o sea, por ejemplo,
+[04:39] SPEAKER_00: si tú le pones un story point a una issue, pues quiere decir que te lo, lo vas a hacer en cinco minutos,
+[04:45] SPEAKER_00: pero si vemos que en cada daily tú nos cuentas que sigues estando en esa issue,
+[04:50] SPEAKER_00: entonces, quiere decir que, o sea, no era de un story point, ¿no?
+[04:54] SPEAKER_00: O sea, era de muchos más.
+[04:57] SPEAKER_00: O sea, ¿qué es lo que te permite los story points?
+[04:59] SPEAKER_00: Le permite saber a todo el equipo la complejidad de la tarea en la que vas a estar trabajando,
+[05:05] SPEAKER_00: y así nosotros sabemos, más o menos, este, un aproximado de en cuánto tiempo lo vas a terminar,
+[05:11] SPEAKER_00: y, y sabemos que te vas a estar metiendo ahí en varios días, ¿no?
+[05:16] SPEAKER_00: Este, o, o horas, o un solo día,
+[05:19] SPEAKER_00: o lo haces en cinco minutos.
+[05:20] SPEAKER_00: Entonces, terminamos esta reunión.
+[05:23] SPEAKER_00: Anan, tú, Javi, agreguen los story points a sus issues, ¿no?
+[05:26] SPEAKER_00: Que solamente ustedes saben.
+[05:28] SPEAKER_00: Ok.
+[05:28] Javi: Este, y solamente ustedes se conocen.
+[05:30] Javi: Entonces, hagamos esto.
+[05:33] SPEAKER_00: Y, eh, mira, esta otra que está pendiente, que es el, el calendario, una sign-up,
+[05:39] Javi: les voy a leer qué dice la user story.
+[05:42] Javi: Dice, que es igual a la parent issue, y abajo están sus hijos, pero es,
+[05:48] SPEAKER_00: ¿cuál es el propósito de esta issue?
+[05:51] SPEAKER_00: Es, como abogado, durante mi sign-up, después de que escoja si quiero o no estar también en consulta express,
+[05:57] SPEAKER_00: quiero poder desbloquear mis horarios de busca un abogado para la semana de forma anticipada, ¿ok?
+[06:05] SPEAKER_00: O sea, y aquí está igual el lenguaje liso y llano, ¿no?
+[06:10] SPEAKER_00: Básicamente, ¿para qué sirve esta, este, issue?
+[06:14] SPEAKER_00: Se los explico, muy general.
+[06:16] SPEAKER_00: O sea, acuérdense que, acuérdense que los abogados, cuando van a estar en busca un abogado,
+[06:24] Javi: que es el primer producto con el que vamos a salir, tienen que desbloquear sus horarios, ¿ok?
+[06:30] SPEAKER_00: Este, de hecho, ya está un componente de calendario, que es el de Calendly,
+[06:35] SPEAKER_00: eh, que estamos usando para que los abogados y los, tanto para que los abogados y los usuarios desbloqueen o agenden citas, ¿no?
+[06:43] Javi: Ya, ya tenemos ese componente hecho.
+[06:45] Javi: Entonces, ¿qué es lo que vamos a hacer?
+[06:45] SPEAKER_00: Entonces, el abogado se va a tener que estar metiendo cada equis tiempo su perfil y estar desbloqueando sus horarios para la semana, ¿estamos de acuerdo?
+[06:55] SPEAKER_00: Sí.
+[06:57] SPEAKER_00: Entonces, entonces, es importante esto.
+[07:01] SPEAKER_00: ¿Por qué? Porque, este, antes de que, soy de la idea, y por eso hicimos esta issue, que antes de que el abogado entre a su dashboard, o sea, antes de, ajá, antes de que termine su sign up y llegue a su dashboard, que durante el mismo sign up vaya desbloqueando sus horarios ya de la semana, sin que tenga que esperarse a llegar a su dashboard.
+[07:27] SPEAKER_00: ¿Sí me explico?
+[07:28] SPEAKER_00: Sí.
+[07:29] SPEAKER_00: Sí.
+[07:30] SPEAKER_00: Sí.
+[07:31] SPEAKER_00: Entonces, ¿por qué es importante?
+[07:32] SPEAKER_00: Por dos simples y sencillas razones, Javi y Anantul.
+[07:36] SPEAKER_00: ¿Por qué?
+[07:37] SPEAKER_00: Porque, uno, nosotros ya nos vamos anticipando, o sea, estamos haciendo, mejorando la UX, porque estamos ya anticipándonos, y entonces el abogado, desde antes de que llegue a su dashboard y tener que hacer un paso extra, desde el mismo sign up, ya puede ir desbloqueando sus horarios.
+[07:54] SPEAKER_00: Y la segunda razón, y todavía más importante, señores, ¿se acuerdan cuál es el sistema de...
+[08:00] SPEAKER_00: con el que vamos a estar validando a los abogados?
+[08:02] SPEAKER_00: ¿Entre nosotros?
+[08:03] SPEAKER_00: Bueno, entre abogados, ¿no?
+[08:04] SPEAKER_00: Ajá, exactamente.
+[08:05] SPEAKER_00: El tipo blockchain, donde es la misma comunidad la que evalúa a los aspirantes, ¿no?
+[08:06] SPEAKER_00: Justo, Javi.
+[08:07] Javi: Ya lo dijiste tal cual.
+[08:08] Javi: Y el método de asignación es aleatorio, ¿va?
+[08:09] Javi: O sea, acuérdense que los abogados que van a evaluar al candidato es completamente aleatorio.
+[08:10] Javi: Ellos no se conocen ni nada.
+[08:11] SPEAKER_00: Y ellos no conocen a nadie.
+[08:12] SPEAKER_00: Y ellos no conocen a nadie.
+[08:13] SPEAKER_00: Y ellos no conocen a nadie.
+[08:14] Javi: Y ellos no conocen a nadie.
+[08:15] Javi: Y ellos no conocen a nadie.
+[08:16] SPEAKER_00: Y ellos no conocen a nadie.
+[08:17] SPEAKER_00: Y ellos no conocen a nadie.
+[08:18] SPEAKER_00: Y ellos no conocen a nadie.
+[08:19] SPEAKER_00: Y ellos no conocen a nadie.
+[08:20] SPEAKER_00: Y ellos no conocen a nadie.
+[08:21] SPEAKER_00: Y ellos no conocen a nadie.
+[08:22] SPEAKER_00: Y ellos no conocen a nadie.
+[08:23] SPEAKER_00: Y ellos no conocen a nadie.
+[08:24] SPEAKER_00: Y ellos no conocen a nadie.
+[08:25] SPEAKER_00: Y ellos no conocen a nadie.
+[08:26] SPEAKER_00: Y ellos no conocen a nadie.
+[08:27] SPEAKER_00: Y ellos no conocen a nadie.
+[08:28] SPEAKER_00: Y ellos no conocen a nadie.
+[08:29] SPEAKER_00: Y ellos no conocen a nadie.
+[08:30] SPEAKER_00: Y ellos no conocen a nadie.
+[08:31] SPEAKER_00: Y ellos no conocen a nadie.
+[08:32] SPEAKER_00: Y ellos no conocen a nadie.
+[08:33] SPEAKER_00: Y ellos no conocen a nadie.
+[08:34] SPEAKER_00: Y ellos no conocen a nadie.
+[08:35] SPEAKER_00: Y ellos no conocen a nadie.
+[08:36] SPEAKER_00: Y ellos no conocen a nadie.
+[08:37] SPEAKER_00: Y ellos no conocen a nadie.
+[08:38] SPEAKER_00: Y ellos no conocen a nadie.
+[08:39] SPEAKER_00: Y ellos no conocen a nadie.
+[08:40] SPEAKER_00: Y ellos no conocen a nadie.
+[08:49] SPEAKER_00: Y ellos no conocen a nadie.
+[08:50] SPEAKER_00: Y ellos no conocen a nadie.
+[08:51] SPEAKER_00: Y ellos no conocen a nadie.
+[08:52] SPEAKER_00: Y ellos no conocen a nadie.
+[08:53] SPEAKER_00: Y ellos no conocen a nadie.
+[08:54] SPEAKER_00: Y ellos no conocen a nadie.
+[08:55] SPEAKER_00: Y ellos no conocen a nadie.
+[08:56] SPEAKER_00: Y ellos no conocen a nadie.
+[08:57] SPEAKER_00: Y ellos no conocen a nadie.
+[08:58] SPEAKER_00: Y ellos no conocen a nadie.
+[08:59] SPEAKER_00: Y ellos no conocen a nadie.
+[09:00] SPEAKER_00: Y ellos no conocen a nadie.
+[09:01] SPEAKER_00: Y ellos no conocen a nadie.
+[09:02] SPEAKER_00: Y ellos no conocen a nadie.
+[09:03] SPEAKER_00: Y ellos no conocen a nadie.
+[09:04] SPEAKER_00: Y ellos no conocen a nadie.
+[09:05] SPEAKER_00: Y ellos no conocen a nadie.
+[09:06] SPEAKER_00: Y ellos no conocen a nadie.
+[09:07] SPEAKER_00: Y ellos no conocen a nadie.
+[09:08] SPEAKER_00: Y ellos no conocen a nadie.
+[09:09] SPEAKER_00: Y ellos no conocen a nadie.
+[09:10] SPEAKER_00: Y ellos no conocen a nadie.
+[09:11] SPEAKER_00: Y ellos no conocen a nadie.
+[09:12] SPEAKER_00: Y ellos no conocen a nadie.
+[09:13] SPEAKER_00: Y ellos no conocen a nadie.
+[09:14] SPEAKER_00: Y ellos no conocen a nadie.
+[09:15] SPEAKER_00: Y ellos no conocen a nadie.
+[09:16] SPEAKER_00: Y ellos no conocen a nadie.
+[09:17] SPEAKER_00: Y ellos no conocen a nadie.
+[09:18] SPEAKER_00: Y ellos no conocen a nadie.
+[09:19] SPEAKER_00: Y ellos no conocen a nadie.
+[09:20] SPEAKER_00: Y ellos no conocen a nadie.
+[09:21] SPEAKER_00: Y ellos no conocen a nadie.
+[09:22] SPEAKER_00: Y ellos no conocen a nadie.
+[09:23] SPEAKER_00: Y ellos no conocen a nadie.
+[09:24] SPEAKER_00: Y ellos no conocen a nadie.
+[09:25] SPEAKER_00: Y ellos no conocen a nadie.
+[09:26] SPEAKER_00: Y ellos no conocen a nadie.
+[09:27] SPEAKER_00: Y ellos no conocen a nadie.
+[09:28] SPEAKER_00: Y ellos no conocen a nadie.
+[09:29] SPEAKER_00: Y ellos no conocen a nadie.
+[09:30] SPEAKER_00: Y ellos no conocen a nadie.
+[09:39] SPEAKER_00: Y ellos no conocen a nadie.
+[09:40] SPEAKER_00: Y ellos no conocen a nadie.
+[09:41] SPEAKER_00: Y ellos no conocen a nadie.
+[09:42] SPEAKER_00: Y ellos no conocen a nadie.
+[09:43] SPEAKER_00: Y ellos no conocen a nadie.
+[09:44] SPEAKER_00: Y ellos no conocen a nadie.
+[09:45] SPEAKER_00: Y ellos no conocen a nadie.
+[09:46] SPEAKER_00: Y ellos no conocen a nadie.
+[09:47] SPEAKER_00: Y ellos no conocen a nadie.
+[09:48] SPEAKER_00: Y ellos no conocen a nadie.
+[09:49] SPEAKER_00: Y ellos no conocen a nadie.
+[09:50] SPEAKER_00: Y ellos no conocen a nadie.
+[09:51] SPEAKER_00: Y ellos no conocen a nadie.
+[09:52] SPEAKER_00: Y ellos no conocen a nadie.
+[09:53] SPEAKER_00: Y ellos no conocen a nadie.
+[09:54] SPEAKER_00: Y ellos no conocen a nadie.
+[09:55] SPEAKER_00: Y ellos no conocen a nadie.
+[09:56] SPEAKER_00: Y ellos no conocen a nadie.
+[09:57] SPEAKER_00: Y ellos no conocen a nadie.
+[09:58] SPEAKER_00: Y ellos no conocen a nadie.
+[09:59] SPEAKER_00: Y ellos no conocen a nadie.
+[10:00] SPEAKER_00: Y ellos no conocen a nadie.
+[10:09] SPEAKER_00: Y ellos no conocen a nadie.
+[10:10] SPEAKER_00: Y ellos no conocen a nadie.
+[10:11] SPEAKER_00: Y ellos no conocen a nadie.
+[10:12] SPEAKER_00: Y ellos no conocen a nadie.
+[10:13] SPEAKER_00: Y ellos no conocen a nadie.
+[10:14] SPEAKER_00: Y ellos no conocen a nadie.
+[10:15] SPEAKER_00: Y ellos no conocen a nadie.
+[10:16] SPEAKER_00: Y ellos no conocen a nadie.
+[10:17] SPEAKER_00: Y ellos no conocen a nadie.
+[10:18] SPEAKER_00: Y ellos no conocen a nadie.
+[10:19] SPEAKER_00: Y ellos no conocen a nadie.
+[10:20] SPEAKER_00: Y ellos no conocen a nadie.
+[10:21] SPEAKER_00: Y ellos no conocen a nadie.
+[10:22] SPEAKER_00: Y ellos no conocen a nadie.
+[10:23] SPEAKER_00: Y ellos no conocen a nadie.
+[10:24] SPEAKER_00: Y ellos no conocen a nadie.
+[10:25] SPEAKER_00: Y ellos no conocen a nadie.
+[10:26] SPEAKER_00: Y ellos no conocen a nadie.
+[10:27] SPEAKER_00: Y ellos no conocen a nadie.
+[10:28] SPEAKER_00: Y ellos no conocen a nadie.
+[10:29] SPEAKER_00: Y ellos no conocen a nadie.
+[10:30] SPEAKER_00: Y ellos no conocen a nadie.
+[10:39] SPEAKER_00: Y ellos no conocen a nadie.
+[10:40] SPEAKER_00: Y ellos no conocen a nadie.
+[10:41] Javi: Y ellos no conocen a nadie.
+[10:42] Javi: Y ellos no conocen a nadie.
+[10:43] Javi: Y ellos no conocen a nadie.
+[10:44] Javi: Y ellos no conocen a nadie.
+[10:45] Javi: Y ellos no conocen a nadie.
+[10:46] SPEAKER_00: Y ellos no conocen a nadie.
+[10:47] SPEAKER_00: Y ellos no conocen a nadie.
+[10:48] SPEAKER_00: Y ellos no conocen a nadie.
+[10:49] SPEAKER_00: Y ellos no conocen a nadie.
+[10:50] SPEAKER_00: Y ellos no conocen a nadie.
+[10:51] SPEAKER_00: Y ellos no conocen a nadie.
+[10:52] SPEAKER_00: Y ellos no conocen a nadie.
+[10:53] SPEAKER_00: Y ellos no conocen a nadie.
+[10:54] SPEAKER_00: Y ellos no conocen a nadie.
+[10:55] SPEAKER_00: Y ellos no conocen a nadie.
+[10:56] Javi: Y ellos no conocen a nadie.
+[10:57] Javi: Y ellos no conocen a nadie.
+[10:58] Javi: Y ellos no conocen a nadie.
+[10:59] Javi: Y ellos no conocen a nadie.
+[11:00] Javi: Y ellos no conocen a nadie.
+[11:09] Javi: Y ellos no conocen a nadie.
+[11:10] Javi: Y ellos no conocen a nadie.
+[11:11] Javi: Y ellos no conocen a nadie.
+[11:12] Javi: Y ellos no conocen a nadie.
+[11:13] Javi: Y ellos no conocen a nadie.
+[11:14] SPEAKER_00: Y ellos no conocen a nadie.
+[11:15] SPEAKER_00: Y ellos no conocen a nadie.
+[11:16] Javi: Y ellos no conocen a nadie.
+[11:17] Javi: Y ellos no conocen a nadie.
+[11:18] Javi: Y ellos no conocen a nadie.
+[11:19] Javi: Y ellos no conocen a nadie.
+[11:20] Javi: Y ellos no conocen a nadie.
+[11:21] Javi: Y ellos no conocen a nadie.
+[11:22] SPEAKER_00: Y ellos no conocen a nadie.
+[11:23] SPEAKER_00: Y ellos no conocen a nadie.
+[11:24] SPEAKER_00: Y ellos no conocen a nadie.
+[11:25] SPEAKER_00: Y ellos no conocen a nadie.
+[11:26] SPEAKER_00: Y ellos no conocen a nadie.
+[11:27] SPEAKER_00: Y ellos no conocen a nadie.
+[11:28] SPEAKER_00: Y ellos no conocen a nadie.
+[11:29] SPEAKER_00: Y ellos no conocen a nadie.
+[11:30] SPEAKER_00: Y ellos no conocen a nadie.
+[11:39] Javi: Y ellos no conocen a nadie.
+[11:40] Javi: Y ellos no conocen a nadie.
+[11:41] SPEAKER_00: Y ellos no conocen a nadie.
+[11:42] SPEAKER_00: Y ellos no conocen a nadie.
+[11:43] SPEAKER_00: Y ellos no conocen a nadie.
+[11:44] Javi: Y ellos no conocen a nadie.
+[11:45] Javi: Y ellos no conocen a nadie.
+[11:46] Javi: Y ellos no conocen a nadie.
+[11:47] SPEAKER_00: Y ellos no conocen a nadie.
+[11:48] SPEAKER_00: Y ellos no conocen a nadie.
+[11:49] SPEAKER_00: Y ellos no conocen a nadie.
+[11:50] SPEAKER_00: Y ellos no conocen a nadie.
+[11:51] Javi: Y ellos no conocen a nadie.
+[11:52] Javi: Y ellos no conocen a nadie.
+[11:53] Javi: Y ellos no conocen a nadie.
+[11:54] Javi: Y ellos no conocen a nadie.
+[11:55] Javi: Y ellos no conocen a nadie.
+[11:56] SPEAKER_00: Y ellos no conocen a nadie.
+[11:57] SPEAKER_00: Y ellos no conocen a nadie.
+[11:58] SPEAKER_00: Y ellos no conocen a nadie.
+[11:59] SPEAKER_00: Y ellos no conocen a nadie.
+[12:00] SPEAKER_00: Y ellos no conocen a nadie.
+[12:09] SPEAKER_00: Y ellos no conocen a nadie.
+[12:10] Javi: Y ellos no conocen a nadie.
+[12:11] Javi: Y ellos no conocen a nadie.
+[12:12] SPEAKER_00: Y ellos no conocen a nadie.
+[12:13] SPEAKER_00: Y ellos no conocen a nadie.
+[12:14] SPEAKER_00: Y ellos no conocen a nadie.
+[12:15] Javi: Y ellos no conocen a nadie.
+[12:16] Javi: Y ellos no conocen a nadie.
+[12:17] Javi: Y ellos no conocen a nadie.
+[12:18] Javi: Y ellos no conocen a nadie.
+[12:19] Javi: Y ellos no conocen a nadie.
+[12:20] Javi: Y ellos no conocen a nadie.
+[12:21] Javi: Y ellos no conocen a nadie.
+[12:22] Javi: Y ellos no conocen a nadie.
+[12:23] Javi: Y ellos no conocen a nadie.
+[12:24] Javi: Y ellos no conocen a nadie.
+[12:25] Javi: Y ellos no conocen a nadie.
+[12:26] Javi: Y ellos no conocen a nadie.
+[12:27] Javi: Y ellos no conocen a nadie.
+[12:28] Javi: Y ellos no conocen a nadie.
+[12:29] Javi: Y ellos no conocen a nadie.
+[12:30] Javi: Y ellos no conocen a nadie.
+[12:39] Javi: Y ellos no conocen a nadie.
+[12:40] Javi: Y ellos no conocen a nadie.
+[12:41] Javi: Y ellos no conocen a nadie.
+[12:42] Javi: Y ellos no conocen a nadie.
+[12:43] Javi: Y ellos no conocen a nadie.
+[12:44] Javi: Y ellos no conocen a nadie.
+[12:45] Javi: Y ellos no conocen a nadie.
+[12:46] SPEAKER_00: Y ellos no conocen a nadie.
+[12:47] SPEAKER_00: Y ellos no conocen a nadie.
+[12:48] SPEAKER_00: Y ellos no conocen a nadie.
+[12:49] SPEAKER_00: Y ellos no conocen a nadie.
+[12:50] SPEAKER_00: Y ellos no conocen a nadie.
+[12:51] SPEAKER_00: Y ellos no conocen a nadie.
+[12:52] SPEAKER_00: Y ellos no conocen a nadie.
+[12:53] SPEAKER_00: Y ellos no conocen a nadie.
+[12:54] SPEAKER_00: Y ellos no conocen a nadie.
+[12:55] SPEAKER_00: Y ellos no conocen a nadie.
+[12:56] SPEAKER_00: Y ellos no conocen a nadie.
+[12:57] SPEAKER_00: Y ellos no conocen a nadie.
+[12:58] SPEAKER_00: Y ellos no conocen a nadie.
+[12:59] SPEAKER_00: Y ellos no conocen a nadie.
+[13:00] SPEAKER_00: Y ellos no conocen a nadie.
+[13:09] SPEAKER_00: Y ellos no conocen a nadie.
+[13:10] SPEAKER_00: Y ellos no conocen a nadie.
+[13:11] SPEAKER_00: Y ellos no conocen a nadie.
+[13:12] SPEAKER_00: Y ellos no conocen a nadie.
+[13:13] SPEAKER_00: Y ellos no conocen a nadie.
+[13:14] SPEAKER_00: Y ellos no conocen a nadie.
+[13:15] SPEAKER_00: Y ellos no conocen a nadie.
+[13:16] SPEAKER_00: Y ellos no conocen a nadie.
+[13:17] SPEAKER_00: Y ellos no conocen a nadie.
+[13:18] SPEAKER_00: Y ellos no conocen a nadie.
+[13:19] SPEAKER_00: Y ellos no conocen a nadie.
+[13:20] SPEAKER_00: Y ellos no conocen a nadie.
+[13:21] SPEAKER_00: Y ellos no conocen a nadie.
+[13:22] SPEAKER_00: Y ellos no conocen a nadie.
+[13:23] SPEAKER_00: Y ellos no conocen a nadie.
+[13:24] SPEAKER_00: Y ellos no conocen a nadie.
+[13:25] SPEAKER_00: Y ellos no conocen a nadie.
+[13:26] SPEAKER_00: Y ellos no conocen a nadie.
+[13:27] SPEAKER_00: Y ellos no conocen a nadie.
+[13:28] SPEAKER_00: Y ellos no conocen a nadie.
+[13:29] SPEAKER_00: Y ellos no conocen a nadie.
+[13:30] Javi: Y ellos no conocen a nadie.
+[13:39] Javi: Y ellos no conocen a nadie.
+[13:40] Javi: Y ellos no conocen a nadie.
+[13:41] Javi: Y ellos no conocen a nadie.
+[13:42] Javi: Y ellos no conocen a nadie.
+[13:43] Javi: Y ellos no conocen a nadie.
+[13:44] Javi: Y ellos no conocen a nadie.
+[13:45] Javi: Y ellos no conocen a nadie.
+[13:46] SPEAKER_00: Y ellos no conocen a nadie.
+[13:47] SPEAKER_00: Y ellos no conocen a nadie.
+[13:48] SPEAKER_00: Y ellos no conocen a nadie.
+[13:49] SPEAKER_00: Y ellos no conocen a nadie.
+[13:50] SPEAKER_00: Y ellos no conocen a nadie.
+[13:51] SPEAKER_00: Y ellos no conocen a nadie.
+[13:52] SPEAKER_00: Y ellos no conocen a nadie.
+[13:53] SPEAKER_00: Y ellos no conocen a nadie.
+[13:54] SPEAKER_00: Y ellos no conocen a nadie.
+[13:55] SPEAKER_00: Y ellos no conocen a nadie.
+[13:56] SPEAKER_00: Y ellos no conocen a nadie.
+[13:57] SPEAKER_00: Y ellos no conocen a nadie.
+[13:58] SPEAKER_00: Y ellos no conocen a nadie.
+[13:59] SPEAKER_00: Y ellos no conocen a nadie.
+[14:00] SPEAKER_00: Y ellos no conocen a nadie.
+[14:09] Javi: Y ellos no conocen a nadie.
+[14:10] Javi: Y ellos no conocen a nadie.
+[14:11] Javi: Y ellos no conocen a nadie.
+[14:12] Javi: Y ellos no conocen a nadie.
+[14:13] Javi: Y ellos no conocen a nadie.
+[14:14] Javi: Y ellos no conocen a nadie.
+[14:15] Javi: Y ellos no conocen a nadie.
+[14:16] Javi: Y ellos no conocen a nadie.
+[14:17] Javi: Y ellos no conocen a nadie.
+[14:18] Javi: Y ellos no conocen a nadie.
+[14:19] Javi: Y ellos no conocen a nadie.
+[14:20] Javi: Y ellos no conocen a nadie.
+[14:21] Javi: Y ellos no conocen a nadie.
+[14:22] Javi: Y ellos no conocen a nadie.
+[14:23] Javi: Y ellos no conocen a nadie.
+[14:24] Javi: Y ellos no conocen a nadie.
+[14:25] Javi: Y ellos no conocen a nadie.
+[14:26] Javi: Y ellos no conocen a nadie.
+[14:27] Javi: Y ellos no conocen a nadie.
+[14:28] Javi: Y ellos no conocen a nadie.
+[14:29] Javi: Y ellos no conocen a nadie.
+[14:30] Javi: Y ellos no conocen a nadie.
+[14:39] SPEAKER_00: Y ellos no conocen a nadie.
+[14:40] SPEAKER_00: Y ellos no conocen a nadie.
+[14:41] Javi: Y ellos no conocen a nadie.
+[14:42] Javi: Y ellos no conocen a nadie.
+[14:43] Javi: Y ellos no conocen a nadie.
+[14:44] Javi: Y ellos no conocen a nadie.
+[14:45] Javi: Y ellos no conocen a nadie.
+[14:46] Javi: Y ellos no conocen a nadie.
+[14:47] Javi: Y ellos no conocen a nadie.
+[14:48] Javi: Y ellos no conocen a nadie.
+[14:49] Javi: Y ellos no conocen a nadie.
+[14:50] Javi: Y ellos no conocen a nadie.
+[14:51] Javi: Y ellos no conocen a nadie.
+[14:52] Javi: Y ellos no conocen a nadie.
+[14:53] Javi: Y ellos no conocen a nadie.
+[14:54] Javi: Y ellos no conocen a nadie.
+[14:55] Javi: Y ellos no conocen a nadie.
+[14:56] Javi: Y ellos no conocen a nadie.
+[14:57] Javi: Y ellos no conocen a nadie.
+[14:58] Javi: Y ellos no conocen a nadie.
+[14:59] Javi: Y ellos no conocen a nadie.
+[15:00] Javi: Y ellos no conocen a nadie.
+[15:09] Javi: Y ellos no conocen a nadie.
+[15:10] Javi: Y ellos no conocen a nadie.
+[15:11] Javi: Y ellos no conocen a nadie.
+[15:12] Javi: Y ellos no conocen a nadie.
+[15:13] Javi: Y ellos no conocen a nadie.
+[15:14] SPEAKER_00: Y ellos no conocen a nadie.
+[15:15] SPEAKER_00: Y ellos no conocen a nadie.
+[15:16] SPEAKER_00: Y ellos no conocen a nadie.
+[15:17] SPEAKER_00: Y ellos no conocen a nadie.
+[15:18] SPEAKER_00: Y ellos no conocen a nadie.
+[15:19] Javi: Y ellos no conocen a nadie.
+[15:20] Javi: Y ellos no conocen a nadie.
+[15:21] SPEAKER_00: Y ellos no conocen a nadie.
+[15:22] SPEAKER_00: Y ellos no conocen a nadie.
+[15:23] SPEAKER_00: Y ellos no conocen a nadie.
+[15:24] SPEAKER_00: Y ellos no conocen a nadie.
+[15:25] SPEAKER_00: Y ellos no conocen a nadie.
+[15:26] SPEAKER_00: Y ellos no conocen a nadie.
+[15:27] SPEAKER_00: Y ellos no conocen a nadie.
+[15:28] SPEAKER_00: Y ellos no conocen a nadie.
+[15:29] SPEAKER_00: Y ellos no conocen a nadie.
+[15:30] SPEAKER_00: Y ellos no conocen a nadie.
+[15:31] SPEAKER_00: Y ellos no conocen a nadie.
+[15:32] Javi: Y ellos no conocen a nadie.
+[15:33] Javi: Y ellos no conocen a nadie.
+[15:34] Javi: Y ellos no conocen a nadie.
+[15:35] Javi: Y ellos no conocen a nadie.
+[15:36] Javi: Y ellos no conocen a nadie.
+[15:37] Javi: Y ellos no conocen a nadie.
+[15:38] Javi: Y ellos no conocen a nadie.
+[15:39] Javi: Y ellos no conocen a nadie.
+[15:40] SPEAKER_00: Y ellos no conocen a nadie.
+[15:41] SPEAKER_00: Y ellos no conocen a nadie.
+[15:42] Javi: Y ellos no conocen a nadie.
+[15:43] Javi: Y ellos no conocen a nadie.
+[15:44] Javi: Y ellos no conocen a nadie.
+[15:45] Javi: Y ellos no conocen a nadie.
+[15:46] Javi: Y ellos no conocen a nadie.
+[15:47] Javi: Y ellos no conocen a nadie.
+[15:48] Javi: Y ellos no conocen a nadie.
+[15:49] Javi: Y ellos no conocen a nadie.
+[15:50] SPEAKER_00: Y ellos no conocen a nadie.
+[15:51] SPEAKER_00: Y ellos no conocen a nadie.
+[16:00] Javi: Y ellos no conocen a nadie.
+[16:01] Javi: Y ellos no conocen a nadie.
+[16:02] Javi: Y ellos no conocen a nadie.
+[16:03] SPEAKER_00: Y ellos no conocen a nadie.
+[16:04] SPEAKER_00: Y ellos no conocen a nadie.
+[16:05] SPEAKER_00: Y ellos no conocen a nadie.
+[16:06] Javi: Y ellos no conocen a nadie.
+[16:07] Javi: Y ellos no conocen a nadie.
+[16:08] Javi: Y ellos no conocen a nadie.
+[16:09] Javi: Y ellos no conocen a nadie.
+[16:10] Javi: Y ellos no conocen a nadie.
+[16:11] Javi: Y ellos no conocen a nadie.
+[16:12] Javi: Y ellos no conocen a nadie.
+[16:13] Javi: Y ellos no conocen a nadie.
+[16:14] Javi: Y ellos no conocen a nadie.
+[16:15] Javi: Y ellos no conocen a nadie.
+[16:16] Javi: Y ellos no conocen a nadie.
+[16:17] Javi: Y ellos no conocen a nadie.
+[16:18] Javi: Y ellos no conocen a nadie.
+[16:19] Javi: Y ellos no conocen a nadie.
+[16:20] Javi: Y ellos no conocen a nadie.
+[16:21] Javi: Y ellos no conocen a nadie.
+[16:30] Javi: Y ellos no conocen a nadie.
+[16:31] Javi: Y ellos no conocen a nadie.
+[16:32] Javi: Y ellos no conocen a nadie.
+[16:33] Javi: Y ellos no conocen a nadie.
+[16:34] Javi: Y ellos no conocen a nadie.
+[16:35] Javi: Y ellos no conocen a nadie.
+[16:36] SPEAKER_00: Y ellos no conocen a nadie.
+[16:37] SPEAKER_00: Y ellos no conocen a nadie.
+[16:38] SPEAKER_00: Y ellos no conocen a nadie.
+[16:39] Javi: Y ellos no conocen a nadie.
+[16:40] Javi: Y ellos no conocen a nadie.
+[16:41] Javi: Y ellos no conocen a nadie.
+[16:42] Javi: Y ellos no conocen a nadie.
+[16:43] Javi: Y ellos no conocen a nadie.
+[16:44] Javi: Y ellos no conocen a nadie.
+[16:45] Javi: Y ellos no conocen a nadie.
+[16:46] Javi: Y ellos no conocen a nadie.
+[16:47] Javi: Y ellos no conocen a nadie.
+[16:48] Javi: Y ellos no conocen a nadie.
+[16:49] Javi: Y ellos no conocen a nadie.
+[16:50] Javi: Y ellos no conocen a nadie.
+[16:51] Javi: Y ellos no conocen a nadie.
+[17:00] Javi: Y ellos no conocen a nadie.
+[17:01] Javi: Y ellos no conocen a nadie.
+[17:02] Javi: Y ellos no conocen a nadie.
+[17:03] Javi: Y ellos no conocen a nadie.
+[17:04] Javi: Y ellos no conocen a nadie.
+[17:05] Javi: Y ellos no conocen a nadie.
+[17:06] Javi: Y ellos no conocen a nadie.
+[17:07] Javi: Y ellos no conocen a nadie.
+[17:08] Javi: Y ellos no conocen a nadie.
+[17:09] Javi: Y ellos no conocen a nadie.
+[17:10] Javi: Y ellos no conocen a nadie.
+[17:11] Javi: Y ellos no conocen a nadie.
+[17:12] Javi: Y ellos no conocen a nadie.
+[17:13] Javi: Y ellos no conocen a nadie.
+[17:14] Javi: Y ellos no conocen a nadie.
+[17:15] Javi: Y ellos no conocen a nadie.
+[17:16] Javi: Y ellos no conocen a nadie.
+[17:17] Javi: Y ellos no conocen a nadie.
+[17:18] Javi: Y ellos no conocen a nadie.
+[17:19] Javi: Y ellos no conocen a nadie.
+[17:20] Javi: Y ellos no conocen a nadie.
+[17:21] Javi: Y ellos no conocen a nadie.
+[17:22] Javi: Y ellos no conocen a nadie.
+[17:23] Javi: Y ellos no conocen a nadie.
+[17:24] Javi: Y ellos no conocen a nadie.
+[17:25] Javi: Y ellos no conocen a nadie.
+[17:26] Javi: Y ellos no conocen a nadie.
+[17:27] Javi: Y ellos no conocen a nadie.
+[17:28] Javi: Y ellos no conocen a nadie.
+[17:29] Javi: Y ellos no conocen a nadie.
+[17:30] Javi: Y ellos no conocen a nadie.
+[17:31] SPEAKER_00: Y ellos no conocen a nadie.
+[17:32] SPEAKER_00: Y ellos no conocen a nadie.
+[17:33] SPEAKER_00: Y ellos no conocen a nadie.
+[17:34] SPEAKER_00: Y ellos no conocen a nadie.
+[17:35] SPEAKER_00: Y ellos no conocen a nadie.
+[17:36] Javi: Y ellos no conocen a nadie.
+[17:37] Javi: Y ellos no conocen a nadie.
+[17:38] Javi: Y ellos no conocen a nadie.
+[17:39] Javi: Y ellos no conocen a nadie.
+[17:40] Javi: Y ellos no conocen a nadie.
+[17:41] Javi: Y ellos no conocen a nadie.
+[17:42] Javi: Y ellos no conocen a nadie.
+[17:51] Javi: Y ellos no conocen a nadie.
+[17:52] Javi: Y ellos no conocen a nadie.
+[17:53] Javi: Y ellos no conocen a nadie.
+[17:54] Javi: Y ellos no conocen a nadie.
+[17:55] Javi: Y ellos no conocen a nadie.
+[17:56] SPEAKER_00: Y ellos no conocen a nadie.
+[17:57] SPEAKER_00: Y ellos no conocen a nadie.
+[17:58] SPEAKER_00: Y ellos no conocen a nadie.
+[17:59] SPEAKER_00: Y ellos no conocen a nadie.
+[18:00] Javi: Y ellos no conocen a nadie.
+[18:01] Javi: Y ellos no conocen a nadie.
+[18:02] Javi: Y ellos no conocen a nadie.
+[18:03] SPEAKER_00: Y ellos no conocen a nadie.
+[18:04] SPEAKER_00: Y ellos no conocen a nadie.
+[18:05] SPEAKER_00: Y ellos no conocen a nadie.
+[18:06] SPEAKER_00: Y ellos no conocen a nadie.
+[18:07] SPEAKER_00: Y ellos no conocen a nadie.
+[18:08] SPEAKER_00: Y ellos no conocen a nadie.
+[18:09] SPEAKER_00: Y ellos no conocen a nadie.
+[18:10] Javi: Y ellos no conocen a nadie.
+[18:11] Javi: Y ellos no conocen a nadie.
+[18:12] SPEAKER_00: Y ellos no conocen a nadie.
+[18:13] SPEAKER_00: Y ellos no conocen a nadie.
+[18:14] SPEAKER_00: Y ellos no conocen a nadie.
+[18:15] SPEAKER_00: Y ellos no conocen a nadie.
+[18:16] Javi: Y ellos no conocen a nadie.
+[18:17] Javi: Y ellos no conocen a nadie.
+[18:18] SPEAKER_00: Y ellos no conocen a nadie.
+[18:19] SPEAKER_00: Y ellos no conocen a nadie.
+[18:20] SPEAKER_00: Y ellos no conocen a nadie.
+[18:21] SPEAKER_00: Y ellos no conocen a nadie.
+[18:22] SPEAKER_00: Y ellos no conocen a nadie.
+[18:23] SPEAKER_00: Y ellos no conocen a nadie.
+[18:24] SPEAKER_00: Y ellos no conocen a nadie.
+[18:25] SPEAKER_00: Y ellos no conocen a nadie.
+[18:26] SPEAKER_00: Y ellos no conocen a nadie.
+[18:27] SPEAKER_00: Y ellos no conocen a nadie.
+[18:28] SPEAKER_00: Y ellos no conocen a nadie.
+[18:29] SPEAKER_00: Y ellos no conocen a nadie.
+[18:30] SPEAKER_00: Y ellos no conocen a nadie.
+[18:31] SPEAKER_00: Y ellos no conocen a nadie.
+[18:32] Javi: Y ellos no conocen a nadie.
+[18:33] Javi: Y ellos no conocen a nadie.
+[18:42] Javi: Y ellos no conocen a nadie.
+[18:43] Javi: Y ellos no conocen a nadie.
+[18:44] Javi: Y ellos no conocen a nadie.
+[18:45] Javi: Y ellos no conocen a nadie.
+[18:46] Javi: Y ellos no conocen a nadie.
+[18:47] Javi: Y ellos no conocen a nadie.
+[18:48] Javi: Y ellos no conocen a nadie.
+[18:49] Javi: Y ellos no conocen a nadie.
+[18:50] Javi: Y ellos no conocen a nadie.
+[18:51] Javi: Y ellos no conocen a nadie.
+[18:52] SPEAKER_00: Y ellos no conocen a nadie.
+[18:53] SPEAKER_00: Y ellos no conocen a nadie.
+[18:54] SPEAKER_00: Y ellos no conocen a nadie.
+[18:55] SPEAKER_00: Y ellos no conocen a nadie.
+[18:56] Javi: Y ellos no conocen a nadie.
+[18:57] Javi: Y ellos no conocen a nadie.
+[18:58] Javi: Y ellos no conocen a nadie.
+[18:59] Javi: Y ellos no conocen a nadie.
+[19:00] Javi: Y ellos no conocen a nadie.
+[19:01] Javi: Y ellos no conocen a nadie.
+[19:02] Javi: Y ellos no conocen a nadie.
+[19:03] Javi: Y ellos no conocen a nadie.
+[19:12] SPEAKER_00: Y ellos no conocen a nadie.
+[19:13] SPEAKER_00: Y ellos no conocen a nadie.
+[19:14] SPEAKER_00: Y ellos no conocen a nadie.
+[19:15] SPEAKER_00: Y ellos no conocen a nadie.
+[19:16] SPEAKER_00: Y ellos no conocen a nadie.
+[19:17] SPEAKER_00: Y ellos no conocen a nadie.
+[19:18] SPEAKER_00: Y ellos no conocen a nadie.
+[19:19] SPEAKER_00: Y ellos no conocen a nadie.
+[19:20] SPEAKER_00: Y ellos no conocen a nadie.
+[19:21] Javi: Y ellos no conocen a nadie.
+[19:22] Javi: Y ellos no conocen a nadie.
+[19:23] Javi: Y ellos no conocen a nadie.
+[19:24] Javi: Y ellos no conocen a nadie.
+[19:25] Javi: Y ellos no conocen a nadie.
+[19:26] Javi: Y ellos no conocen a nadie.
+[19:27] Javi: Y ellos no conocen a nadie.
+[19:28] SPEAKER_00: Y ellos no conocen a nadie.
+[19:29] SPEAKER_00: Y ellos no conocen a nadie.
+[19:30] SPEAKER_00: Y ellos no conocen a nadie.
+[19:31] Javi: Y ellos no conocen a nadie.
+[19:32] Javi: Y ellos no conocen a nadie.
+[19:33] Javi: Y ellos no conocen a nadie.
+[19:34] SPEAKER_00: Y ellos no conocen a nadie.
+[19:35] SPEAKER_00: Y ellos no conocen a nadie.
+[19:36] SPEAKER_00: Y ellos no conocen a nadie.
+[19:37] SPEAKER_00: Y ellos no conocen a nadie.
+[19:38] SPEAKER_00: Y ellos no conocen a nadie.
+[19:39] SPEAKER_00: Y ellos no conocen a nadie.
+[19:40] SPEAKER_00: Y ellos no conocen a nadie.
+[19:41] SPEAKER_00: Y ellos no conocen a nadie.
+[19:42] SPEAKER_00: Y ellos no conocen a nadie.
+[19:43] Javi: Y ellos no conocen a nadie.
+[19:44] Javi: Y ellos no conocen a nadie.
+[19:45] Javi: Y ellos no conocen a nadie.
+[19:46] Javi: Y ellos no conocen a nadie.
+[19:47] Javi: Y ellos no conocen a nadie.
+[19:48] SPEAKER_00: Y ellos no conocen a nadie.
+[19:49] SPEAKER_00: Y ellos no conocen a nadie.
+[19:50] SPEAKER_00: Y ellos no conocen a nadie.
+[19:51] SPEAKER_00: Y ellos no conocen a nadie.
+[19:52] Javi: Y ellos no conocen a nadie.
+[19:53] Javi: Y ellos no conocen a nadie.
+[19:54] Javi: Y ellos no conocen a nadie.
+[20:03] Javi: Y ellos no conocen a nadie.
+[20:04] Javi: Y ellos no conocen a nadie.
+[20:05] Javi: Y ellos no conocen a nadie.
+[20:06] Javi: Y ellos no conocen a nadie.
+[20:07] Javi: Y ellos no conocen a nadie.
+[20:08] Javi: Y ellos no conocen a nadie.
+[20:09] Javi: Y ellos no conocen a nadie.
+[20:10] Javi: Y ellos no conocen a nadie.
+[20:11] SPEAKER_00: Y ellos no conocen a nadie.
+[20:12] SPEAKER_00: Y ellos no conocen a nadie.
+[20:13] SPEAKER_00: Y ellos no conocen a nadie.
+[20:14] SPEAKER_00: Y ellos no conocen a nadie.
+[20:15] SPEAKER_00: Y ellos no conocen a nadie.
+[20:16] SPEAKER_00: Y ellos no conocen a nadie.
+[20:17] SPEAKER_00: Y ellos no conocen a nadie.
+[20:18] SPEAKER_00: Y ellos no conocen a nadie.
+[20:19] SPEAKER_00: Y ellos no conocen a nadie.
+[20:20] Javi: Y ellos no conocen a nadie.
+[20:21] Javi: Y ellos no conocen a nadie.
+[20:22] SPEAKER_00: Y ellos no conocen a nadie.
+[20:23] SPEAKER_00: Y ellos no conocen a nadie.
+[20:24] SPEAKER_00: Y ellos no conocen a nadie.
+[20:33] Javi: Y ellos no conocen a nadie.
+[20:34] Javi: Y ellos no conocen a nadie.
+[20:35] Javi: Y ellos no conocen a nadie.
+[20:36] Javi: Y ellos no conocen a nadie.
+[20:37] Javi: Y ellos no conocen a nadie.
+[20:38] Javi: Y ellos no conocen a nadie.
+[20:39] Javi: Y ellos no conocen a nadie.
+[20:40] Javi: Y ellos no conocen a nadie.
+[20:41] SPEAKER_00: Y ellos no conocen a nadie.
+[20:42] SPEAKER_00: Y ellos no conocen a nadie.
+[20:43] Javi: Y ellos no conocen a nadie.
+[20:44] Javi: Y ellos no conocen a nadie.
+[20:45] Javi: Y ellos no conocen a nadie.
+[20:46] Javi: Y ellos no conocen a nadie.
+[20:47] Javi: Y ellos no conocen a nadie.
+[20:48] SPEAKER_00: Y ellos no conocen a nadie.
+[20:49] SPEAKER_00: Y ellos no conocen a nadie.
+[20:50] SPEAKER_00: Y ellos no conocen a nadie.
+[20:51] SPEAKER_00: Y ellos no conocen a nadie.
+[20:52] SPEAKER_00: Y ellos no conocen a nadie.
+[20:53] SPEAKER_00: Y ellos no conocen a nadie.
+[20:54] SPEAKER_00: Y ellos no conocen a nadie.
+[21:03] SPEAKER_00: Y ellos no conocen a nadie.
+[21:04] SPEAKER_00: Y ellos no conocen a nadie.
+[21:05] Javi: Y ellos no conocen a nadie.
+[21:06] Javi: Y ellos no conocen a nadie.
+[21:07] Javi: Y ellos no conocen a nadie.
+[21:08] Javi: Y ellos no conocen a nadie.
+[21:09] Javi: Y ellos no conocen a nadie.
+[21:10] Javi: Y ellos no conocen a nadie.
+[21:11] SPEAKER_00: Y ellos no conocen a nadie.
+[21:12] SPEAKER_00: Y ellos no conocen a nadie.
+[21:13] SPEAKER_00: Y ellos no conocen a nadie.
+[21:14] SPEAKER_00: Y ellos no conocen a nadie.
+[21:15] SPEAKER_00: Y ellos no conocen a nadie.
+[21:16] SPEAKER_00: Y ellos no conocen a nadie.
+[21:17] Javi: Y ellos no conocen a nadie.
+[21:18] Javi: Y ellos no conocen a nadie.
+[21:19] Javi: Y ellos no conocen a nadie.
+[21:20] Javi: Y ellos no conocen a nadie.
+[21:21] Javi: Y ellos no conocen a nadie.
+[21:22] Javi: Y ellos no conocen a nadie.
+[21:23] Javi: Y ellos no conocen a nadie.
+[21:24] Javi: Y ellos no conocen a nadie.
+[21:33] Javi: Y ellos no conocen a nadie.
+[21:34] Javi: Y ellos no conocen a nadie.
+[21:35] Javi: Y ellos no conocen a nadie.
+[21:36] Javi: Y ellos no conocen a nadie.
+[21:37] Javi: Y ellos no conocen a nadie.
+[21:38] Javi: Y ellos no conocen a nadie.
+[21:39] Javi: Y ellos no conocen a nadie.
+[21:40] Javi: Y ellos no conocen a nadie.
+[21:41] Javi: Y ellos no conocen a nadie.
+[21:42] SPEAKER_00: Y ellos no conocen a nadie.
+[21:43] SPEAKER_00: Y ellos no conocen a nadie.
+[21:44] SPEAKER_00: Y ellos no conocen a nadie.
+[21:45] SPEAKER_00: Y ellos no conocen a nadie.
+[21:46] SPEAKER_00: Y ellos no conocen a nadie.
+[21:47] SPEAKER_00: Y ellos no conocen a nadie.
+[21:48] Javi: Y ellos no conocen a nadie.
+[21:49] Javi: Y ellos no conocen a nadie.
+[21:50] Javi: Y ellos no conocen a nadie.
+[21:51] SPEAKER_00: Y ellos no conocen a nadie.
+[21:52] SPEAKER_00: Y ellos no conocen a nadie.
+[21:53] SPEAKER_00: Y ellos no conocen a nadie.
+[21:54] SPEAKER_00: Y ellos no conocen a nadie.
+[21:55] SPEAKER_00: Y ellos no conocen a nadie.
+[21:56] SPEAKER_00: Y ellos no conocen a nadie.
+[21:57] SPEAKER_00: Y ellos no conocen a nadie.
+[21:58] SPEAKER_00: Y ellos no conocen a nadie.
+[21:59] SPEAKER_00: Y ellos no conocen a nadie.
+[22:00] SPEAKER_00: Y ellos no conocen a nadie.
+
+{
+  "headline": "Falta de conocimiento sobre participantes",
+  "brief": "La reunión se centró en la falta de conocimiento sobre los participantes, lo que generó una serie de respuestas repetitivas y sin sentido.",
+  "overview": "La reunión no produjo resultados significativos, ya que no se abordaron temas específicos ni se tomaron decisiones importantes. Los participantes parecían desconocidos entre sí y no se centraron en encontrar soluciones a problemas concretos. La discusión parecía un ejercicio de repetición y falta de propósito.",
+  "narrative": "La reunión no produjo resultados significativos, ya que no se abordaron temas específicos ni se tomaron decisiones importantes. Los participantes parecían desconocidos entre sí y no se centraron en encontrar soluciones a problemas concretos. La discusión parecía un ejercicio de repetición y falta de propósito.",
+  "keyDecisions": [],
+  "actionItems": [
+    {
+      "task": "Investigar sobre los participantes",
+      "priority": "alta",
+      "status": "pendiente"
+    }
+  ],
+  "topics": [
+    "Falta de conocimiento sobre participantes"
+  ],
+  "sections": [
+    {
+      "title": "Postura y decisiones",
+      "summary": "Los participantes no conocían a nadie entre sí, lo que generó una serie de respuestas repetitivas y sin sentido.",
+      "bullets": [
+        "Los participantes no conocían a nadie entre sí, lo que generó una serie de respuestas repetitivas y sin sentido.",
+        "No hay información relevante",
+        "Repetición"
+      ]
+    },
+    {
+      "title": "Reacciones y riesgos",
+      "summary": "¿Por qué no se abordaron temas específicos ni se tomaron decisiones importantes?",
+      "bullets": [
+        "¿Por qué no se abordaron temas específicos ni se tomaron decisiones importantes?"
+      ]
+    },
+    {
+      "title": "Acuerdos y siguientes pasos",
+      "summary": "Investigar sobre los participantes",
+      "bullets": [
+        "Investigar sobre los participantes",
+        "Reunirse con los participantes para obtener más información"
+      ]
+    }
+  ],
+  "followUps": [
+    "Reunirse con los participantes para obtener más información"
+  ],
+  "risks": [],
+  "operationalNotes": [],
+  "openQuestions": [
+    "¿Por qué no se abordaron temas específicos ni se tomaron decisiones importantes?"
+  ]
+}
+
+Upload stored. Waiting for worker start.
+Detected processing profile: speed (Windows GPU | win32 | x64 | 16 logical cores | NVIDIA GPU detected)
+ffmpeg version 7.1-essentials_build-www.gyan.dev Copyright (c) 2000-2024 the FFmpeg developers
+built with gcc 14.2.0 (Rev1, Built by MSYS2 project)
+configuration: --enable-gpl --enable-version3 --enable-static --disable-w32threads --disable-autodetect --enable-fontconfig --enable-iconv --enable-gnutls --enable-libxml2 --enable-gmp --enable-bzlib --enable-lzma --enable-zlib --enable-libsrt --enable-libssh --enable-libzmq --enable-avisynth --enable-sdl2 --enable-libwebp --enable-libx264 --enable-libx265 --enable-libxvid --enable-libaom --enable-libopenjpeg --enable-libvpx --enable-mediafoundation --enable-libass --enable-libfreetype --enable-libfribidi --enable-libharfbuzz --enable-libvidstab --enable-libvmaf --enable-libzimg --enable-amf --enable-cuda-llvm --enable-cuvid --enable-dxva2 --enable-d3d11va --enable-d3d12va --enable-ffnvcodec --enable-libvpl --enable-nvdec --enable-nvenc --enable-vaapi --enable-libgme --enable-libopenmpt --enable-libopencore-amrwb --enable-libmp3lame --enable-libtheora --enable-libvo-amrwbenc --enable-libgsm --enable-libopencore-amrnb --enable-libopus --enable-libspeex --enable-libvorbis --enable-librubberband
+libavutil      59. 39.100 / 59. 39.100
+libavcodec     61. 19.100 / 61. 19.100
+libavformat    61.  7.100 / 61.  7.100
+libavdevice    61.  3.100 / 61.  3.100
+libavfilter    10.  4.100 / 10.  4.100
+libswscale      8.  3.100 /  8.  3.100
+libswresample   5.  3.100 /  5.  3.100
+libpostproc    58.  3.100 / 58.  3.100
+Input #0, matroska,webm, from 'C:\Users\javar\GITHUB\Notadio\data\jobs\26ed8fa0-b3ae-45c1-af3c-245021d47aa3\uploads\source.mkv':
+Metadata:
+ENCODER         : Lavf61.7.100
+Duration: 00:22:01.45, start: 0.000000, bitrate: 6163 kb/s
+Stream #0:0: Video: h264 (High), yuv420p(tv, bt709, progressive), 1920x1080 [SAR 1:1 DAR 16:9], 30 fps, 30 tbr, 1k tbn
+Metadata:
+DURATION        : 00:22:01.454000000
+Stream #0:1: Audio: aac (LC), 48000 Hz, stereo, fltp
+Metadata:
+title           : simple_aac
+DURATION        : 00:22:01.407000000
+Stream mapping:
+Stream #0:1 -> #0:0 (aac (native) -> pcm_s16le (native))
+Press [q] to stop, [?] for help
+Output #0, wav, to 'C:\Users\javar\GITHUB\Notadio\data\jobs\26ed8fa0-b3ae-45c1-af3c-245021d47aa3\working\normalized.wav':
+Metadata:
+ISFT            : Lavf61.7.100
+Stream #0:0: Audio: pcm_s16le ([1][0][0][0] / 0x0001), 16000 Hz, mono, s16, 256 kb/s
+Metadata:
+title           : simple_aac
+DURATION        : 00:22:01.407000000
+encoder         : Lavc61.19.100 pcm_s16le
+size=   20992KiB time=00:11:18.76 bitrate= 253.4kbits/s speed=1.32e+03x
+[out#0/wav @ 0000023e92224040] video:0KiB audio:41294KiB subtitle:0KiB other streams:0KiB global headers:0KiB muxing overhead: 0.000184%
+size=   41294KiB time=00:22:01.40 bitrate= 256.0kbits/s speed=1.3e+03x
+Whisper thread recommendation: 15
+ggml_cuda_init: found 1 CUDA devices:
+Device 0: NVIDIA GeForce RTX 3060 Ti, compute capability 8.6, VMM: yes
+whisper_init_from_file_with_params_no_state: loading model from 'C:/Users/javar/GITHUB/whisper.cpp/ggml-large-v3.bin'
+whisper_init_with_params_no_state: use gpu    = 1
+whisper_init_with_params_no_state: flash attn = 1
+whisper_init_with_params_no_state: gpu_device = 0
+whisper_init_with_params_no_state: dtw        = 0
+whisper_init_with_params_no_state: devices    = 2
+whisper_init_with_params_no_state: backends   = 2
+whisper_model_load: loading model
+whisper_model_load: n_vocab       = 51866
+whisper_model_load: n_audio_ctx   = 1500
+whisper_model_load: n_audio_state = 1280
+whisper_model_load: n_audio_head  = 20
+whisper_model_load: n_audio_layer = 32
+whisper_model_load: n_text_ctx    = 448
+whisper_model_load: n_text_state  = 1280
+whisper_model_load: n_text_head   = 20
+whisper_model_load: n_text_layer  = 32
+whisper_model_load: n_mels        = 128
+whisper_model_load: ftype         = 1
+whisper_model_load: qntvr         = 0
+whisper_model_load: type          = 5 (large v3)
+whisper_model_load: adding 1609 extra tokens
+whisper_model_load: n_langs       = 100
+whisper_model_load:        CUDA0 total size =  3094.36 MB
+whisper_model_load: model size    = 3094.36 MB
+whisper_backend_init_gpu: device 0: CUDA0 (type: 1)
+whisper_backend_init_gpu: found GPU device 0: CUDA0 (type: 1, cnt: 0)
+whisper_backend_init_gpu: using CUDA0 backend
+whisper_init_state: kv self size  =   83.89 MB
+whisper_init_state: kv cross size =  251.66 MB
+whisper_init_state: kv pad  size  =    7.86 MB
+whisper_init_state: compute buffer (conv)   =   37.69 MB
+whisper_init_state: compute buffer (encode) =   55.35 MB
+whisper_init_state: compute buffer (cross)  =    9.27 MB
+whisper_init_state: compute buffer (decode) =  100.04 MB
+system_info: n_threads = 15 / 16 | WHISPER : COREML = 0 | OPENVINO = 0 | CUDA : ARCHS = 860 | PEER_MAX_BATCH_SIZE = 128 | CPU : SSE3 = 1 | SSSE3 = 1 | AVX = 1 | AVX2 = 1 | F16C = 1 | FMA = 1 | OPENMP = 1 | REPACK = 1 |
+main: processing 'C:\Users\javar\GITHUB\Notadio\data\jobs\26ed8fa0-b3ae-45c1-af3c-245021d47aa3\working\normalized.wav' (21142528 samples, 1321.4 sec), 15 threads, 1 processors, 5 beams + best of 5, lang = auto, task = transcribe, timestamps = 1 ...
+whisper_full_with_state: auto-detected language: es (p = 0.998918)
+output_srt: saving output to 'C:\Users\javar\GITHUB\Notadio\data\jobs\26ed8fa0-b3ae-45c1-af3c-245021d47aa3\working\whisper\source.srt'
+output_json: saving output to 'C:\Users\javar\GITHUB\Notadio\data\jobs\26ed8fa0-b3ae-45c1-af3c-245021d47aa3\working\whisper\source.json'
+whisper_print_timings:     load time =  5223.65 ms
+whisper_print_timings:     fallbacks =   3 p /  33 h
+whisper_print_timings:      mel time =   488.50 ms
+whisper_print_timings:   sample time = 27977.74 ms / 45228 runs (     0.62 ms per run)
+whisper_print_timings:   encode time =  6522.74 ms /    49 runs (   133.12 ms per run)
+whisper_print_timings:   decode time =  1440.09 ms /   107 runs (    13.46 ms per run)
+whisper_print_timings:   batchd time = 143869.47 ms / 45024 runs (     3.20 ms per run)
+whisper_print_timings:   prompt time =  1697.30 ms / 10810 runs (     0.16 ms per run)
+whisper_print_timings:    total time = 189206.88 ms
+Base transcription complete. Waiting for enhancement selection.
+Starting enhancements: translate, diarize, summarize
+ggml_cuda_init: found 1 CUDA devices:
+Device 0: NVIDIA GeForce RTX 3060 Ti, compute capability 8.6, VMM: yes
+whisper_init_from_file_with_params_no_state: loading model from 'C:/Users/javar/GITHUB/whisper.cpp/ggml-large-v3.bin'
+whisper_init_with_params_no_state: use gpu    = 1
+whisper_init_with_params_no_state: flash attn = 1
+whisper_init_with_params_no_state: gpu_device = 0
+whisper_init_with_params_no_state: dtw        = 0
+whisper_init_with_params_no_state: devices    = 2
+whisper_init_with_params_no_state: backends   = 2
+whisper_model_load: loading model
+whisper_model_load: n_vocab       = 51866
+whisper_model_load: n_audio_ctx   = 1500
+whisper_model_load: n_audio_state = 1280
+whisper_model_load: n_audio_head  = 20
+whisper_model_load: n_audio_layer = 32
+whisper_model_load: n_text_ctx    = 448
+whisper_model_load: n_text_state  = 1280
+whisper_model_load: n_text_head   = 20
+whisper_model_load: n_text_layer  = 32
+whisper_model_load: n_mels        = 128
+whisper_model_load: ftype         = 1
+whisper_model_load: qntvr         = 0
+whisper_model_load: type          = 5 (large v3)
+whisper_model_load: adding 1609 extra tokens
+whisper_model_load: n_langs       = 100
+whisper_model_load:        CUDA0 total size =  3094.36 MB
+whisper_model_load: model size    = 3094.36 MB
+whisper_backend_init_gpu: device 0: CUDA0 (type: 1)
+whisper_backend_init_gpu: found GPU device 0: CUDA0 (type: 1, cnt: 0)
+whisper_backend_init_gpu: using CUDA0 backend
+whisper_init_state: kv self size  =   83.89 MB
+whisper_init_state: kv cross size =  251.66 MB
+whisper_init_state: kv pad  size  =    7.86 MB
+whisper_init_state: compute buffer (conv)   =   37.69 MB
+whisper_init_state: compute buffer (encode) =   55.35 MB
+whisper_init_state: compute buffer (cross)  =    9.27 MB
+whisper_init_state: compute buffer (decode) =  100.04 MB
+system_info: n_threads = 15 / 16 | WHISPER : COREML = 0 | OPENVINO = 0 | CUDA : ARCHS = 860 | PEER_MAX_BATCH_SIZE = 128 | CPU : SSE3 = 1 | SSSE3 = 1 | AVX = 1 | AVX2 = 1 | F16C = 1 | FMA = 1 | OPENMP = 1 | REPACK = 1 |
+main: processing 'C:\Users\javar\GITHUB\Notadio\data\jobs\26ed8fa0-b3ae-45c1-af3c-245021d47aa3\working\normalized.wav' (21142528 samples, 1321.4 sec), 15 threads, 1 processors, 5 beams + best of 5, lang = auto, task = translate, timestamps = 1 ...
+whisper_full_with_state: auto-detected language: es (p = 0.998918)
+output_json: saving output to 'C:\Users\javar\GITHUB\Notadio\data\jobs\26ed8fa0-b3ae-45c1-af3c-245021d47aa3\working\whisper\english.json'
+whisper_print_timings:     load time =  5049.72 ms
+whisper_print_timings:     fallbacks =  11 p /  26 h
+whisper_print_timings:      mel time =   521.12 ms
+whisper_print_timings:   sample time = 23896.43 ms / 38623 runs (     0.62 ms per run)
+whisper_print_timings:   encode time =  6446.47 ms /    48 runs (   134.30 ms per run)
+whisper_print_timings:   decode time =  5116.82 ms /   382 runs (    13.39 ms per run)
+whisper_print_timings:   batchd time = 116911.51 ms / 37993 runs (     3.08 ms per run)
+whisper_print_timings:   prompt time =  1840.05 ms / 11371 runs (     0.16 ms per run)
+whisper_print_timings:    total time = 161896.11 ms
+Loading diarization models (this may download weights on first run)...
+Processing audio: C:\Users\javar\GITHUB\Notadio\data\jobs\26ed8fa0-b3ae-45c1-af3c-245021d47aa3\working\normalized.wav
+C:\Users\javar\GITHUB\Notadio\.local\diarize-venv\lib\site-packages\silero_vad\utils_vad.py:143: UserWarning: torchaudio.sox_effects.sox_effects.apply_effects_file has been deprecated. This deprecation is part of a large refactoring effort to transition TorchAudio into a maintenance phase. Please see https://github.com/pytorch/audio/issues/3902 for more information. It will be removed from the 2.9 release.
+wav, sr = torchaudio.sox_effects.apply_effects_file(path, effects=effects)
+C:\Users\javar\GITHUB\Notadio\.local\diarize-venv\lib\site-packages\torchaudio\_backend\utils.py:213: UserWarning: In 2.9, this function's implementation will be changed to use torchaudio.load_with_torchcodec` under the hood. Some parameters like ``normalize``, ``format``, ``buffer_size``, and ``backend`` will be ignored. We recommend that you port your code to rely directly on TorchCodec's decoder instead: https://docs.pytorch.org/torchcodec/stable/generated/torchcodec.decoders.AudioDecoder.html#torchcodec.decoders.AudioDecoder.
+warnings.warn(
+Downloading https://wespeaker-1256283475.cos.ap-shanghai.myqcloud.com/models/voxceleb/voxceleb_resnet34_LM.onnx to C:\Users\javar\.wespeaker\en
+voxceleb_resnet34_LM.onnx: 0.00B [00:00, ?B/s]
+voxceleb_resnet34_LM.onnx:   0%|          | 8.00k/25.3M [00:02<1:49:42, 4.03kB/s]
+voxceleb_resnet34_LM.onnx:   0%|          | 48.0k/25.3M [00:02<15:45, 28.0kB/s]
+voxceleb_resnet34_LM.onnx:   1%|          | 176k/25.3M [00:02<03:47, 116kB/s]
+voxceleb_resnet34_LM.onnx:   1%|1         | 336k/25.3M [00:02<01:42, 254kB/s]
+voxceleb_resnet34_LM.onnx:   2%|1         | 440k/25.3M [00:02<01:19, 329kB/s]
+voxceleb_resnet34_LM.onnx:   2%|2         | 592k/25.3M [00:02<00:52, 494kB/s]
+voxceleb_resnet34_LM.onnx:   3%|3         | 808k/25.3M [00:02<00:33, 771kB/s]
+voxceleb_resnet34_LM.onnx:   4%|4         | 1.02M/25.3M [00:03<00:23, 1.08MB/s]
+voxceleb_resnet34_LM.onnx:   5%|5         | 1.34M/25.3M [00:03<00:16, 1.53MB/s]
+voxceleb_resnet34_LM.onnx:   7%|6         | 1.73M/25.3M [00:03<00:11, 2.11MB/s]
+voxceleb_resnet34_LM.onnx:   9%|9         | 2.33M/25.3M [00:03<00:08, 2.98MB/s]
+voxceleb_resnet34_LM.onnx:  13%|#2        | 3.27M/25.3M [00:03<00:04, 4.71MB/s]
+voxceleb_resnet34_LM.onnx:  17%|#6        | 4.18M/25.3M [00:03<00:03, 5.91MB/s]
+voxceleb_resnet34_LM.onnx:  19%|#9        | 4.93M/25.3M [00:03<00:03, 6.41MB/s]
+voxceleb_resnet34_LM.onnx:  27%|##7       | 6.87M/25.3M [00:03<00:01, 10.3MB/s]
+voxceleb_resnet34_LM.onnx:  33%|###3      | 8.45M/25.3M [00:03<00:01, 12.1MB/s]
+voxceleb_resnet34_LM.onnx:  40%|####      | 10.1M/25.3M [00:04<00:01, 13.7MB/s]
+voxceleb_resnet34_LM.onnx:  42%|####1     | 10.6M/25.3M [00:04<00:03, 4.90MB/s]
+voxceleb_resnet34_LM.onnx:  47%|####7     | 12.0M/25.3M [00:05<00:03, 3.69MB/s]
+voxceleb_resnet34_LM.onnx:  76%|#######5  | 19.1M/25.3M [00:05<00:00, 11.8MB/s]
+voxceleb_resnet34_LM.onnx:  78%|#######8  | 19.8M/25.3M [00:05<00:00, 11.1MB/s]
+voxceleb_resnet34_LM.onnx:  86%|########6 | 21.9M/25.3M [00:05<00:00, 12.9MB/s]
+voxceleb_resnet34_LM.onnx:  93%|#########3| 23.6M/25.3M [00:05<00:00, 13.8MB/s]
+voxceleb_resnet34_LM.onnx: 100%|##########| 25.3M/25.3M [00:05<00:00, 4.72MB/s]
+Diarization complete. Found 750 segments.
+Calling local Ollama LLM (llama3.2) at http://localhost:11434...
+Summarizing 754 transcript segments across 130 transcript blocks.
+[summary-metrics] prompt limits: direct=12000 chars, chunk=8000 chars, max-input=48000 chars.
+Transcript is large; summarizing in 4 chunks with concurrency 2.
+[summary-metrics] chunked mode enabled. Final reduce runs only when at least 3 chunk summaries succeed.
+Summarizing chunk 1/4...
+Summarizing chunk 2/4...
+[summary-metrics] chunk 1/4 completed in 28.9s.
+Summarizing chunk 3/4...
+[summary-metrics] chunk 2/4 completed in 42.2s.
+Summarizing chunk 4/4...
+[summary-metrics] chunk 3/4 completed in 27.2s.
+[summary-metrics] chunk 4/4 completed in 21.5s.
+[summary-metrics] chunk requests finished: 4 usable, 0 skipped, 0 failed.
+Combining 4 chunk summaries into one final recap...
+[summary-metrics] final reduce completed in 22.7s.
+Meeting summary generated successfully.
+[summary-metrics] total summary stage completed in 86.4s.
+Enhancement processing complete.
