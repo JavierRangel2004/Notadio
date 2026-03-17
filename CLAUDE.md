@@ -72,3 +72,52 @@ Copy `.env.example` to `.env`. Required system dependencies: Node.js 20+, ffmpeg
 ## Commit Style
 
 Short imperative subjects, optionally scope-prefixed (e.g., `docs: ...`, `fix: ...`). One concern per commit. PRs should note any `.env` or system dependency changes.
+
+## Ruflo / Claude-Flow Orchestration
+
+Ruflo (claude-flow v3.5.17) is configured for this repo. The MCP server is registered in `.mcp.json` and starts via stdio on session load.
+
+### MCP tools (call inside Claude sessions)
+
+```txt
+mcp__claude-flow__memory_search(...)
+mcp__claude-flow__swarm_init(...)
+mcp__claude-flow__agent_spawn(...)
+mcp__claude-flow__memory_store(...)
+mcp__claude-flow__memory_retrieve(...)
+```
+
+### Orchestration quick-start
+
+```bash
+# Tier 1 — quick fix (single agent)
+claude-flow orchestrate "fix null-check in parser" --agents 1
+
+# Tier 2 — medium feature (mesh, 3 agents)
+claude-flow hive init --topology mesh --agents 3
+claude-flow orchestrate "add email verification" --parallel
+
+# Tier 3 — architecture (hierarchical, 5+ agents)
+claude-flow hive init --topology hierarchical --agents 5
+claude-flow sparc run dev "build complete feature"
+claude-flow hive monitor --live
+```
+
+### SPARC modes
+
+```bash
+claude-flow sparc run dev      "..."   # full dev cycle
+claude-flow sparc run tdd      "..."   # TDD workflow
+claude-flow sparc run refactor "..."   # refactor existing code
+claude-flow sparc run ui       "..."   # React component work
+```
+
+### Useful commands
+
+```bash
+claude-flow mcp status                   # check MCP server
+claude-flow mcp tools                    # list available tools
+claude-flow health check --verbose       # system health
+claude-flow performance report --format summary
+claude-flow memory store "key" "value"   # persist context
+```
