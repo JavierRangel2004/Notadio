@@ -1,4 +1,4 @@
-import { FormEvent, useEffect, useRef, useState, forwardRef, useImperativeHandle } from "react";
+import { FormEvent, useCallback, useEffect, useRef, useState, forwardRef, useImperativeHandle } from "react";
 import {
   getExportUrl,
   getJob,
@@ -219,6 +219,29 @@ const PRESET_DESCRIPTIONS: Record<SummaryPreset, { label: string; description: s
   whatsappVoiceNote: { label: "WhatsApp Voice Note", description: "Concise recap with intent, asks, and deadlines", defaultDiarize: false },
   genericMedia: { label: "Generic Audio/Video", description: "Neutral recap with key points and notable moments", defaultDiarize: false }
 };
+
+function useFadeIn<T extends HTMLElement>(): React.RefCallback<T> {
+  const observerRef = useRef<IntersectionObserver | null>(null)
+
+  return useCallback((node: T | null) => {
+    if (observerRef.current) {
+      observerRef.current.disconnect()
+      observerRef.current = null
+    }
+    if (!node) return
+
+    observerRef.current = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          node.classList.add("visible")
+          observerRef.current?.unobserve(node)
+        }
+      },
+      { threshold: 0.15 }
+    )
+    observerRef.current.observe(node)
+  }, [])
+}
 
 const HERO_SIGNAL_ITEMS = [
   { label: "CUDA Whisper", value: "Local GPU transcription" },
@@ -857,6 +880,9 @@ export function App() {
   const audioPlayerRef = useRef<{ seek: (t: number) => void }>(null);
   const autoSwitchToEnglishRef = useRef(false);
   const activePostStage = getRunningEnhancementStage(job);
+  const heroCopyRef = useFadeIn<HTMLElement>()
+  const uploadStudioRef = useFadeIn<HTMLElement>()
+  const signalGridRef = useFadeIn<HTMLDivElement>()
 
   useEffect(() => {
     autoSwitchToEnglishRef.current = autoSwitchToEnglish;
@@ -1140,7 +1166,7 @@ export function App() {
 
           {view === "upload" && !job && (
             <div className="hero-upload">
-              <section className="hero-copy">
+              <section className="hero-copy fade-in-section" ref={heroCopyRef}>
                 <span className="hero-badge">Private transcription atelier</span>
                 <h1>Turn dense recordings into structured, local-first intelligence.</h1>
                 <p className="hero-subtitle">
@@ -1153,7 +1179,7 @@ export function App() {
                   ))}
                 </div>
 
-                <div className="hero-signal-grid">
+                <div className="hero-signal-grid fade-in-section delay-2" ref={signalGridRef}>
                   {HERO_SIGNAL_ITEMS.map((item) => (
                     <div key={item.label} className="hero-signal-card">
                       <span>{item.label}</span>
@@ -1163,7 +1189,7 @@ export function App() {
                 </div>
               </section>
 
-              <section className="upload-studio">
+              <section className="upload-studio fade-in-section delay-1" ref={uploadStudioRef}>
                 <div className="upload-studio-shell">
                   <div className="upload-studio-topline">
                     <div>
