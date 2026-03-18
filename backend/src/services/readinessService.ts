@@ -57,6 +57,43 @@ function inferWhisperBackendSupport(output: string): { cuda: boolean; metal: boo
   };
 }
 
+function inferMetalFromLinkageOutput(output: string): boolean {
+  const normalized = output.toLowerCase();
+  return normalized.includes("libggml-metal") || normalized.includes("metal.framework");
+}
+
+function resolveExecutablePath(command: string): string | null {
+  if (isPathLike(command)) {
+    return command;
+  }
+
+  const result = spawnSync("which", [command], {
+    encoding: "utf-8",
+    stdio: ["ignore", "pipe", "pipe"]
+  });
+
+  if (result.error || result.status !== 0) {
+    return null;
+  }
+
+  const resolved = (result.stdout ?? "").trim().split("\n")[0]?.trim();
+  return resolved || null;
+}
+
+function detectWhisperMetalLinkage(command: string): boolean {
+  if (process.platform !== "darwin") {
+    return false;
+  }
+
+  const executablePath = resolveExecutablePath(command);
+  if (!executablePath) {
+    return false;
+  }
+
+  const linkageCheck = runCommandCheck("otool", ["-L", executablePath]);
+  return inferMetalFromLinkageOutput(linkageCheck.output);
+}
+
 async function checkOptionalDiarization(results: ReadinessCheck[]): Promise<void> {
   if (!config.diarizationCommand) {
     results.push({
@@ -195,6 +232,15 @@ export async function getReadinessReport(): Promise<ReadinessReport> {
   } else {
     const whisperCheck = runCommandCheck(config.whisperCommand, ["-h"]);
     whisperSupport = inferWhisperBackendSupport(whisperCheck.output);
+    const metalDetectedFromLinkage =
+      processing.runtimeClass === "macos-arm" && !whisperSupport.metal
+        ? detectWhisperMetalLinkage(config.whisperCommand)
+        : false;
+
+    if (metalDetectedFromLinkage) {
+      whisperSupport.metal = true;
+    }
+
     results.push({
       status: whisperCheck.ok ? "ok" : "fail",
       label: "whisper command",
@@ -246,7 +292,7 @@ export async function getReadinessReport(): Promise<ReadinessReport> {
       status: whisperSupport.metal ? "ok" : "warn",
       label: "Whisper Metal support",
       detail: whisperSupport.metal
-        ? "Whisper help output appears to include Metal support."
+        ? "Whisper build appears to include Metal support."
         : "Apple Silicon detected, but Whisper help output did not show Metal support."
     });
   }
