@@ -1,3 +1,9 @@
+# Deprecated
+
+This document is no longer maintained and may be inaccurate.
+
+---
+
 # Notadio UI Redesign Plan
 
 Based on the latest design concept (`Gemini_Generated_Image_16jjts16jjts16jj.png`), incorporating elements from the previous design while prioritizing the newer, more detailed UI screens, here is the comprehensive plan to implement the aesthetic and UI components for Notadio.

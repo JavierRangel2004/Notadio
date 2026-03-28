@@ -11,6 +11,20 @@ Este documento verifica el análisis compartido sobre la calidad de resúmenes d
 
 La comparación con NotebookLM debe entenderse como una referencia de producto orientado a resumir contenido anclado a fuentes. Este documento no evalúa NotebookLM internamente; evalúa si el diagnóstico sobre Notadio es consistente con el código actual y con la falla descrita.
 
+## Estado de implementación (repo actual)
+
+Este plan ya está **parcialmente implementado** en el repositorio:
+
+- Se agregó el preset `analysisEssay`.
+- Se agregaron campos universales al output (`contentType`, `speakerIntent`, `coreClaims`, `evidenceMoments`).
+- La selección de input dejó de ser muestreo uniforme puro y ahora usa una selección híbrida (cobertura + evidencia + cierre).
+- El fallback extractivo es sensible al preset y evita derivar `actionItems` para contenido no operativo.
+- El frontend renombró el control a `Structured Summary` y renderiza tesis/evidencia para contenido no operativo.
+
+Checklist de estado:
+
+- `docs/architecture/checklists/SUMMARIZATION_LOCAL_IMPROVEMENT_PLAN_CHECKLIST.md`
+
 ## Verificación del análisis recibido
 
 ### Veredicto general
@@ -28,7 +42,7 @@ Evidencia en el código:
 - `backend/src/services/summaryService.ts` usa un esquema JSON único para casi todos los contenidos, con campos como `keyDecisions`, `actionItems`, `followUps` y `openQuestions`.
 - El preset `genericMedia` sigue pidiendo “información accionable”.
 - El preset `meeting` conserva guardrails que refuerzan secciones canónicas de reunión.
-- El frontend presenta “AI Summary” como extracción de “key points, decisions, and action items”, lo cual también sesga la expectativa del sistema.
+- El frontend (históricamente) presentaba el resumen con sesgo de minuta; en el repo actual el label es `Structured Summary`, pero el contrato todavía contiene campos operativos.
 
 Conclusión: aunque ya existen reglas explícitas para no inventar tareas en contenido informal, la forma base del resumen sigue favoreciendo una lectura operativa/corporativa.
 
@@ -38,8 +52,8 @@ Esto también es correcto y el código actual lo explica.
 
 Causas probables:
 
-- `selectSummaryInputLines()` reduce la transcripción por muestreo uniforme cuando supera el límite de caracteres.
-- Ese muestreo no protege “momentos de evidencia” o ejemplos concretos.
+- La selección de input anteriormente era muestreo uniforme; en el repo actual la selección es híbrida, pero sigue siendo heurística.
+- Sin protección explícita, ejemplos concretos pueden perderse en transcripts largos.
 - En resúmenes largos, la etapa de chunking y luego el reduce consolidan todavía más la información.
 
 Consecuencia: un ejemplo crucial pero localizado, como el de “campeón del mundo de hacer conejos con globos”, puede desaparecer aunque sea el mejor soporte argumental del video.
@@ -130,7 +144,7 @@ Ninguna representa bien:
 
 ### 3. El muestreo de entrada favorece cobertura, no evidencia
 
-`selectSummaryInputLines()` toma líneas repartidas a lo largo del transcript para caber en el límite. Eso ayuda a cubrir todo el audio, pero perjudica:
+En versiones previas el input se reducía por muestreo uniforme. En el repo actual se usa `selectSummaryInputBlocks()` (selección híbrida), pero el problema base sigue existiendo si las heurísticas no capturan el mejor ejemplo:
 
 - ejemplos clave
 - anécdotas demostrativas
@@ -141,7 +155,7 @@ NotebookLM-style quality depende más de “evidencia anclada” que de cobertur
 
 ### 4. El fallback extractivo también puede deformar contenido no operativo
 
-`buildFallbackSummary()` extrae:
+En versiones previas, el fallback extractivo intentaba derivar estructura operativa (tareas/seguimientos) aun para contenido no operativo. En el repo actual `buildFallbackSummary()` es sensible al preset y puede extraer `coreClaims` y `evidenceMoments`, pero el riesgo permanece si el contenido es ambiguo.
 
 - `keyDecisions`
 - `actionItems`
@@ -267,6 +281,12 @@ Prioridad: alta
 Costo: medio  
 Impacto: alto
 
+Estado (repo actual): PARCIAL
+
+El backend ya usa una selección híbrida de bloques para construir el input al LLM (cobertura + señales de evidencia + cierre). Aún no existe un prompt con dos bloques explícitos (`Contexto general` y `Momentos de evidencia`).
+
+Plan:
+
 Agregar una pequeña capa extractiva previa al LLM para detectar fragmentos candidatos de alto valor:
 
 - segmentos con entidades raras o frases concretas
@@ -286,6 +306,12 @@ Prioridad: alta
 Costo: bajo  
 Impacto: alto
 
+Estado (repo actual): IMPLEMENTADO
+
+`buildFallbackSummary()` ya es sensible al preset y evita derivar `actionItems` / `followUps` para presets no operativos.
+
+Plan:
+
 Cambiar `buildFallbackSummary()` para que:
 
 - solo intente extraer `actionItems` si el preset es `meeting` o `whatsappVoiceNote`
@@ -299,6 +325,12 @@ Esto reduce alucinaciones aun cuando falle Ollama.
 Prioridad: media  
 Costo: medio  
 Impacto: medio-alto
+
+Estado (repo actual): PARCIAL
+
+El reduce prompt pide preservar evidencia para contenido no operativo, pero no hay garantías duras (por ejemplo, “al menos 1 evidencia”) ni ranking semántico.
+
+Plan:
 
 Para `analysisEssay` y `genericMedia` no informal:
 
@@ -316,6 +348,12 @@ Regla mínima:
 Prioridad: media  
 Costo: bajo  
 Impacto: medio
+
+Estado (repo actual): IMPLEMENTADO (parcial en wording)
+
+El frontend renombró el control a `Structured Summary`, expone el preset `analysisEssay` y renderiza `Core Claims` / `Evidence Moments` para contenido no operativo.
+
+Plan:
 
 Cambios sugeridos:
 
@@ -337,12 +375,12 @@ Archivo principal:
 
 Cambios:
 
-- agregar preset `analysisEssay`
-- separar instrucciones de esquema por tipo
-- introducir `contentType`
-- introducir `evidenceMoments`
-- condicionar `buildFallbackSummary()` por preset
-- reemplazar parte del muestreo uniforme por selección híbrida:
+- agregar preset `analysisEssay` (IMPLEMENTADO)
+- separar instrucciones de esquema por tipo (PARCIAL; el schema base sigue siendo común, pero incluye campos universales)
+- introducir `contentType` (IMPLEMENTADO)
+- introducir `evidenceMoments` (IMPLEMENTADO)
+- condicionar `buildFallbackSummary()` por preset (IMPLEMENTADO)
+- reemplazar parte del muestreo uniforme por selección híbrida (IMPLEMENTADO):
   - cobertura
   - momentos de evidencia
   - cierre final
@@ -356,9 +394,9 @@ Archivos:
 
 Cambios:
 
-- exponer nuevo preset `analysisEssay`
-- ajustar labels/descripciones
-- no renderizar bloques de `Action Items` o `Key Decisions` como protagonistas cuando el preset no sea operativo
+- exponer nuevo preset `analysisEssay` (IMPLEMENTADO)
+- ajustar labels/descripciones (IMPLEMENTADO)
+- no renderizar bloques de `Action Items` o `Key Decisions` como protagonistas cuando el preset no sea operativo (IMPLEMENTADO)
 
 ### Tipos
 
@@ -369,18 +407,18 @@ Archivos:
 
 Cambios:
 
-- ampliar `SummaryPreset`
-- agregar `contentType`
-- agregar `evidenceMoments`
+- ampliar `SummaryPreset` (IMPLEMENTADO)
+- agregar `contentType` (IMPLEMENTADO)
+- agregar `evidenceMoments` (IMPLEMENTADO)
 
 ## Plan de implementación recomendado
 
 ### Sprint 1
 
-- agregar preset `analysisEssay`
-- desactivar extracción heurística de tareas fuera de presets operativos
-- ajustar prompt base para tesis, evidencia y conclusión
-- exponer preset en frontend
+- agregar preset `analysisEssay` (IMPLEMENTADO)
+- desactivar extracción heurística de tareas fuera de presets operativos (IMPLEMENTADO)
+- ajustar prompt base para tesis, evidencia y conclusión (IMPLEMENTADO)
+- exponer preset en frontend (IMPLEMENTADO)
 
 Resultado esperado:
 
@@ -388,9 +426,9 @@ Resultado esperado:
 
 ### Sprint 2
 
-- implementar selección híbrida de transcript input
-- preservar momentos de evidencia
-- ajustar reduce final para contenido narrativo/argumentativo
+- implementar selección híbrida de transcript input (IMPLEMENTADO)
+- preservar momentos de evidencia (IMPLEMENTADO, heurístico)
+- ajustar reduce final para contenido narrativo/argumentativo (PARCIAL)
 
 Resultado esperado:
 
@@ -399,9 +437,9 @@ Resultado esperado:
 
 ### Sprint 3
 
-- separar esquema universal vs operativo
-- actualizar UI para mostrar secciones según `contentType`
-- agregar evaluación local reproducible
+- separar esquema universal vs operativo (PARCIAL; aún no hay types separados)
+- actualizar UI para mostrar secciones según `contentType` (IMPLEMENTADO)
+- agregar evaluación local reproducible (PENDIENTE)
 
 Resultado esperado:
 

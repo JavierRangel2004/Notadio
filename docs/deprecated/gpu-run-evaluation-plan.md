@@ -1,3 +1,12 @@
+# Deprecated
+
+This document is no longer maintained and may be inaccurate.
+
+Notes:
+- This was written against a specific local log file (`gpuWin15_03V4.txt`) that is not guaranteed to exist in the repo.
+
+---
+
 # Evaluation and Improvement Plan: GPU Run Analysis (gpuWin15_03V4.txt)
 
 ## Executive Summary
