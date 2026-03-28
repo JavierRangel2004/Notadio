@@ -1,6 +1,8 @@
 # Project Overview
 
-Notadio is a local-first audio and video transcription web application powered by `whisper.cpp`. It allows users to upload media files, transcribe them locally without incurring API costs or requiring cloud services, translate output to English, identify speakers (diarization), and generate AI meeting summaries. It supports exporting results to `TXT`, `SRT`, and `JSON` formats.
+Notadio is a local-first audio and video transcription web application powered by `whisper.cpp`. It allows users to upload media files (or record), transcribe them locally, translate output to English, identify speakers (diarization), and generate structured local summaries via Ollama. It supports exporting results to `TXT`, `SRT`, and `JSON` formats.
+
+The repo also includes a real-time “Live Session” mode that streams microphone audio over WebSocket, shows confirmed/provisional transcript text, and detects alias mentions (with optional Ollama-based reply suggestions).
 
 The project is structured as a monorepo using npm workspaces:
 - **Frontend:** Built with React and Vite.

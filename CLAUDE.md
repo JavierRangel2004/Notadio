@@ -6,6 +6,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Notadio is a local-first audio/video transcription app using whisper.cpp. No external API keys required—all processing happens locally. Optional features include speaker diarization (Python) and AI-powered meeting summaries (Ollama).
 
+The repo also includes a real-time “Live Session” mode that streams microphone audio over WebSocket, shows confirmed/provisional transcript segments, detects alias mentions, and can optionally generate grounded reply suggestions via Ollama.
+
 ## Monorepo Structure
 
 NPM workspaces: `frontend/` (React + Vite) and `backend/` (Express + TypeScript).
@@ -46,7 +48,14 @@ Jobs flow through states: `queued` → `processing` → `completed`/`failed`. Re
 - `GET /api/jobs/:jobId/transcript` — transcript (cached in-memory)
 - `GET /api/jobs/:jobId/summary` — AI summary
 - `GET /api/jobs/:jobId/export?format={txt|srt|json}&variant={source|english}` — download artifacts
-- `POST /api/jobs/:jobId/retry/{summarize|diarize}` — retry individual stages
+- `GET /api/system/readiness` — readiness report
+- `POST /api/jobs/:jobId/retry/{summarize|diarize|translate}` — retry individual stages
+
+Live sessions:
+
+- `GET /api/sessions` — list active in-memory live sessions (debug)
+- `GET /api/sessions/:sessionId` — get one live session (debug)
+- WebSocket: `/api/sessions/ws` — live session streaming protocol
 
 ### Performance Patterns
 
