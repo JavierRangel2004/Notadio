@@ -22,6 +22,7 @@ import {
   SourceOrigin,
   StageTiming,
   submitEnhancements,
+  SummaryContentType,
   SummaryDiagnostics,
   SummaryPreset,
   subscribeToJob,
@@ -201,9 +202,11 @@ function hasUsableSummary(summary: MeetingSummary | null | undefined): summary i
   }
 
   return Boolean(
-    summary.headline ||
+      summary.headline ||
       summary.overview ||
       summary.sections.length > 0 ||
+      summary.coreClaims.length > 0 ||
+      summary.evidenceMoments.length > 0 ||
       summary.keyDecisions.length > 0 ||
       summary.actionItems.length > 0 ||
       summary.followUps.length > 0 ||
@@ -214,9 +217,27 @@ function hasUsableSummary(summary: MeetingSummary | null | undefined): summary i
   );
 }
 
+function isOperationalSummary(summary: MeetingSummary | null | undefined): boolean {
+  return summary?.contentType === "meeting" || summary?.contentType === "voiceNote";
+}
+
+function getSummaryHeading(contentType?: SummaryContentType): string {
+  switch (contentType) {
+    case "analysisEssay":
+      return "Thesis";
+    case "contentCreation":
+      return "Recap";
+    case "voiceNote":
+      return "Voice Note Summary";
+    default:
+      return "Overview";
+  }
+}
+
 const PRESET_DESCRIPTIONS: Record<SummaryPreset, { label: string; description: string; defaultDiarize: boolean }> = {
   meeting: { label: "Meeting / Daily Standup", description: "Extract action items, decisions, blockers, and follow-ups", defaultDiarize: true },
   contentCreation: { label: "Content Creation / Stream", description: "Stream, podcast, or content recap — no corporate jargon", defaultDiarize: false },
+  analysisEssay: { label: "Essay / Opinion / Analysis", description: "Capture thesis, evidence, implications, and conclusion", defaultDiarize: false },
   whatsappVoiceNote: { label: "WhatsApp Voice Note", description: "Concise recap with intent, asks, and deadlines", defaultDiarize: false },
   genericMedia: { label: "Generic Audio/Video", description: "Neutral recap with key points and notable moments", defaultDiarize: false }
 };
@@ -792,9 +813,9 @@ function EnhancementPrompt({ job, onSubmit, onSkip }: {
             style={{ marginTop: "0.2rem" }}
           />
           <div>
-            <strong>AI Summary</strong>
+            <strong>Structured Summary</strong>
             <p style={{ color: "var(--text-muted)", fontSize: "0.85rem", margin: 0 }}>
-              Extract key points, decisions, and action items
+              Choose a summary style that matches the real content instead of forcing a meeting recap
             </p>
           </div>
         </label>
@@ -1503,12 +1524,32 @@ export function App() {
                 {displaySummary ? (
                   <>
                     <div className="glass-panel">
-                      <h4 style={{ marginBottom: '0.5rem', color: 'var(--text-muted)', fontSize: '0.85rem', textTransform: 'uppercase' }}>Overview</h4>
+                      <h4 style={{ marginBottom: '0.5rem', color: 'var(--text-muted)', fontSize: '0.85rem', textTransform: 'uppercase' }}>
+                        {getSummaryHeading(displaySummary.contentType)}
+                      </h4>
                       <p style={{ fontSize: '1.1rem', marginBottom: '1rem' }}>{displaySummary.headline}</p>
                       <p style={{ color: 'var(--text-muted)' }}>{displaySummary.brief}</p>
                     </div>
 
-                    {displaySummary.keyDecisions && displaySummary.keyDecisions.length > 0 && (
+                    {displaySummary.coreClaims && displaySummary.coreClaims.length > 0 && !isOperationalSummary(displaySummary) && (
+                      <div className="glass-panel">
+                        <h4 style={{ marginBottom: '1rem', color: 'var(--text-muted)', fontSize: '0.85rem', textTransform: 'uppercase' }}>Core Claims</h4>
+                        <ul style={{ margin: 0, paddingLeft: '1.2rem', color: 'rgba(255,255,255,0.9)' }}>
+                          {displaySummary.coreClaims.map((claim, i) => <li key={i} style={{ marginBottom: '0.5rem' }}>{claim}</li>)}
+                        </ul>
+                      </div>
+                    )}
+
+                    {displaySummary.evidenceMoments && displaySummary.evidenceMoments.length > 0 && !isOperationalSummary(displaySummary) && (
+                      <div className="glass-panel">
+                        <h4 style={{ marginBottom: '1rem', color: 'var(--text-muted)', fontSize: '0.85rem', textTransform: 'uppercase' }}>Evidence Moments</h4>
+                        <ul style={{ margin: 0, paddingLeft: '1.2rem', color: 'rgba(255,255,255,0.9)' }}>
+                          {displaySummary.evidenceMoments.map((moment, i) => <li key={i} style={{ marginBottom: '0.5rem' }}>{moment}</li>)}
+                        </ul>
+                      </div>
+                    )}
+
+                    {displaySummary.keyDecisions && displaySummary.keyDecisions.length > 0 && isOperationalSummary(displaySummary) && (
                       <div className="glass-panel">
                         <h4 style={{ marginBottom: '1rem', color: 'var(--text-muted)', fontSize: '0.85rem', textTransform: 'uppercase' }}>Key Decisions</h4>
                         <ul style={{ margin: 0, paddingLeft: '1.2rem', color: 'rgba(255,255,255,0.9)' }}>
@@ -1517,7 +1558,7 @@ export function App() {
                       </div>
                     )}
 
-                    {displaySummary.actionItems && displaySummary.actionItems.length > 0 && (
+                    {displaySummary.actionItems && displaySummary.actionItems.length > 0 && isOperationalSummary(displaySummary) && (
                       <div className="glass-panel">
                         <h4 style={{ marginBottom: '1rem', color: 'var(--text-muted)', fontSize: '0.85rem', textTransform: 'uppercase' }}>Action Items</h4>
                         {displaySummary.actionItems.map((item, i) => (
@@ -1526,6 +1567,21 @@ export function App() {
                             <div className="task-meta">
                               {item.assignee && <span>@{item.assignee}</span>}
                               {item.status && <span style={{ color: 'var(--accent-primary)' }}>{item.status}</span>}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    {displaySummary.actionItems && displaySummary.actionItems.length > 0 && !isOperationalSummary(displaySummary) && (
+                      <div className="glass-panel">
+                        <h4 style={{ marginBottom: '1rem', color: 'var(--text-muted)', fontSize: '0.85rem', textTransform: 'uppercase' }}>Literal Commitments Mentioned</h4>
+                        {displaySummary.actionItems.map((item, i) => (
+                          <div className="task-card" key={i}>
+                            <p>{item.task}</p>
+                            <div className="task-meta">
+                              {item.assignee && <span>@{item.assignee}</span>}
+                              {item.deadline && <span>{item.deadline}</span>}
                             </div>
                           </div>
                         ))}
@@ -1543,6 +1599,15 @@ export function App() {
                         )}
                       </div>
                     ))}
+
+                    {displaySummary.keyDecisions && displaySummary.keyDecisions.length > 0 && !isOperationalSummary(displaySummary) && (
+                      <div className="glass-panel">
+                        <h4 style={{ marginBottom: '0.5rem', color: 'var(--text-muted)', fontSize: '0.85rem', textTransform: 'uppercase' }}>Literal Decisions Mentioned</h4>
+                        <ul style={{ margin: 0, paddingLeft: '1.2rem', color: 'rgba(255,255,255,0.9)', fontSize: '0.9rem' }}>
+                          {displaySummary.keyDecisions.map((q, i) => <li key={i} style={{ marginBottom: '0.3rem' }}>{q}</li>)}
+                        </ul>
+                      </div>
+                    )}
 
                     {displaySummary.openQuestions && displaySummary.openQuestions.length > 0 && (
                       <div className="glass-panel">
