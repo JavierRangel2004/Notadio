@@ -2,7 +2,9 @@ export type JobStatus = "queued" | "processing" | "completed" | "failed";
 
 export type SourceOrigin = "upload" | "recording";
 
-export type SummaryPreset = "meeting" | "whatsappVoiceNote" | "genericMedia" | "contentCreation";
+export type SummaryPreset = "meeting" | "whatsappVoiceNote" | "genericMedia" | "contentCreation" | "analysisEssay";
+
+export type SummaryContentType = "meeting" | "voiceNote" | "contentCreation" | "analysisEssay" | "genericMedia";
 
 export type EnhancementStageKey = "translate" | "diarize" | "summarize";
 
@@ -53,10 +55,14 @@ export type MeetingSummary = {
   brief: string;
   overview?: string;
   narrative?: string;
+  contentType?: SummaryContentType;
+  speakerIntent?: string;
   keyDecisions: string[];
   actionItems: MeetingActionItem[];
+  coreClaims: string[];
   topics: string[];
   sections: MeetingSummarySection[];
+  evidenceMoments: string[];
   followUps: string[];
   risks: string[];
   operationalNotes: string[];

@@ -451,6 +451,39 @@ test("generateSummary uses genericMedia preset in prompt", async () => {
   }
 });
 
+test("generateSummary uses analysisEssay preset in prompt and preserves thesis fields", async () => {
+  const transcript = createTranscriptRecord([
+    "Mi argumento es que la automatizacion mediocre no reemplaza el criterio. Por ejemplo, un campeon del mundo de hacer conejos con globos muestra que el valor esta en la profundidad del oficio."
+  ]);
+  const { restore, requestBodies } = installFetchSteps([
+    {
+      payload: JSON.stringify({
+        contentType: "analysisEssay",
+        headline: "El criterio importa mas que la automatizacion superficial",
+        brief: "El autor sostiene que el valor real proviene del criterio y la profundidad del oficio.",
+        coreClaims: ["La tesis central es que la profundidad humana sigue siendo diferencial."],
+        evidenceMoments: ["El ejemplo del campeon de conejos con globos sostiene el argumento."],
+        keyDecisions: [],
+        actionItems: [],
+        sections: []
+      })
+    }
+  ]);
+
+  try {
+    const result = await generateSummary(transcript, {}, { preset: "analysisEssay" });
+    const prompt = String(requestBodies()[0]?.body.prompt ?? "");
+
+    assert.equal(prompt.includes("ensayos, editoriales y contenido argumentativo"), true);
+    assert.equal(result.summary?.contentType, "analysisEssay");
+    assert.deepEqual(result.summary?.actionItems, []);
+    assert.equal(result.summary?.coreClaims[0]?.includes("tesis central"), true);
+    assert.equal(result.summary?.evidenceMoments[0]?.includes("conejos con globos"), true);
+  } finally {
+    restore();
+  }
+});
+
 test("generateSummary meeting preset uses executive meeting context", async () => {
   const transcript = createTranscriptRecord([
     "Revisamos las prioridades del sprint y los bloqueos pendientes."
@@ -473,6 +506,38 @@ test("generateSummary meeting preset uses executive meeting context", async () =
 
     assert.equal(prompt.includes("reuniones ejecutivas"), true);
     assert.equal(prompt.includes("tono ejecutivo y narrativo"), true);
+  } finally {
+    restore();
+  }
+});
+
+test("generateSummary auto-detects analysisEssay preset when none is provided", async () => {
+  const transcript = createTranscriptRecord([
+    "Mi punto es que la tecnologia tiende a premiar la conveniencia sobre el criterio.",
+    "Por ejemplo, cuando reducimos todo a plantillas, el resultado pierde la tesis humana.",
+    "La conclusion es que debemos preservar evidencia y contexto."
+  ]);
+  const { restore, requestBodies } = installFetchSteps([
+    {
+      payload: JSON.stringify({
+        contentType: "analysisEssay",
+        headline: "Preservar criterio y evidencia",
+        brief: "El contenido plantea una tesis argumentativa sobre criterio y contexto.",
+        coreClaims: ["La automatizacion sin criterio aplana el pensamiento."],
+        evidenceMoments: ["La reduccion a plantillas debilita la tesis humana."],
+        keyDecisions: [],
+        actionItems: [],
+        sections: []
+      })
+    }
+  ]);
+
+  try {
+    const result = await generateSummary(transcript);
+    const prompt = String(requestBodies()[0]?.body.prompt ?? "");
+
+    assert.equal(prompt.includes("contenido argumentativo"), true);
+    assert.equal(result.summary?.contentType, "analysisEssay");
   } finally {
     restore();
   }
@@ -508,6 +573,27 @@ test("generateSummary meeting guardrails promote missing decisions/actions/quest
     assert.equal((result.summary?.openQuestions.length ?? 0) > 0, true);
     assert.equal(result.summary?.sections.some((section) => section.title === "Postura y decisiones"), true);
     assert.equal(result.summary?.sections.some((section) => section.title === "Acuerdos y siguientes pasos"), true);
+  } finally {
+    restore();
+  }
+});
+
+test("generateSummary fallback for analysisEssay does not derive action items or follow ups", async () => {
+  const transcript = createTranscriptRecord([
+    "Mi argumento es que confundimos optimizacion con criterio.",
+    "Por ejemplo, el caso del campeon mundial de conejos con globos muestra que la profundidad importa.",
+    "La conclusion es que la evidencia concreta sostiene mejor una tesis."
+  ]);
+  const { restore } = installFetchSteps([{ error: "Ollama HTTP 500: model unavailable" }]);
+
+  try {
+    const result = await generateSummary(transcript, {}, { preset: "analysisEssay" });
+
+    assert.equal(result.summary?.contentType, "analysisEssay");
+    assert.deepEqual(result.summary?.actionItems, []);
+    assert.deepEqual(result.summary?.followUps, []);
+    assert.equal((result.summary?.evidenceMoments.length ?? 0) > 0, true);
+    assert.equal((result.summary?.coreClaims.length ?? 0) > 0, true);
   } finally {
     restore();
   }

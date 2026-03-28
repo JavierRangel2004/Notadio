@@ -1,6 +1,7 @@
 import { config } from "../config.js";
 import {
   MeetingActionItem,
+  SummaryContentType,
   MeetingSummary,
   MeetingSummarySection,
   SummaryChunkDiagnostic,
@@ -15,6 +16,7 @@ export type SummaryOptions = {
 };
 
 type PresetContext = {
+  contentType: SummaryContentType;
   systemRole: string;
   objectivePrefix: string;
   extraRules: string[];
@@ -33,6 +35,7 @@ function getPresetContext(preset?: SummaryPreset): PresetContext {
   switch (preset) {
     case "whatsappVoiceNote":
       return {
+        contentType: "voiceNote",
         systemRole: "Eres un asistente que resume notas de voz de manera concisa y directa.",
         objectivePrefix: "Redacta un resumen conciso de esta nota de voz, enfocándote en la intención del hablante, peticiones, plazos y compromisos. No uses jerga de reuniones.",
         extraRules: [
@@ -46,6 +49,7 @@ function getPresetContext(preset?: SummaryPreset): PresetContext {
       };
     case "contentCreation":
       return {
+        contentType: "contentCreation",
         systemRole: "Eres un asistente que analiza contenido de entretenimiento, streams, podcasts y creación de contenido. BAJO NINGUNA CIRCUNSTANCIA interpretes este contenido como una reunión de trabajo ni inventes tareas o decisiones corporativas.",
         objectivePrefix: "Redacta un resumen del contenido captando el tono, los temas principales, las interacciones con la audiencia y los momentos destacados. Usa un tono casual y fiel al contexto original.",
         extraRules: [
@@ -57,8 +61,23 @@ function getPresetContext(preset?: SummaryPreset): PresetContext {
         ],
         reduceContext: "Fusiona los resúmenes parciales de este contenido de entretenimiento/stream en un único resumen cohesivo, manteniendo el tono informal y sin imponer estructura corporativa."
       };
+    case "analysisEssay":
+      return {
+        contentType: "analysisEssay",
+        systemRole: "Eres un asistente que resume ensayos, editoriales y contenido argumentativo. Tu prioridad es capturar tesis, evidencia, implicaciones y conclusión sin forzar estructura corporativa.",
+        objectivePrefix: "Redacta un resumen fiel del argumento central, explicando la tesis, las ideas secundarias, el ejemplo o evidencia más importante y la conclusión del autor.",
+        extraRules: [
+          "Este contenido NO debe resumirse como minuta. NO inventes decisiones operativas, tareas ni follow-ups salvo evidencia literal.",
+          "Identifica con claridad la tesis central y al menos un momento de evidencia concreta o ejemplo si aparece en el texto.",
+          "Usa coreClaims para ideas o tesis secundarias. Usa evidenceMoments para ejemplos, analogías, casos concretos o remates textuales importantes.",
+          "En contenido argumentativo, actionItems, keyDecisions y followUps normalmente deben ir vacíos [].",
+          "Si hay riesgos o implicaciones, exprésalos como consecuencias, críticas o alertas del argumento, no como blockers de proyecto."
+        ],
+        reduceContext: "Fusiona los resúmenes parciales preservando tesis, evidencia concreta, implicaciones y conclusión final."
+      };
     case "genericMedia":
       return {
+        contentType: "genericMedia",
         systemRole: "Eres un asistente que analiza contenido de audio y video para extraer información relevante. Primero identifica el tipo de contenido (reunión, stream, podcast, conferencia, conversación casual) y adapta tu resumen al contexto real.",
         objectivePrefix: "Redacta un resumen neutral del contenido, destacando puntos clave, momentos notables y cualquier información accionable. Adapta el tono y la estructura al tipo real de contenido.",
         extraRules: [
@@ -73,6 +92,7 @@ function getPresetContext(preset?: SummaryPreset): PresetContext {
     case "meeting":
     default:
       return {
+        contentType: "meeting",
         systemRole: "Eres un asistente experto en reuniones ejecutivas.",
         objectivePrefix:
           "Redacta un resumen claro y útil para operación real, con tono ejecutivo y narrativo: qué se decidió, por qué, qué queda pendiente y qué sigue.",
@@ -158,6 +178,7 @@ const SUMMARY_STOPWORDS = new Set([
   "ya"
 ]);
 type SummaryInputBlock = {
+  index?: number;
   start: number;
   end: number;
   speaker?: string;
@@ -259,6 +280,49 @@ function tokenize(value: string): string[] {
     ?.filter((token) => token.length > 2 && !SUMMARY_STOPWORDS.has(token)) ?? [];
 }
 
+function getContentTypeForPreset(preset?: SummaryPreset): SummaryContentType {
+  return getPresetContext(preset).contentType;
+}
+
+function isOperationalPreset(preset?: SummaryPreset): boolean {
+  return !preset || preset === "meeting" || preset === "whatsappVoiceNote";
+}
+
+function isOperationalContentType(contentType?: SummaryContentType): boolean {
+  return contentType === "meeting" || contentType === "voiceNote";
+}
+
+function detectSummaryPreset(record: TranscriptRecord, preset?: SummaryPreset): SummaryPreset {
+  if (preset) {
+    return preset;
+  }
+
+  const text = normalizeTokenSource(record.source.text);
+  const firstPersonMatches = text.match(/\b(yo|me|mi|creo|pienso|siento)\b/g) ?? [];
+  const audienceMatches = text.match(/\b(chat|banda|gente|ustedes|suscrib|donacion|bits|stream|podcast)\b/g) ?? [];
+  const meetingMatches = text.match(/\b(acordamos|seguimiento|entregable|deadline|sprint|bloqueo|responsable|pendiente|revision)\b/g) ?? [];
+  const argumentMatches = text.match(/\b(mi punto|el problema|esto demuestra|por eso|la conclusion|la idea|mi argumento|implica|tesis)\b/g) ?? [];
+  const noteMatches = text.match(/\b(oye|mandame|enviame|avisas|por favor|antes del|necesito que)\b/g) ?? [];
+
+  if (meetingMatches.length >= 3) {
+    return "meeting";
+  }
+
+  if (noteMatches.length >= 2 && record.source.segments.length <= 12) {
+    return "whatsappVoiceNote";
+  }
+
+  if (argumentMatches.length >= 2 || (firstPersonMatches.length >= 8 && audienceMatches.length === 0)) {
+    return "analysisEssay";
+  }
+
+  if (audienceMatches.length >= 2) {
+    return "contentCreation";
+  }
+
+  return "genericMedia";
+}
+
 function mergeTranscriptIntoBlocks(record: TranscriptRecord, runtimeConfig: SummaryRuntimeConfig): SummaryInputBlock[] {
   const blocks: SummaryInputBlock[] = [];
 
@@ -282,6 +346,7 @@ function mergeTranscriptIntoBlocks(record: TranscriptRecord, runtimeConfig: Summ
     }
 
     blocks.push({
+      index: blocks.length,
       start: segment.start,
       end: segment.end,
       speaker: segment.speaker,
@@ -297,37 +362,100 @@ function renderSummaryInputBlock(block: SummaryInputBlock): string {
   return `[${formatTimestamp(block.start)}-${formatTimestamp(block.end)}] ${speaker}${block.text}`.trim();
 }
 
-function selectSummaryInputLines(lines: string[], maxChars: number): string[] {
-  const totalChars = lines.reduce((sum, line) => sum + line.length + 1, 0);
+function scoreEvidenceBlock(block: SummaryInputBlock): number {
+  const normalized = normalizeTokenSource(block.text);
+  let score = Math.min(block.text.length / 220, 1);
+
+  if (/\b(por ejemplo|ejemplo|imagina|invente|invente|probe|me paso|caso|historia)\b/.test(normalized)) {
+    score += 3;
+  }
+
+  if (/\b(mi punto|el problema|esto demuestra|por eso|la conclusion|la idea|mi argumento|en resumen)\b/.test(normalized)) {
+    score += 4;
+  }
+
+  if (/\b(acordamos|decidimos|hay que|pendiente|deadline|entregable)\b/.test(normalized)) {
+    score += 2;
+  }
+
+  if ((block.index ?? 0) >= 0) {
+    score += ((block.index ?? 0) + 1) * 0.001;
+  }
+
+  return score;
+}
+
+function selectSummaryInputBlocks(blocks: SummaryInputBlock[], maxChars: number): SummaryInputBlock[] {
+  const rendered = blocks.map(renderSummaryInputBlock);
+  const totalChars = rendered.reduce((sum, line) => sum + line.length + 1, 0);
   if (totalChars <= maxChars) {
-    return lines;
+    return blocks;
   }
 
-  let targetCount = Math.max(8, Math.min(lines.length, Math.floor(maxChars / 220)));
+  const selectedIndexes = new Set<number>();
+  const maxBlockCount = Math.max(8, Math.min(blocks.length, Math.floor(maxChars / 180)));
 
-  while (targetCount > 1) {
-    const selected: string[] = [];
-    const seen = new Set<number>();
+  const coverageCount = Math.max(4, Math.floor(maxBlockCount / 2));
+  for (let index = 0; index < coverageCount; index += 1) {
+    const ratio = coverageCount === 1 ? 0 : index / (coverageCount - 1);
+    selectedIndexes.add(Math.round(ratio * (blocks.length - 1)));
+  }
 
-    for (let index = 0; index < targetCount; index += 1) {
-      const ratio = targetCount === 1 ? 0 : index / (targetCount - 1);
-      const lineIndex = Math.round(ratio * (lines.length - 1));
-      if (seen.has(lineIndex)) {
-        continue;
-      }
-      seen.add(lineIndex);
-      selected.push(lines[lineIndex]);
+  for (let index = Math.max(0, blocks.length - 3); index < blocks.length; index += 1) {
+    selectedIndexes.add(index);
+  }
+
+  const evidenceCandidates = blocks
+    .map((block, index) => ({ index, score: scoreEvidenceBlock(block) }))
+    .sort((left, right) => right.score - left.score);
+
+  for (const candidate of evidenceCandidates) {
+    if (selectedIndexes.size >= maxBlockCount) {
+      break;
     }
 
-    const selectedChars = selected.reduce((sum, line) => sum + line.length + 1, 0);
+    selectedIndexes.add(candidate.index);
+  }
+
+  const selected = [...selectedIndexes]
+    .sort((left, right) => left - right)
+    .map((index) => blocks[index]);
+
+  let selectedChars = selected.reduce((sum, block) => sum + renderSummaryInputBlock(block).length + 1, 0);
+  if (selectedChars <= maxChars) {
+    return selected;
+  }
+
+  const protectedIndexes = new Set<number>();
+  if (selected.length > 0) {
+    protectedIndexes.add(selected[0].index ?? 0);
+    protectedIndexes.add(selected[selected.length - 1].index ?? 0);
+  }
+
+  const removable = selected
+    .filter((block) => !protectedIndexes.has(block.index ?? -1))
+    .sort((left, right) => scoreEvidenceBlock(left) - scoreEvidenceBlock(right));
+
+  const kept = [...selected];
+  for (const candidate of removable) {
     if (selectedChars <= maxChars) {
-      return selected;
+      break;
     }
 
-    targetCount -= 1;
+    const removeIndex = kept.findIndex((block) => block.index === candidate.index);
+    if (removeIndex === -1) {
+      continue;
+    }
+
+    selectedChars -= renderSummaryInputBlock(candidate).length + 1;
+    kept.splice(removeIndex, 1);
   }
 
-  return [compactText(lines[0], maxChars)];
+  if (selectedChars <= maxChars && kept.length > 0) {
+    return kept;
+  }
+
+  return [blocks[0]];
 }
 
 function buildTranscriptTextForSummary(record: TranscriptRecord, runtimeConfig: SummaryRuntimeConfig): {
@@ -335,13 +463,14 @@ function buildTranscriptTextForSummary(record: TranscriptRecord, runtimeConfig: 
   blockCount: number;
   sampled: boolean;
 } {
-  const lines = mergeTranscriptIntoBlocks(record, runtimeConfig).map(renderSummaryInputBlock);
-  const selectedLines = selectSummaryInputLines(lines, runtimeConfig.maxInputChars);
+  const blocks = mergeTranscriptIntoBlocks(record, runtimeConfig);
+  const selectedBlocks = selectSummaryInputBlocks(blocks, runtimeConfig.maxInputChars);
+  const selectedLines = selectedBlocks.map(renderSummaryInputBlock);
 
   return {
     text: selectedLines.join("\n"),
     blockCount: selectedLines.length,
-    sampled: selectedLines.length !== lines.length
+    sampled: selectedBlocks.length !== blocks.length
   };
 }
 
@@ -500,9 +629,12 @@ function deriveBrief(summary: {
 }
 
 function deriveFallbackSections(summary: {
+  contentType?: SummaryContentType;
   sections: MeetingSummarySection[];
   keyDecisions: string[];
   actionItems: MeetingActionItem[];
+  coreClaims: string[];
+  evidenceMoments: string[];
   operationalNotes: string[];
   openQuestions: string[];
 }): MeetingSummarySection[] {
@@ -511,6 +643,42 @@ function deriveFallbackSections(summary: {
   }
 
   const derived: MeetingSummarySection[] = [];
+
+  if (!isOperationalContentType(summary.contentType)) {
+    if (summary.coreClaims.length > 0) {
+      derived.push({
+        title: "Tesis e ideas centrales",
+        summary: "",
+        bullets: summary.coreClaims
+      });
+    }
+
+    if (summary.evidenceMoments.length > 0) {
+      derived.push({
+        title: "Momentos de evidencia",
+        summary: "",
+        bullets: summary.evidenceMoments
+      });
+    }
+
+    if (summary.operationalNotes.length > 0) {
+      derived.push({
+        title: "Implicaciones y notas",
+        summary: "",
+        bullets: summary.operationalNotes
+      });
+    }
+
+    if (summary.openQuestions.length > 0) {
+      derived.push({
+        title: "Preguntas abiertas",
+        summary: "",
+        bullets: summary.openQuestions
+      });
+    }
+
+    return derived;
+  }
 
   if (summary.keyDecisions.length > 0) {
     derived.push({
@@ -584,6 +752,8 @@ function extractSignalLines(summary: MeetingSummary): string[] {
     summary.brief,
     summary.overview ?? "",
     summary.narrative ?? "",
+    ...summary.coreClaims,
+    ...summary.evidenceMoments,
     ...summary.sections.flatMap((section) => [section.title, section.summary, ...section.bullets])
   ]);
 }
@@ -711,6 +881,8 @@ function applyMeetingGuardrails(summary: MeetingSummary, preset?: SummaryPreset)
 }
 
 function buildSummary(parsed: Record<string, unknown>, preset?: SummaryPreset): MeetingSummary {
+  const resolvedContentType =
+    (normalizeText(parsed.contentType) as SummaryContentType | "") || getContentTypeForPreset(preset);
   const rawActionItems = [
     ...(Array.isArray(parsed.actionItems) ? parsed.actionItems : []),
     ...(Array.isArray(parsed.tasks) ? parsed.tasks : []),
@@ -722,8 +894,10 @@ function buildSummary(parsed: Record<string, unknown>, preset?: SummaryPreset): 
     .map(mapSummarySection)
     .filter((item): item is MeetingSummarySection => Boolean(item));
   const keyDecisions = safeStringArray(parsed.keyDecisions ?? parsed.decisions);
+  const coreClaims = safeStringArray(parsed.coreClaims ?? parsed.claims ?? parsed.mainIdeas);
   const followUps = safeStringArray(parsed.followUps ?? parsed.nextSteps);
   const risks = safeStringArray(parsed.risks ?? parsed.blockers);
+  const evidenceMoments = safeStringArray(parsed.evidenceMoments ?? parsed.examples ?? parsed.evidence);
   const operationalNotes = safeStringArray(parsed.operationalNotes ?? parsed.notes ?? parsed.logistics);
   const openQuestions = safeStringArray(parsed.openQuestions ?? parsed.questions);
   const overview = normalizeText(parsed.overview ?? parsed.detailedSummary ?? parsed.summary);
@@ -736,16 +910,21 @@ function buildSummary(parsed: Record<string, unknown>, preset?: SummaryPreset): 
     headline:
       normalizeText(parsed.headline ?? parsed.title) ||
       sections[0]?.title ||
+      coreClaims[0] ||
       keyDecisions[0] ||
       risks[0] ||
       undefined,
     brief,
     overview: overview || undefined,
     narrative: undefined,
+    contentType: resolvedContentType || undefined,
+    speakerIntent: normalizeText(parsed.speakerIntent ?? parsed.intent) || undefined,
     keyDecisions,
     actionItems,
+    coreClaims,
     topics: safeStringArray(parsed.topics ?? parsed.tags),
     sections,
+    evidenceMoments,
     followUps,
     risks,
     operationalNotes,
@@ -773,6 +952,8 @@ function hasMeaningfulSummaryContent(summary: MeetingSummary): boolean {
   const narrativeLength = narrativeFields.join(" ").length;
   const structuredItems =
     summary.sections.length +
+    summary.coreClaims.length +
+    summary.evidenceMoments.length +
     summary.keyDecisions.length +
     summary.actionItems.length +
     summary.followUps.length +
@@ -801,7 +982,9 @@ function extractHighlights(record: TranscriptRecord, terms: string[], limit: num
   return uniqueHighlights(highlights, limit);
 }
 
-function buildFallbackSummary(record: TranscriptRecord): MeetingSummary {
+function buildFallbackSummary(record: TranscriptRecord, preset?: SummaryPreset): MeetingSummary {
+  const resolvedPreset = detectSummaryPreset(record, preset);
+  const contentType = getContentTypeForPreset(resolvedPreset);
   const segments = record.source.segments
     .map((segment) => ({
       ...segment,
@@ -814,10 +997,13 @@ function buildFallbackSummary(record: TranscriptRecord): MeetingSummary {
       brief: "Transcript available, but there was not enough content to build a fallback summary.",
       overview: undefined,
       narrative: "Transcript available, but there was not enough content to build a fallback summary.",
+      contentType,
       keyDecisions: [],
       actionItems: [],
+      coreClaims: [],
       topics: [],
       sections: [],
+      evidenceMoments: [],
       followUps: [],
       risks: [],
       operationalNotes: [],
@@ -868,7 +1054,9 @@ function buildFallbackSummary(record: TranscriptRecord): MeetingSummary {
   const brief = compactText(highlightTexts.slice(0, 3).join(" "), 420);
   const overview = highlightTexts.join(" ");
   const speakerCount = new Set(record.source.segments.map((segment) => segment.speaker).filter(Boolean)).size;
-  const keyDecisions = extractHighlights(record, ["decid", "acord", "conclu", "defin"], 4);
+  const keyDecisions = isOperationalPreset(resolvedPreset) ? extractHighlights(record, ["decid", "acord", "conclu", "defin"], 4) : [];
+  const coreClaims = extractHighlights(record, ["tesis", "argument", "idea", "problema", "conclusion", "demuestra", "explica"], 4);
+  const evidenceMoments = extractHighlights(record, ["ejemplo", "imagina", "caso", "historia", "demuestra", "prueba", "invente", "probe"], 5);
   const risks = extractHighlights(record, ["riesg", "bloque", "proble", "error", "fall", "amenaz"], 4);
   const openQuestions = uniqueHighlights(
     record.source.segments
@@ -876,9 +1064,11 @@ function buildFallbackSummary(record: TranscriptRecord): MeetingSummary {
       .filter((text) => text.includes("?") || normalizeTokenSource(text).includes("pregunta")),
     4
   );
-  const actionItems = extractHighlights(record, ["pendient", "tarea", "hay que", "debe", "falta", "seguim"], 5).map((task) => ({
-    task
-  }));
+  const actionItems = isOperationalPreset(resolvedPreset)
+    ? extractHighlights(record, ["pendient", "tarea", "hay que", "debe", "falta", "seguim"], 5).map((task) => ({
+      task
+    }))
+    : [];
 
   const operationalNotes = uniqueHighlights(
     [
@@ -890,21 +1080,24 @@ function buildFallbackSummary(record: TranscriptRecord): MeetingSummary {
   );
 
   return {
-    headline: compactText(highlightTexts[0] ?? "Resumen extractivo de la transcripción", 110),
+    headline: compactText(coreClaims[0] ?? highlightTexts[0] ?? "Resumen extractivo de la transcripción", 110),
     brief,
     overview,
     narrative: overview,
+    contentType,
     keyDecisions,
     actionItems,
+    coreClaims,
     topics: [],
     sections: [
       {
-        title: "Puntos destacados",
+        title: isOperationalPreset(resolvedPreset) ? "Puntos destacados" : "Tesis y momentos clave",
         summary: brief,
-        bullets: highlightTexts
+        bullets: uniqueHighlights([...coreClaims, ...evidenceMoments, ...highlightTexts], 6)
       }
     ],
-    followUps: actionItems.map((item) => item.task).slice(0, 3),
+    evidenceMoments,
+    followUps: isOperationalPreset(resolvedPreset) ? actionItems.map((item) => item.task).slice(0, 3) : [],
     risks,
     operationalNotes,
     openQuestions
@@ -937,7 +1130,9 @@ function mergePartialSummaries(partials: MeetingSummary[], preset?: SummaryPrese
     partials.flatMap((summary) => summary.actionItems),
     (item) => `${item.task} ${item.assignee ?? ""} ${item.deadline ?? ""}`
   );
+  const coreClaims = safeStringArray(partials.flatMap((summary) => summary.coreClaims));
   const keyDecisions = safeStringArray(partials.flatMap((summary) => summary.keyDecisions));
+  const evidenceMoments = safeStringArray(partials.flatMap((summary) => summary.evidenceMoments));
   const followUps = safeStringArray(partials.flatMap((summary) => summary.followUps));
   const risks = safeStringArray(partials.flatMap((summary) => summary.risks));
   const operationalNotes = safeStringArray(partials.flatMap((summary) => summary.operationalNotes));
@@ -958,16 +1153,21 @@ function mergePartialSummaries(partials: MeetingSummary[], preset?: SummaryPrese
     headline:
       partials.map((summary) => normalizeText(summary.headline)).find(Boolean) ||
       sections[0]?.title ||
+      coreClaims[0] ||
       keyDecisions[0] ||
       risks[0] ||
       undefined,
     brief,
     overview: overview || undefined,
     narrative: undefined,
+    contentType: partials[0]?.contentType ?? getContentTypeForPreset(preset),
+    speakerIntent: partials.map((summary) => normalizeText(summary.speakerIntent)).find(Boolean) || undefined,
     keyDecisions,
     actionItems,
+    coreClaims,
     topics,
     sections,
+    evidenceMoments,
     followUps,
     risks,
     operationalNotes,
@@ -1018,14 +1218,22 @@ function chunkTranscriptText(transcriptText: string, maxChars: number): string[]
   return chunks;
 }
 
-function buildSchemaInstructions(): string {
+function buildSchemaInstructions(preset?: SummaryPreset): string {
+  const keyDecisionHint = isOperationalPreset(preset)
+    ? "SOLO decisiones explícitas que alguien tomó. Si no hay decisiones reales, devuelve []"
+    : "En contenido narrativo o argumentativo normalmente debe ir []. Solo úsalo si hubo decisiones literales";
+
   return `Devuelve exactamente este esquema JSON:
 {
   "headline": "Frase breve con el hallazgo o prioridad dominante",
   "brief": "Resumen ejecutivo de 2 a 4 oraciones",
   "overview": "TL;DR en 1-2 párrafos: qué pasó y cuál es el punto principal",
   "narrative": "Narración cronológica más detallada SOLO si aporta información diferente al overview. Si la narración sería idéntica o muy similar al overview, devuelve null o cadena vacía \"\"",
+  "contentType": "meeting | voiceNote | contentCreation | analysisEssay | genericMedia",
+  "speakerIntent": "intención dominante del hablante o del contenido",
   "topics": ["tema 1", "tema 2"],
+  "coreClaims": ["tesis o idea central 1", "idea secundaria 2"],
+  "evidenceMoments": ["ejemplo, evidencia o momento concreto que sostenga el resumen"],
   "sections": [
     {
       "title": "Título de la sección",
@@ -1034,7 +1242,7 @@ function buildSchemaInstructions(): string {
       "priority": "alta | media | baja"
     }
   ],
-  "keyDecisions": ["SOLO decisiones explícitas que alguien tomó. Si no hay decisiones reales, devuelve []"],
+  "keyDecisions": ["${keyDecisionHint}"],
   "actionItems": [
     {
       "task": "acción a la que alguien se comprometió EXPLÍCITAMENTE",
@@ -1058,11 +1266,11 @@ function buildChunkPrompt(transcriptText: string, chunkIndex: number, totalChunk
 
 Objetivo:
 - Resume únicamente la información presente en este fragmento.
-- Conserva decisiones, tareas, riesgos, avisos y preguntas aunque todavía estén incompletos.
+- Conserva tesis, evidencia, decisiones, tareas, riesgos, avisos y preguntas aunque todavía estén incompletos.
 - Si un hallazgo parece tentativo o parcial, exprésalo como tal.
-- Prioriza: postura/decisiones, límites del handover, estado técnico, próximos pasos y dudas abiertas.
+- Prioriza la estructura real del contenido. Si es argumentativo, preserva tesis, evidencia y conclusión; si es operativo, preserva decisiones, próximos pasos y dudas abiertas.
 
-${buildSchemaInstructions()}
+${buildSchemaInstructions(preset)}
 
 Reglas:
 1. No inventes datos de otros fragmentos.
@@ -1090,7 +1298,11 @@ function compactSummaryForReduce(summary: MeetingSummary): Record<string, unknow
     headline: compactText(normalizeText(summary.headline), 140),
     brief: compactText(normalizeText(summary.brief), 320),
     overview: compactText(normalizeText(summary.overview ?? summary.narrative ?? ""), 520),
+    contentType: summary.contentType,
+    speakerIntent: compactText(normalizeText(summary.speakerIntent), 120),
     sections: summary.sections.slice(0, 4).map(compactSectionForReduce),
+    coreClaims: summary.coreClaims.slice(0, 5).map((item) => compactText(item, 160)),
+    evidenceMoments: summary.evidenceMoments.slice(0, 5).map((item) => compactText(item, 180)),
     keyDecisions: summary.keyDecisions.slice(0, 6).map((item) => compactText(item, 160)),
     actionItems: summary.actionItems.slice(0, 6).map((item) => ({
       task: compactText(item.task, 160),
@@ -1118,15 +1330,15 @@ function buildReducePrompt(partials: MeetingSummary[], preset?: SummaryPreset): 
 Objetivo:
 - ${ctx.reduceContext}
 - Si varios fragmentos aportan contexto, intégralos en "overview" y "sections".
-- Mantén una narrativa tipo recap ejecutivo: qué se decidió, por qué, qué sigue y qué queda pendiente.
+- Mantén una narrativa fiel al tipo real de contenido. Para análisis/ensayo conserva tesis, ejemplo concreto e implicaciones. Para reuniones conserva decisiones, tareas y pendientes.
 
-${buildSchemaInstructions()}
+${buildSchemaInstructions(preset)}
 
 Reglas:
 1. No escribas markdown ni texto fuera del JSON.
 2. Deduplica decisiones, tareas y riesgos repetidos.
-3. Mantén el tono accionable.
-4. Asegura cobertura explícita de keyDecisions, actionItems y openQuestions cuando exista evidencia.
+3. Mantén al menos un ejemplo o momento de evidencia concreto cuando exista en los parciales.
+4. Asegura cobertura explícita de keyDecisions/actionItems para contenido operativo y de coreClaims/evidenceMoments para contenido argumentativo o narrativo.
 
 Resúmenes parciales:
 ${serializedPartials}`;
@@ -1223,10 +1435,10 @@ function buildPrompt(transcriptText: string, preset?: SummaryPreset): string {
 Objetivo:
 - ${ctx.objectivePrefix}
 - Si la transcripción está en español, responde en español natural.
-- Detecta prioridades, acuerdos, decisiones, pendientes, tareas, avisos, bloqueos, riesgos y dudas abiertas.
+- Detecta el tipo real de contenido y prioriza tesis/evidencia/conclusión o acuerdos/tareas según corresponda.
 - Si no existen tareas, decisiones o preguntas explícitas en el texto, devuelve arrays vacíos []. NO inventes ni fuerces contenido que no existe.
 
-${buildSchemaInstructions()}
+${buildSchemaInstructions(preset)}
 
 Reglas:
 1. No escribas markdown, encabezados sueltos ni texto fuera del JSON.
@@ -1254,6 +1466,7 @@ export async function generateSummary(
 
   const runtimeConfig = getSummaryRuntimeConfig();
   const variantToSummarize = record.source;
+  const resolvedPreset = detectSummaryPreset(record, options?.preset);
   const summaryInput = buildTranscriptTextForSummary(record, runtimeConfig);
   const transcriptText = summaryInput.text;
 
@@ -1298,6 +1511,7 @@ export async function generateSummary(
 
   try {
     callbacks.onLog?.(`Calling local Ollama LLM (${config.ollamaModel}) at ${config.ollamaBaseUrl}...`);
+    callbacks.onLog?.(`Summary preset resolved to ${resolvedPreset}.`);
     callbacks.onLog?.(
       `Summarizing ${variantToSummarize.segments.length} transcript segments across ${summaryInput.blockCount} transcript blocks${summaryInput.sampled ? " (sampled)" : ""}.`
     );
@@ -1319,11 +1533,11 @@ export async function generateSummary(
     let summary: MeetingSummary;
     if (transcriptChunks.length <= 1) {
       callbacks.onProgress?.(80);
-      const directRequest = await requestStructuredSummaryTimed(buildPrompt(transcriptText, options?.preset));
+      const directRequest = await requestStructuredSummaryTimed(buildPrompt(transcriptText, resolvedPreset));
       diagnostics.requestCount = 1;
       diagnostics.directDurationMs = directRequest.durationMs;
       callbacks.onLog?.(`[summary-metrics] direct summary request completed in ${formatDurationMs(directRequest.durationMs)}.`);
-      summary = buildSummary(directRequest.payload, options?.preset);
+      summary = buildSummary(directRequest.payload, resolvedPreset);
       diagnostics.partialCount = 1;
       diagnostics.chunks = [
         {
@@ -1352,8 +1566,8 @@ export async function generateSummary(
         const chunkStartedAt = Date.now();
 
         try {
-          const request = await requestStructuredSummaryTimed(buildChunkPrompt(chunk, index + 1, transcriptChunks.length, options?.preset));
-          const partial = buildSummary(request.payload, options?.preset);
+          const request = await requestStructuredSummaryTimed(buildChunkPrompt(chunk, index + 1, transcriptChunks.length, resolvedPreset));
+          const partial = buildSummary(request.payload, resolvedPreset);
           const diagnostic: SummaryChunkDiagnostic = {
             chunkIndex: index + 1,
             inputChars: chunk.length,
@@ -1432,28 +1646,28 @@ export async function generateSummary(
           `[summary-metrics] final reduce skipped for ${partials.length} partial summaries; merging locally instead.`
         );
         const mergeStartedAt = Date.now();
-        summary = mergePartialSummaries(partials, options?.preset);
+        summary = mergePartialSummaries(partials, resolvedPreset);
         diagnostics.mergeDurationMs = Date.now() - mergeStartedAt;
       } else {
         callbacks.onLog?.(`Combining ${partials.length} chunk summaries into one final recap...`);
         callbacks.onProgress?.(82);
         diagnostics.requestCount += 1;
         try {
-          const reduceRequest = await requestStructuredSummaryTimed(buildReducePrompt(partials, options?.preset));
+          const reduceRequest = await requestStructuredSummaryTimed(buildReducePrompt(partials, resolvedPreset));
           diagnostics.usedReduce = true;
           diagnostics.reduceDurationMs = reduceRequest.durationMs;
           callbacks.onLog?.(
             `[summary-metrics] final reduce completed in ${formatDurationMs(reduceRequest.durationMs)}.`
           );
 
-          const reduced = buildSummary(reduceRequest.payload, options?.preset);
+          const reduced = buildSummary(reduceRequest.payload, resolvedPreset);
           if (hasMeaningfulSummaryContent(reduced)) {
             summary = reduced;
           } else {
             diagnostics.usedMergedPartials = true;
             callbacks.onLog?.("[summary-metrics] final reduce returned sparse JSON. Falling back to merged chunk summaries.");
             const mergeStartedAt = Date.now();
-            summary = mergePartialSummaries(partials, options?.preset);
+            summary = mergePartialSummaries(partials, resolvedPreset);
             diagnostics.mergeDurationMs = Date.now() - mergeStartedAt;
           }
         } catch (error) {
@@ -1461,7 +1675,7 @@ export async function generateSummary(
           callbacks.onLog?.(`Final summary consolidation failed: ${errorMessage}. Falling back to merged chunk summaries.`);
           diagnostics.usedMergedPartials = true;
           const mergeStartedAt = Date.now();
-          summary = mergePartialSummaries(partials, options?.preset);
+          summary = mergePartialSummaries(partials, resolvedPreset);
           diagnostics.mergeDurationMs = Date.now() - mergeStartedAt;
         }
       }
@@ -1475,7 +1689,7 @@ export async function generateSummary(
       diagnostics.usedFallback = true;
       diagnostics.fallbackReason = "Sparse LLM summary";
       const fallbackStartedAt = Date.now();
-      const fallbackSummary = buildFallbackSummary(record);
+      const fallbackSummary = buildFallbackSummary(record, resolvedPreset);
       diagnostics.fallbackDurationMs = Date.now() - fallbackStartedAt;
       const completedDiagnostics = finalizeDiagnostics();
       callbacks.onLog?.(`[summary-metrics] total summary stage completed in ${formatDurationMs(completedDiagnostics.totalDurationMs)}.`);
@@ -1498,7 +1712,7 @@ export async function generateSummary(
     diagnostics.usedFallback = true;
     diagnostics.fallbackReason = errorMessage;
     const fallbackStartedAt = Date.now();
-    const fallbackSummary = buildFallbackSummary(record);
+    const fallbackSummary = buildFallbackSummary(record, resolvedPreset);
     diagnostics.fallbackDurationMs = Date.now() - fallbackStartedAt;
     const completedDiagnostics = finalizeDiagnostics();
     callbacks.onLog?.(`[summary-metrics] total summary stage completed in ${formatDurationMs(completedDiagnostics.totalDurationMs)}.`);
