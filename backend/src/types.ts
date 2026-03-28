@@ -208,3 +208,56 @@ export type JobManifest = {
     english: string[];
   };
 };
+
+// --- Live Session Types ---
+
+export type LiveSegmentState = "confirmed" | "provisional"
+
+export type LiveTranscriptSegment = {
+  id: string
+  start: number
+  end: number
+  text: string
+  state: LiveSegmentState
+  windowSeq: number
+}
+
+export type MentionEventIntent = "question" | "task_assignment" | "information_request" | "greeting" | "unknown"
+
+export type MentionEvent = {
+  id: string
+  sessionId: string
+  mentionedAlias: string
+  triggerText: string
+  detectedAt: number
+  segmentIds: string[]
+  intent: MentionEventIntent
+  assistantResponse?: string
+  assistantStatus: "pending" | "generating" | "ready" | "skipped" | "failed"
+}
+
+export type SessionConfig = {
+  aliases: string[]
+  enableAssistant: boolean
+  assistantContextWindowSegments: number
+}
+
+export type LiveSessionStatus = "recording" | "disconnected" | "stopping" | "stopped" | "error"
+
+export type LiveSession = {
+  id: string
+  createdAt: string
+  status: LiveSessionStatus
+  config: SessionConfig
+  confirmedSegments: LiveTranscriptSegment[]
+  provisionalSegments: LiveTranscriptSegment[]
+  mentionEvents: MentionEvent[]
+  windowSeq: number
+  totalFramesReceived: number
+  sessionStartMs: number
+  totalPcmBytesWritten: number
+  isTranscribingWindow: boolean
+  reconnectTimer?: ReturnType<typeof setTimeout>
+  errorMessage?: string
+  jobId?: string
+}

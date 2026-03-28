@@ -1,4 +1,5 @@
 import fs from "node:fs/promises";
+import http from "node:http";
 import { createReadStream } from "node:fs";
 import path from "node:path";
 import express, { type RequestHandler } from "express";
@@ -28,6 +29,9 @@ import {
   TranscriptRecord
 } from "./types.js";
 import { JobQueue } from "./utils/jobQueue.js";
+import { attachWebSocketHandler } from "./routes/sessionWebSocket.js";
+import { liveSessionStore } from "./sessions/liveSessionStore.js";
+import { getSession } from "./sessions/liveSessionOrchestrator.js";
 
 const app = express();
 const upload = multer({ dest: path.join(config.storageRoot, ".tmp") });
@@ -1644,11 +1648,52 @@ app.get("/api/jobs/:jobId/export", async (req, res) => {
   res.download(artifactPath);
 });
 
+// --- Live session REST endpoints ---
+app.get("/api/sessions", (_req, res) => {
+  if (!config.liveTranscriptionEnabled) {
+    res.status(404).send("Live transcription is not enabled.")
+    return
+  }
+  const sessions = liveSessionStore.getAll().map((s) => ({
+    id: s.id,
+    status: s.status,
+    createdAt: s.createdAt,
+    confirmedSegmentCount: s.confirmedSegments.length,
+    mentionCount: s.mentionEvents.length,
+    jobId: s.jobId
+  }))
+  res.json(sessions)
+})
+
+app.get("/api/sessions/:sessionId", (req, res) => {
+  if (!config.liveTranscriptionEnabled) {
+    res.status(404).send("Live transcription is not enabled.")
+    return
+  }
+  const session = getSession(req.params.sessionId)
+  if (!session) {
+    res.status(404).send("Session not found.")
+    return
+  }
+  res.json({
+    id: session.id,
+    status: session.status,
+    createdAt: session.createdAt,
+    confirmedSegmentCount: session.confirmedSegments.length,
+    mentionCount: session.mentionEvents.length,
+    jobId: session.jobId,
+    errorMessage: session.errorMessage
+  })
+})
+
 async function main(): Promise<void> {
   await jobStore.init();
   await ensureDir(path.join(config.storageRoot, ".tmp"));
 
-  app.listen(config.port, () => {
+  const server = http.createServer(app);
+  attachWebSocketHandler(server);
+
+  server.listen(config.port, () => {
     console.log(`Notadio backend listening on http://localhost:${config.port}`);
   });
 

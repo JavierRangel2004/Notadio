@@ -76,3 +76,65 @@ export function runCommand(command: string, args: string[], options: RunCommandO
     });
   });
 }
+
+type RunCommandWithStdinOptions = {
+  cwd?: string
+  onStdoutLine?: (line: string) => void
+  onStderrLine?: (line: string) => void
+}
+
+export function runCommandWithStdin(
+  command: string,
+  args: string[],
+  stdinData: Buffer,
+  options: RunCommandWithStdinOptions = {}
+): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const child = spawn(command, args, {
+      cwd: options.cwd,
+      stdio: ["pipe", "pipe", "pipe"]
+    })
+
+    let stderr = ""
+    let stdoutBuffer = ""
+    let stderrBuffer = ""
+
+    child.stdin.write(stdinData)
+    child.stdin.end()
+
+    child.stdout.on("data", (chunk) => {
+      stdoutBuffer += chunk.toString()
+      stdoutBuffer = flushBufferedLines(stdoutBuffer, options.onStdoutLine)
+    })
+
+    child.stderr.on("data", (chunk) => {
+      const text = chunk.toString()
+      stderr += text
+      stderrBuffer += text
+      stderrBuffer = flushBufferedLines(stderrBuffer, options.onStderrLine)
+    })
+
+    child.on("error", (error) => {
+      reject(error)
+    })
+
+    child.on("close", (code) => {
+      const stdoutTail = stdoutBuffer.trim()
+      if (stdoutTail && options.onStdoutLine) {
+        options.onStdoutLine(stdoutTail)
+      }
+
+      const stderrTail = stderrBuffer.trim()
+      if (stderrTail && options.onStderrLine) {
+        options.onStderrLine(stderrTail)
+      }
+
+      if (code === 0) {
+        resolve()
+        return
+      }
+
+      reject(new Error(stderr.trim() || `${command} exited with code ${code}`))
+    })
+  })
+}

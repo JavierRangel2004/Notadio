@@ -1,4 +1,5 @@
 import { FormEvent, useCallback, useEffect, useRef, useState, forwardRef, useImperativeHandle } from "react";
+import { LiveSessionPanel } from "./LiveSessionPanel.js";
 import {
   getExportUrl,
   getJob,
@@ -862,7 +863,7 @@ function EnhancementPrompt({ job, onSubmit, onSkip }: {
 type AppView = "upload" | "processing" | "enhancements" | "results" | "workspace";
 
 export function App() {
-  const [sourceMode, setSourceMode] = useState<"upload" | "record">("upload");
+  const [sourceMode, setSourceMode] = useState<"upload" | "record" | "live">("upload");
   const [file, setFile] = useState<File | null>(null);
   const [sourceOrigin, setSourceOrigin] = useState<SourceOrigin>("upload");
   const [job, setJob] = useState<JobPayload | null>(null);
@@ -1062,6 +1063,17 @@ export function App() {
     setSourceOrigin("recording");
   }
 
+  async function handleLiveJobCreated(jobId: string): Promise<void> {
+    try {
+      const j = await getJob(jobId);
+      setJob(j);
+      setView("processing");
+      setSourceMode("upload");
+    } catch {
+      // SSE subscription in the job useEffect will pick it up
+    }
+  }
+
   function resetToUpload() {
     setView("upload");
     setJob(null);
@@ -1211,6 +1223,13 @@ export function App() {
                       >
                         Record Mic
                       </button>
+                      <button
+                        className={`control-btn ${sourceMode === "live" ? "active" : ""}`}
+                        onClick={() => { setSourceMode("live"); setFile(null); }}
+                        type="button"
+                      >
+                        Live Session
+                      </button>
                     </div>
                   </div>
 
@@ -1292,6 +1311,12 @@ export function App() {
                         <ReadinessPanel readiness={readiness} title="System Attention" />
                       )}
                     </form>
+                  )}
+
+                  {sourceMode === "live" && (
+                    <div className="upload-workflow">
+                      <LiveSessionPanel onJobCreated={(jobId) => void handleLiveJobCreated(jobId)} />
+                    </div>
                   )}
                 </div>
               </section>
