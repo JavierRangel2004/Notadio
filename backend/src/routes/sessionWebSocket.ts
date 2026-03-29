@@ -7,7 +7,8 @@ import {
   receiveFrame,
   finalizeSession,
   handleDisconnect,
-  getSession
+  getSession,
+  requestMentionAssistant
 } from "../sessions/liveSessionOrchestrator.js"
 import type { SessionConfig } from "../types.js"
 
@@ -15,6 +16,7 @@ type WsClientTextMessage =
   | { type: "start_session"; config: SessionConfig }
   | { type: "resume_session"; sessionId: string }
   | { type: "stop_session" }
+  | { type: "request_assistant"; mentionId: string }
   | { type: "ping" }
 export function attachWebSocketHandler(
   server: http.Server,
@@ -130,6 +132,13 @@ export function attachWebSocketHandler(
               })
             }
           })()
+          break
+        }
+
+        case "request_assistant": {
+          if (sessionId && msg.mentionId) {
+            void requestMentionAssistant(sessionId, msg.mentionId)
+          }
           break
         }
 

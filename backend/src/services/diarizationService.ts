@@ -1,6 +1,7 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 import { config } from "../config.js";
+import { resolveServiceLlm } from "./llm/index.js";
 import { TranscriptSegment } from "../types.js";
 import { ensureDir, readJsonFile } from "../utils/fs.js";
 import { parseArgs, runCommand } from "../utils/process.js";
@@ -275,26 +276,15 @@ Transcripción:
 ${transcriptText}`;
 
   try {
-    const response = await fetch(`${config.ollamaBaseUrl}/api/generate`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        model: config.ollamaModel,
-        prompt,
-        stream: false,
-        format: "json",
-        options: {
-          temperature: 0.1
-        }
-      })
+    const { provider, model } = resolveServiceLlm("DIARIZATION");
+    const llmResult = await provider.generate({
+      model,
+      prompt,
+      temperature: 0.1,
+      json: true
     });
 
-    if (!response.ok) {
-      return null;
-    }
-
-    const data = await response.json() as { response: string };
-    const result = JSON.parse(data.response) as Record<string, unknown>;
+    const result = JSON.parse(llmResult.text) as Record<string, unknown>;
 
     const mapping = new Map<string, string>();
     for (const [key, value] of Object.entries(result)) {

@@ -14,6 +14,7 @@ import {
   buildMentionEvent
 } from "../services/mentionDetectionService.js"
 import { requestAssistantResponse } from "../services/liveAssistantService.js"
+import { translateLiveSegments } from "../services/liveTranslationService.js"
 import { parseWhisperOutput } from "../services/transcriptionService.js"
 import type {
   LiveSession,
@@ -43,6 +44,10 @@ type InternalSessionState = {
   archiveFileHandle: fs.FileHandle
   aliasPatterns: Map<string, RegExp>
   mentionCaptures: Map<string, MentionCapture>
+  /** Guard: true while a live translation request is in flight. */
+  translationInFlight: boolean
+  /** Segments waiting to be translated (queued while a request is in flight). */
+  translationQueue: LiveTranscriptSegment[]
 }
 
 // -------------------------------------------------------------------
@@ -65,19 +70,63 @@ function getSessionDir(sessionId: string): string {
 }
 
 function normForDedup(text: string): string {
-  return text.toLowerCase().replace(/[.,!?;:]/g, "").replace(/\s+/g, " ").trim()
+  return text.toLowerCase().replace(/[.,!?;:¿¡]/g, "").replace(/\s+/g, " ").trim()
 }
 
+function normWords(text: string): string[] {
+  return normForDedup(text).split(" ").filter(Boolean)
+}
+
+/**
+ * Word-level overlap ratio between two normalized strings.
+ * Returns 0-1 where 1 means all words in the shorter text appear in the longer.
+ */
+function wordOverlapRatio(wordsA: string[], wordsB: string[]): number {
+  if (wordsA.length === 0 || wordsB.length === 0) return 0
+  const setB = new Set(wordsB)
+  let matches = 0
+  for (const w of wordsA) {
+    if (setB.has(w)) matches++
+  }
+  return matches / Math.min(wordsA.length, wordsB.length)
+}
+
+/**
+ * Checks if a candidate text is a duplicate of any recent confirmed segment.
+ *
+ * Uses two strategies:
+ * 1. Timing-based: segments near the same absolute time with text overlap ≥ 0.6
+ * 2. Content-based: regardless of timing, if a segment's words are ≥ 80% contained
+ *    in an existing segment (catches Whisper re-segmenting same audio differently)
+ *
+ * Returns the index into confirmedSegments, or -1 if no duplicate found.
+ */
 function getDuplicateIndex(session: LiveSession, absStart: number, text: string): number {
-  const normalized = normForDedup(text)
-  const recent = session.confirmedSegments.slice(-30)
+  const candidateNorm = normForDedup(text)
+  const candidateWords = normWords(text)
+  if (candidateWords.length === 0) return -1
+
+  const recent = session.confirmedSegments.slice(-40)
+  const baseIdx = session.confirmedSegments.length - recent.length
+
   for (let i = recent.length - 1; i >= 0; i--) {
     const s = recent[i]
-    if (Math.abs(s.start - absStart) < 2.0) {
-      const sNorm = normForDedup(s.text)
-      if (sNorm === normalized || sNorm.includes(normalized) || normalized.includes(sNorm)) {
-        return session.confirmedSegments.length - recent.length + i
-      }
+    const sNorm = normForDedup(s.text)
+    const sWords = sNorm.split(" ").filter(Boolean)
+
+    // Exact or substring match
+    if (sNorm === candidateNorm || sNorm.includes(candidateNorm) || candidateNorm.includes(sNorm)) {
+      return baseIdx + i
+    }
+
+    // Timing-close + moderate word overlap
+    if (Math.abs(s.start - absStart) < 5.0 && wordOverlapRatio(candidateWords, sWords) >= 0.6) {
+      return baseIdx + i
+    }
+
+    // Content-heavy overlap regardless of timing (Whisper re-segments)
+    if (candidateWords.length >= 3 && wordOverlapRatio(candidateWords, sWords) >= 0.8) {
+      return baseIdx + i
     }
   }
   return -1
@@ -171,43 +220,104 @@ async function finalizeMentionCapture(
   clearTimeout(capture.timer)
 
   const session = state.session
+
+  // Dedup: skip if we already have a mention for this alias within 10 seconds
+  const isDuplicate = session.mentionEvents.some(
+    (m) => m.mentionedAlias === capture.alias && Math.abs(m.detectedAt - (capture.segments[capture.segments.length - 1]?.end ?? 0)) < 10
+  )
+  if (isDuplicate) return
+
   const mention = buildMentionEvent(session.id, capture.alias, capture.segments, session.config)
   session.mentionEvents.push(mention)
 
   sendToSession(session.id, { type: "mention_detected", mention })
+  // Assistant is NOT auto-fired. User triggers it via "Ask AI" button.
+}
 
-  // Fire async Ollama response if both feature flags are on
-  if (session.config.enableAssistant && config.liveAssistantEnabled) {
-    mention.assistantStatus = "generating"
-    sendToSession(session.id, {
+/**
+ * Triggers AI assistant for a specific mention (called from WS "request_assistant" message).
+ */
+export async function requestMentionAssistant(sessionId: string, mentionId: string): Promise<void> {
+  const state = internalState.get(sessionId)
+  if (!state) return
+
+  const session = state.session
+  const mention = session.mentionEvents.find((m) => m.id === mentionId)
+  if (!mention) return
+  if (mention.assistantStatus === "generating" || mention.assistantStatus === "ready") return
+
+  if (!config.liveAssistantEnabled) {
+    mention.assistantStatus = "skipped"
+    sendToSession(sessionId, {
       type: "mention_updated",
       mentionId: mention.id,
-      assistantStatus: "generating"
+      assistantStatus: "skipped"
     })
+    return
+  }
 
-    const contextSegments = session.confirmedSegments
-      .filter((s) => s.start <= mention.detectedAt + 10)
-      .slice(-(session.config.assistantContextWindowSegments))
+  mention.assistantStatus = "generating"
+  sendToSession(sessionId, {
+    type: "mention_updated",
+    mentionId: mention.id,
+    assistantStatus: "generating"
+  })
 
-    requestAssistantResponse(mention, contextSegments)
-      .then((response) => {
-        mention.assistantResponse = response
-        mention.assistantStatus = "ready"
-        sendToSession(session.id, {
-          type: "mention_updated",
-          mentionId: mention.id,
-          assistantResponse: response,
-          assistantStatus: "ready"
-        })
+  const contextSegments = session.confirmedSegments
+    .filter((s) => s.start <= mention.detectedAt + 10)
+    .slice(-(session.config.assistantContextWindowSegments))
+
+  try {
+    const response = await requestAssistantResponse(mention, contextSegments)
+    mention.assistantResponse = response
+    mention.assistantStatus = "ready"
+    sendToSession(sessionId, {
+      type: "mention_updated",
+      mentionId: mention.id,
+      assistantResponse: response,
+      assistantStatus: "ready"
+    })
+  } catch {
+    mention.assistantStatus = "failed"
+    sendToSession(sessionId, {
+      type: "mention_updated",
+      mentionId: mention.id,
+      assistantStatus: "failed"
+    })
+  }
+}
+
+// -------------------------------------------------------------------
+// Live translation queue (serialized to avoid piling up on one model)
+// -------------------------------------------------------------------
+
+async function drainTranslationQueue(
+  sessionId: string,
+  state: InternalSessionState
+): Promise<void> {
+  if (state.translationInFlight) return
+  if (state.translationQueue.length === 0) return
+
+  state.translationInFlight = true
+  const batch = state.translationQueue.splice(0, config.liveTranslationMaxBatch)
+
+  try {
+    const translated = await translateLiveSegments(batch)
+    if (translated.length > 0) {
+      sendToSession(sessionId, {
+        type: "translated_segments",
+        segments: translated
       })
-      .catch(() => {
-        mention.assistantStatus = "failed"
-        sendToSession(session.id, {
-          type: "mention_updated",
-          mentionId: mention.id,
-          assistantStatus: "failed"
-        })
-      })
+    }
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err)
+    sendToSession(sessionId, { type: "log", message: `Translation error: ${msg}` })
+  } finally {
+    state.translationInFlight = false
+    // If more segments queued while we were busy, drain again
+    if (state.translationQueue.length > 0) {
+      void drainTranslationQueue(sessionId, state)
+    }
   }
 }
 
@@ -314,6 +424,12 @@ async function runWindowTranscription(sessionId: string): Promise<void> {
       confirmed: newConfirmed,
       provisional: newProvisional
     })
+
+    // Queue live translation for new confirmed segments (non-blocking, serialized)
+    if (config.liveTranslationEnabled && newConfirmed.length > 0) {
+      state.translationQueue.push(...newConfirmed)
+      void drainTranslationQueue(sessionId, state)
+    }
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err)
     sendToSession(sessionId, { type: "log", message: `Window ${seq} error: ${msg}` })
@@ -365,7 +481,9 @@ export async function createSession(
     ringBuffer: new PcmRingBuffer(config.liveWindowMs + config.liveOverlapMs + 5000),
     archiveFileHandle,
     aliasPatterns: buildAliasPatterns(cfg.aliases),
-    mentionCaptures: new Map()
+    mentionCaptures: new Map(),
+    translationInFlight: false,
+    translationQueue: []
   }
 
   internalState.set(sessionId, state)

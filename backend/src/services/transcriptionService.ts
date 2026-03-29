@@ -1,6 +1,7 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 import { config } from "../config.js";
+import { resolveServiceLlm } from "./llm/index.js";
 import { detectProcessingProfile } from "./deviceProfileService.js";
 import {
   JobProcessingProfile,
@@ -438,30 +439,16 @@ ${serializedBatch}`;
 
 async function requestStructuredTranslation(batch: TranscriptSegment[]): Promise<string[]> {
   const prompt = buildTranslationPrompt(batch);
-  const response = await fetch(`${config.ollamaBaseUrl}/api/generate`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      model: config.ollamaModel,
-      prompt,
-      format: "json",
-      stream: false,
-      options: {
-        temperature: 0.1
-      }
-    })
+  const { provider, model } = resolveServiceLlm("TRANSLATION");
+
+  const result = await provider.generate({
+    model,
+    prompt,
+    temperature: 0.1,
+    json: true
   });
 
-  if (!response.ok) {
-    throw new Error(`Ollama HTTP ${response.status}: ${await response.text()}`);
-  }
-
-  const data = await response.json();
-  if (typeof data?.response !== "string" || !data.response.trim()) {
-    throw new Error("Ollama returned an empty translation response.");
-  }
-
-  const payload = parseJsonFromLlmResponse(data.response);
+  const payload = parseJsonFromLlmResponse(result.text);
   const translationsRaw = payload.translations;
   if (!Array.isArray(translationsRaw)) {
     throw new Error("Translation response did not include a translations array.");
