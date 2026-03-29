@@ -262,6 +262,14 @@ export async function deleteJob(jobId: string): Promise<void> {
   }
 }
 
+export async function reprocessJob(jobId: string): Promise<JobPayload> {
+  const response = await fetch(`${API_BASE}/jobs/${jobId}/reprocess`, { method: "POST" });
+  if (!response.ok) {
+    throw new Error(await response.text());
+  }
+  return response.json();
+}
+
 export async function getTranscript(jobId: string, signal?: AbortSignal): Promise<TranscriptPayload> {
   const response = await fetch(`${API_BASE}/jobs/${jobId}/transcript`, { signal });
   if (!response.ok) {

@@ -4,6 +4,8 @@ const WS_BASE = (import.meta.env.VITE_API_BASE ?? "http://localhost:8787/api")
 
 export type LiveSegmentState = "confirmed" | "provisional"
 
+export type AudioSourceMode = "mic" | "system" | "both"
+
 export type LiveTranscriptSegment = {
   id: string
   start: number
@@ -115,14 +117,54 @@ export type AudioCaptureHandles = {
 }
 
 /**
- * Starts microphone capture at 16kHz, sends Int16 PCM frames over the WebSocket.
+ * Starts audio capture at 16kHz, sends Int16 PCM frames over the WebSocket.
  * The AudioContext is created at 16kHz so the browser resamples automatically.
  */
 export async function startAudioCapture(
   ws: WebSocket,
-  onFrame: (bytesCount: number) => void
+  onFrame: (bytesCount: number) => void,
+  mode: AudioSourceMode = "mic",
+  micDeviceId?: string
 ): Promise<AudioCaptureHandles> {
-  const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false })
+  const customStreams: MediaStream[] = []
+
+  try {
+    if (mode === "mic" || mode === "both") {
+      const micStream = await navigator.mediaDevices.getUserMedia({
+        audio: micDeviceId ? { deviceId: { exact: micDeviceId } } : true,
+        video: false
+      })
+      customStreams.push(micStream)
+    }
+
+    if (mode === "system" || mode === "both") {
+      const sysStream = await navigator.mediaDevices.getDisplayMedia({
+        video: true,
+        audio: true
+      })
+      
+      const audioTracks = sysStream.getAudioTracks()
+      if (audioTracks.length === 0) {
+        throw new Error("No system audio provided. Be sure to check 'Share tab audio' or 'Share system audio'.")
+      }
+      
+      customStreams.push(sysStream)
+    }
+  } catch (err) {
+    // If one fails (e.g. user cancelled), we should stop any streams we did manage to open
+    for (const s of customStreams) {
+      for (const t of s.getTracks()) t.stop()
+    }
+    throw err
+  }
+
+  if (customStreams.length === 0) {
+    throw new Error("No audio streams acquired.")
+  }
+
+  // Combine tracks into one list just for bookkeeping/stopping
+  const allTracks = customStreams.flatMap((s) => s.getTracks())
+  const compositeStream = new MediaStream(allTracks)
 
   // Force 16kHz — browser resamples automatically
   const audioContext = new AudioContext({ sampleRate: 16000 })
@@ -132,8 +174,14 @@ export async function startAudioCapture(
   await audioContext.audioWorklet.addModule(workletUrl)
   URL.revokeObjectURL(workletUrl)
 
-  const source = audioContext.createMediaStreamSource(stream)
   const workletNode = new AudioWorkletNode(audioContext, "pcm-capture")
+
+  // Create a source node for each audio stream and connect them to mix them
+  const sources = customStreams.map((s) => {
+    const sourceNode = audioContext.createMediaStreamSource(s)
+    sourceNode.connect(workletNode)
+    return sourceNode
+  })
 
   workletNode.port.onmessage = (e: MessageEvent<ArrayBuffer>) => {
     if (ws.readyState === WebSocket.OPEN) {
@@ -142,16 +190,15 @@ export async function startAudioCapture(
     }
   }
 
-  source.connect(workletNode)
   // Connect to destination to keep context alive (silent output)
   workletNode.connect(audioContext.destination)
 
   const stop = (): void => {
     workletNode.disconnect()
-    source.disconnect()
+    sources.forEach(s => s.disconnect())
     void audioContext.close()
-    for (const track of stream.getTracks()) track.stop()
+    for (const track of allTracks) track.stop()
   }
 
-  return { stream, audioContext, workletNode, stop }
+  return { stream: compositeStream, audioContext, workletNode, stop }
 }

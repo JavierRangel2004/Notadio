@@ -8,7 +8,8 @@ import {
   type WsServerMessage,
   type LiveTranscriptSegment,
   type MentionEvent,
-  type AudioCaptureHandles
+  type AudioCaptureHandles,
+  type AudioSourceMode
 } from "./liveApi.js"
 
 export type LiveSessionPhase =
@@ -29,7 +30,7 @@ export type UseLiveSessionReturn = {
   elapsedSeconds: number
   errorMessage: string | null
   totalFrames: number
-  start: (cfg: SessionConfig) => Promise<void>
+  start: (cfg: SessionConfig, mode?: AudioSourceMode, micDeviceId?: string) => Promise<void>
   stop: () => void
   reset: () => void
 }
@@ -82,7 +83,15 @@ export function useLiveSession(): UseLiveSessionReturn {
 
       case "transcript":
         if (msg.confirmed.length > 0) {
-          setConfirmedSegments((prev) => [...prev, ...msg.confirmed])
+          setConfirmedSegments((prev) => {
+            const next = [...prev]
+            for (const c of msg.confirmed) {
+              const idx = next.findIndex((x) => x.id === c.id)
+              if (idx !== -1) next[idx] = c
+              else next.push(c)
+            }
+            return next
+          })
         }
         setProvisionalSegments(msg.provisional)
         break
@@ -119,7 +128,7 @@ export function useLiveSession(): UseLiveSessionReturn {
     }
   }, [startElapsedTimer, stopElapsedTimer])
 
-  const start = useCallback(async (cfg: SessionConfig): Promise<void> => {
+  const start = useCallback(async (cfg: SessionConfig, mode: AudioSourceMode = "mic", micDeviceId?: string): Promise<void> => {
     setPhase("connecting")
     setErrorMessage(null)
     setConfirmedSegments([])
@@ -155,7 +164,7 @@ export function useLiveSession(): UseLiveSessionReturn {
           const capture = await startAudioCapture(ws, (bytes) => {
             setTotalFrames((n) => n + 1)
             void bytes
-          })
+          }, mode, micDeviceId)
           captureRef.current = capture
           sendStartSession(ws, cfg)
           resolve()
