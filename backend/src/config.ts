@@ -125,10 +125,10 @@ export const config = {
   whisperModelPath: process.env.WHISPER_MODEL_PATH ? resolveProjectPath(process.env.WHISPER_MODEL_PATH, "") : "",
   whisperArgs:
     process.env.WHISPER_ARGS ??
-    '-m "{model}" -f "{input}" --output-json --output-srt --output-file "{outputBase}" --language auto',
+    '-m "{model}" -f "{input}" --output-json --output-srt --output-file "{outputBase}" --language auto --prompt "Sentry, sprint, daily, frontend, backend, webhook, API, bug, parche, login, servidor, índices, optimizar, consulta, pasarela, producción"',
   whisperTranslateArgs:
     process.env.WHISPER_TRANSLATE_ARGS ??
-    '-m "{model}" -f "{input}" --output-json --output-file "{outputBase}" --language auto --translate',
+    '-m "{model}" -f "{input}" --output-json --output-file "{outputBase}" --language auto --translate --prompt "Sentry, sprint, daily, frontend, backend, webhook, API, bug, parche, login, servidor, índices, optimizar, consulta, pasarela, producción"',
   whisperPerfProfile: process.env.WHISPER_PERF_PROFILE ?? "auto",
   whisperThreads: process.env.WHISPER_THREADS ? Number(process.env.WHISPER_THREADS) : undefined,
   whisperEnableVad: readBoolean(process.env.WHISPER_ENABLE_VAD, true),

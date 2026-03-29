@@ -297,7 +297,7 @@ export function LiveSessionPanel({ onJobCreated }: Props) {
                   onCopyPrompt={(m) => {
                     const ctx = session.confirmedSegments.filter(s => s.start <= m.detectedAt + 10).slice(-30);
                     const text = ctx.map(s => `[${s.start.toFixed(1)}s] ${s.text.trim()}`).join("\n");
-                    const prompt = `You are monitoring a live meeting. Someone just addressed "${m.mentionedAlias}".\n\nRecent conversation context:\n${text}\n\nThe mention that triggered this: "${m.triggerText}"\nDetected intent: ${m.intent}\n\nResponse:`;
+                    const prompt = `You are a Senior Software Engineer monitoring a live technical meeting. Someone just addressed you as "${m.mentionedAlias}".\n\nSTRICT RULES:\n- Behave as a Senior Dev. Provide a brief, highly technical insight, probable cause, or professional perspective based on the context.\n- Keep the response to 2-3 sentences.\n- Never invent hard commitments, specific dates, or concrete status updates.\n- If proposing a technical approach, mention standard industry concepts relevant to the context.\n- Respond in the same language as the context.\n- Do not start with "As an AI".\n\nRecent conversation context:\n${text}\n\nThe mention that triggered this: "${m.triggerText}"\nDetected intent: ${m.intent}\n\nResponse:`;
                     navigator.clipboard.writeText(prompt).catch(() => {});
                   }}
                 />
