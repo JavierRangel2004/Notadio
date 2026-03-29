@@ -65,15 +65,22 @@ function getSessionDir(sessionId: string): string {
 }
 
 function normForDedup(text: string): string {
-  return text.toLowerCase().replace(/\s+/g, " ").trim()
+  return text.toLowerCase().replace(/[.,!?;:]/g, "").replace(/\s+/g, " ").trim()
 }
 
-function isDuplicate(session: LiveSession, absStart: number, text: string): boolean {
+function getDuplicateIndex(session: LiveSession, absStart: number, text: string): number {
   const normalized = normForDedup(text)
   const recent = session.confirmedSegments.slice(-30)
-  return recent.some(
-    (s) => Math.abs(s.start - absStart) < 2.0 && normForDedup(s.text) === normalized
-  )
+  for (let i = recent.length - 1; i >= 0; i--) {
+    const s = recent[i]
+    if (Math.abs(s.start - absStart) < 2.0) {
+      const sNorm = normForDedup(s.text)
+      if (sNorm === normalized || sNorm.includes(normalized) || normalized.includes(sNorm)) {
+        return session.confirmedSegments.length - recent.length + i
+      }
+    }
+  }
+  return -1
 }
 
 function buildLiveWhisperArgs(inputPath: string, outputBase: string): string[] {
@@ -265,7 +272,15 @@ async function runWindowTranscription(sessionId: string): Promise<void> {
       if (!text) continue
 
       if (absStart < confirmedCutoffSec) {
-        if (!isDuplicate(session, absStart, text)) {
+        const dupIdx = getDuplicateIndex(session, absStart, text)
+        if (dupIdx !== -1) {
+          const oldSeg = session.confirmedSegments[dupIdx]
+          if (text.length > oldSeg.text.length) {
+            oldSeg.text = text
+            oldSeg.end = Math.round(absEnd * 100) / 100
+            newConfirmed.push(oldSeg) // Send updated segment down to frontend
+          }
+        } else {
           newConfirmed.push({
             id: uuidv4(),
             start: Math.round(absStart * 100) / 100,

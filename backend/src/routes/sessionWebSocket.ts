@@ -16,8 +16,10 @@ type WsClientTextMessage =
   | { type: "resume_session"; sessionId: string }
   | { type: "stop_session" }
   | { type: "ping" }
-
-export function attachWebSocketHandler(server: http.Server): void {
+export function attachWebSocketHandler(
+  server: http.Server,
+  enqueueJob: (jobId: string) => void
+): void {
   if (!config.liveTranscriptionEnabled) return
 
   const wss = new WebSocketServer({ noServer: true })
@@ -57,7 +59,7 @@ export function attachWebSocketHandler(server: http.Server): void {
     }
 
     ws.on("message", (data: WebSocket.RawData, isBinary: boolean) => {
-      if (isBinary || Buffer.isBuffer(data)) {
+      if (isBinary) {
         // PCM audio frame
         if (sessionId) {
           void receiveFrame(sessionId, Buffer.isBuffer(data) ? data : Buffer.from(data as ArrayBuffer))
@@ -116,6 +118,7 @@ export function attachWebSocketHandler(server: http.Server): void {
             try {
               const jobId = await finalizeSession(stoppingId)
               if (jobId) {
+                enqueueJob(jobId)
                 send({ type: "session_stopped", jobId })
               } else {
                 send({ type: "error", message: "Failed to finalize session — no audio recorded" })

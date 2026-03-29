@@ -1261,6 +1261,30 @@ async function processTranslationRetry(jobId: string): Promise<void> {
   }
 }
 
+app.post("/api/jobs/:jobId/reprocess", async (req, res) => {
+  const jobId = req.params.jobId;
+  const job = jobStore.get(jobId);
+
+  if (!job) {
+    res.status(404).send("Job not found.");
+    return;
+  }
+
+  await updateJobImmediate(jobId, (current) => {
+    current.status = "queued";
+    current.stage = "Queued for processing";
+    current.error = undefined;
+    const now = new Date().toISOString();
+    current.progress = buildDefaultProgress(now);
+    current.processing = buildDefaultProcessing();
+    appendLog(current, "Manually re-enqueued for base processing.");
+  });
+
+  jobQueue.enqueue(() => processBaseJob(jobId));
+
+  res.json(makeJobResponse(jobStore.get(jobId)!));
+});
+
 app.post("/api/uploads", uploadSingle, async (req, res) => {
   const uploadedFile = req.file;
 
@@ -1691,7 +1715,9 @@ async function main(): Promise<void> {
   await ensureDir(path.join(config.storageRoot, ".tmp"));
 
   const server = http.createServer(app);
-  attachWebSocketHandler(server);
+  attachWebSocketHandler(server, (jobId) => {
+    jobQueue.enqueue(() => processBaseJob(jobId));
+  });
 
   server.listen(config.port, () => {
     console.log(`Notadio backend listening on http://localhost:${config.port}`);
