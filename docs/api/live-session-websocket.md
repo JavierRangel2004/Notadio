@@ -76,6 +76,14 @@ Implementation details:
 { "type": "mention_updated", "mentionId": "uuid", "assistantStatus": "generating", "assistantResponse": "..." }
 ```
 
+### `translated_segments`
+
+Sent when live translation is enabled. Contains translated text for confirmed segments. Keyed by `segmentId` (matches original `LiveTranscriptSegment.id`).
+
+```json
+{ "type": "translated_segments", "segments": [{ "segmentId": "uuid", "text": "Texto traducido", "targetLang": "es" }] }
+```
+
 ### `session_stopped`
 
 ```json
@@ -105,3 +113,5 @@ Implementation details:
 If `LIVE_TRANSCRIPTION_ENABLED=false`, the backend does not attach the WebSocket handler.
 
 If `LIVE_ASSISTANT_ENABLED=false`, the backend still emits mention events but skips assistant suggestions.
+
+If `LIVE_TRANSLATION_ENABLED=true`, the backend sends `translated_segments` messages for newly confirmed segments.

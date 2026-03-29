@@ -106,3 +106,28 @@ Mentions and resilience:
 
 - `LIVE_MENTION_CONTEXT_WINDOW_MS`
 - `LIVE_SESSION_GRACE_PERIOD_MS`
+
+Live translation:
+
+- `LIVE_TRANSLATION_ENABLED`
+- `LIVE_TRANSLATION_SOURCE_LANG`
+- `LIVE_TRANSLATION_TARGET_LANG`
+- `LIVE_TRANSLATION_MAX_BATCH`
+
+## LLM Provider Abstraction
+
+By default all LLM features use `OLLAMA_BASE_URL` / `OLLAMA_MODEL`. Each service can be overridden independently.
+
+Service keys: `SUMMARY`, `LIVE_ASSISTANT`, `LIVE_TRANSLATION`, `TRANSLATION`, `DIARIZATION`
+
+Per-service env vars:
+
+- `LLM_{SERVICE}_PROVIDER`: `ollama` (default) or `openai-compatible`
+- `LLM_{SERVICE}_MODEL`: model identifier override
+- `LLM_{SERVICE}_BASE_URL`: endpoint override
+- `LLM_{SERVICE}_API_KEY`: API key (for openai-compatible providers)
+
+Global fallback for openai-compatible:
+
+- `LLM_OPENAI_BASE_URL`
+- `LLM_OPENAI_API_KEY`

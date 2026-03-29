@@ -57,11 +57,44 @@ Stopping a live session:
 - Creates a normal queued batch job using the same pipeline as uploads.
 - Writes a `live_transcript.json` sidecar with confirmed segments and mention events.
 
+## Live Translation (Subtitle Layer)
+
+When `LIVE_TRANSLATION_ENABLED=true`, the backend translates newly confirmed segments into the configured target language (default: English → Spanish) using the configured LLM provider.
+
+- Translation is async and non-blocking — it does not delay transcript delivery.
+- Only confirmed segments are translated (provisional change too fast).
+- Translated text is sent as a separate `translated_segments` WebSocket message.
+- The original transcript is never modified — translation is a parallel subtitle layer.
+- Mentions, highlights, and AI assistance remain grounded in the original language.
+- The frontend shows translated subtitles in a collapsible panel below the transcript.
+
+Configuration:
+
+- `LIVE_TRANSLATION_ENABLED`: feature flag (default `false`)
+- `LIVE_TRANSLATION_SOURCE_LANG`: source language code (default `en`)
+- `LIVE_TRANSLATION_TARGET_LANG`: target language code (default `es`)
+- `LIVE_TRANSLATION_MAX_BATCH`: max segments per translation batch (default `4`)
+
+The translation LLM can be configured independently via `LLM_LIVE_TRANSLATION_*` env vars (see LLM Provider Abstraction below).
+
+## LLM Provider Abstraction
+
+All LLM calls (summary, live assistant, live translation, batch translation, diarization) go through a pluggable provider abstraction (`backend/src/services/llm/`).
+
+Supported providers:
+
+- **ollama** (default): native Ollama `/api/generate` endpoint
+- **openai-compatible**: OpenAI `/v1/chat/completions` protocol (works with Ollama's OpenAI-compatible endpoint, OpenAI, Groq, Together, OpenRouter, etc.)
+
+Each service can have its own provider/model override via `LLM_{SERVICE}_PROVIDER`, `LLM_{SERVICE}_MODEL`, `LLM_{SERVICE}_BASE_URL`, `LLM_{SERVICE}_API_KEY`. Falls back to global `OLLAMA_BASE_URL`/`OLLAMA_MODEL`.
+
 ## Current Limitations (Tracked)
 
 - No VAD (voice activity detection) to avoid running Whisper on silence.
 - Frontend does not currently auto-resume sessions on reconnect, even though the backend supports `resume_session`.
 - No native OS/browser notification channel for mentions.
+- Live translation does not translate provisional segments.
+- No automatic language detection gating for live translation (relies on config).
 
 Implementation checklist:
 
