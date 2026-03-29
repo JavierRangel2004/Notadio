@@ -1149,10 +1149,9 @@ a {
 }
 
 /* Touch target: 44×44px minimum */
-.job-card-delete {
+.job-card-delete, .job-card-reprocess {
   background: transparent;
   border: none;
-  color: var(--danger);
   cursor: pointer;
   padding: 0.5rem;                   /* was 4px */
   font-size: 1.25rem;                /* was 1.1rem, now 20px on grid */
@@ -1166,8 +1165,22 @@ a {
   justify-content: center;
 }
 
+.job-card-delete {
+  color: var(--danger);
+}
+
 .job-card-delete:hover {
   background: rgba(216, 107, 92, 0.15);
+}
+
+.job-card-reprocess {
+  color: var(--text-soft);
+  font-size: 1.1rem;
+}
+
+.job-card-reprocess:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--text-primary);
 }
 
 .job-card-date {
@@ -1493,9 +1506,9 @@ a {
 .live-transcript-panel {
   display: flex;
   flex-direction: column;
-  padding: 16px 20px;
-  min-height: 280px;
-  max-height: 420px;
+  padding: 24px 28px;
+  min-height: 380px;
+  max-height: 65vh;
 }
 
 .live-transcript-header {
@@ -1529,12 +1542,16 @@ a {
   padding: 32px 0;
 }
 
-.live-segment {
-  font-size: 0.88rem;
-  line-height: 1.6;
+.live-transcript-flow {
+  font-size: 1.1rem;
+  line-height: 1.85;
+  color: var(--text-primary);
   margin: 0;
-  padding: 3px 8px;
-  border-radius: 4px;
+  letter-spacing: 0.01em;
+}
+
+.live-segment-inline {
+  display: inline;
 }
 
 .live-segment--confirmed {
@@ -1543,13 +1560,18 @@ a {
 
 .live-segment--provisional {
   color: var(--text-muted);
-  font-style: italic;
+  animation: fadeIn 0.4s ease-out;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(2px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
 .live-segment--mention {
-  border-left: 3px solid var(--accent-primary);
-  padding-left: 10px;
-  background: rgba(158, 27, 50, 0.07);
+  background: rgba(158, 27, 50, 0.15);
+  border-radius: 2px;
+  padding: 0 4px;
 }
 
 .live-segment-time {

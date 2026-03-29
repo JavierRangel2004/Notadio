@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from "react"
 import { useLiveSession, type LiveSessionPhase } from "./useLiveSession.js"
 import type { SessionConfig, MentionEvent, LiveTranscriptSegment } from "./liveApi.js"
+import { AudioSettingsPanel, type AudioSettings } from "./AudioSettingsPanel.js"
 
 function formatTime(seconds: number): string {
   const h = Math.floor(seconds / 3600)
@@ -14,10 +15,10 @@ function formatTime(seconds: number): string {
 
 function intentLabel(intent: MentionEvent["intent"]): string {
   switch (intent) {
-    case "question": return "Question"
-    case "task_assignment": return "Task"
-    case "information_request": return "Info request"
-    case "greeting": return "Greeting"
+    case "question": return "They are asking you a question"
+    case "task_assignment": return "Task assigned"
+    case "information_request": return "They are asking you for this info"
+    case "greeting": return "Greeting detected"
     default: return "Mention"
   }
 }
@@ -32,6 +33,11 @@ export function LiveSessionPanel({ onJobCreated }: Props) {
   const [aliasInput, setAliasInput] = useState("")
   const [aliasList, setAliasList] = useState<string[]>([])
   const [enableAssistant, setEnableAssistant] = useState(false)
+  
+  const [audioSettings, setAudioSettings] = useState<AudioSettings>({
+    mode: "mic",
+    micDeviceId: ""
+  })
 
   const transcriptEndRef = useRef<HTMLDivElement>(null)
 
@@ -64,7 +70,7 @@ export function LiveSessionPanel({ onJobCreated }: Props) {
       enableAssistant,
       assistantContextWindowSegments: 10
     }
-    await session.start(cfg)
+    await session.start(cfg, audioSettings.mode, audioSettings.micDeviceId)
   }
 
   // --- Idle / Config state ---
@@ -131,6 +137,11 @@ export function LiveSessionPanel({ onJobCreated }: Props) {
             </label>
             <p className="live-hint">Requires Ollama. Off by default.</p>
           </div>
+          
+          <AudioSettingsPanel 
+             settings={audioSettings} 
+             onChange={setAudioSettings} 
+          />
         </div>
 
         <button className="btn-primary live-start-btn" onClick={() => void handleStart()}>
@@ -212,14 +223,21 @@ export function LiveSessionPanel({ onJobCreated }: Props) {
                 Listening… transcript will appear as speech is detected.
               </p>
             )}
-            {session.confirmedSegments.map((seg) => (
-              <ConfirmedSegmentRow key={seg.id} seg={seg} mentions={session.mentions} />
-            ))}
-            {session.provisionalSegments.map((seg) => (
-              <p key={seg.id} className="live-segment live-segment--provisional">
-                {seg.text}
-              </p>
-            ))}
+            {(session.confirmedSegments.length > 0 || session.provisionalSegments.length > 0) && (
+              <div className="live-transcript-flow">
+                {session.confirmedSegments.map((seg, i) => (
+                  <InlineConfirmedSegment key={seg.id} seg={seg} mentions={session.mentions} index={i} />
+                ))}
+                {session.provisionalSegments.map((seg, i) => {
+                  const needsSpace = (i > 0 || session.confirmedSegments.length > 0) && !",.!?".includes(seg.text[0] ?? "")
+                  return (
+                    <span key={seg.id} className="live-segment-inline live-segment--provisional">
+                      {needsSpace ? " " + seg.text : seg.text}
+                    </span>
+                  )
+                })}
+              </div>
+            )}
             <div ref={transcriptEndRef} />
           </div>
         </div>
@@ -243,21 +261,23 @@ export function LiveSessionPanel({ onJobCreated }: Props) {
   )
 }
 
-function ConfirmedSegmentRow({
+function InlineConfirmedSegment({
   seg,
-  mentions
+  mentions,
+  index
 }: {
   seg: LiveTranscriptSegment
   mentions: MentionEvent[]
+  index: number
 }) {
   const isMentionTrigger = mentions.some((m) => m.segmentIds.includes(seg.id))
+  const needsSpace = index > 0 && !",.!?".includes(seg.text[0] ?? "")
   return (
-    <p
-      className={`live-segment live-segment--confirmed${isMentionTrigger ? " live-segment--mention" : ""}`}
+    <span
+      className={`live-segment-inline live-segment--confirmed${isMentionTrigger ? " live-segment--mention" : ""}`}
     >
-      <span className="live-segment-time">{formatTime(Math.floor(seg.start))}</span>
-      {seg.text}
-    </p>
+      {needsSpace ? " " + seg.text : seg.text}
+    </span>
   )
 }
 

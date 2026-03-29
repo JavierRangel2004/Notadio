@@ -1,5 +1,6 @@
 import { FormEvent, useCallback, useEffect, useRef, useState, forwardRef, useImperativeHandle } from "react";
 import { LiveSessionPanel } from "./LiveSessionPanel.js";
+import { AudioSettingsPanel, type AudioSettings } from "./AudioSettingsPanel.js";
 import {
   getExportUrl,
   getJob,
@@ -16,6 +17,7 @@ import {
   JobProgress,
   MeetingSummary,
   ReadinessReport,
+  reprocessJob,
   retryDiarize,
   retrySummarize,
   retryTranslate,
@@ -506,6 +508,17 @@ function WorkspaceView({ onSelectJob }: { onSelectJob: (job: JobPayload) => void
     }
   }
 
+  async function handleReprocess(id: string, e: React.MouseEvent) {
+    e.stopPropagation();
+    if (!confirm("Reprocess this job from the beginning?")) return;
+    try {
+      await reprocessJob(id);
+      loadJobs();
+    } catch (err) {
+      alert("Failed to reprocess job");
+    }
+  }
+
   if (loading) return <div style={{ padding: '2rem', color: 'var(--text-muted)' }}>Loading workspace...</div>;
   if (jobs.length === 0) return <div style={{ padding: '2rem', color: 'var(--text-muted)' }}>No jobs found in your workspace.</div>;
 
@@ -519,8 +532,13 @@ function WorkspaceView({ onSelectJob }: { onSelectJob: (job: JobPayload) => void
         {jobs.map(job => (
           <div key={job.id} onClick={() => onSelectJob(job)} className="job-card">
             <div className="job-card-header">
-              <span className="job-card-name">{job.sourceMedia?.originalName || 'Untitled Session'}</span>
-              <button onClick={(e) => handleDelete(job.id, e)} className="job-card-delete" aria-label="Delete job">×</button>
+              <span className="job-card-name" style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{job.sourceMedia?.originalName || 'Untitled Session'}</span>
+              <div style={{ display: 'flex', gap: '8px', flexShrink: 0 }}>
+                {(job.status === 'queued' || job.status === 'failed' || job.status === 'error' as any) && (
+                  <button onClick={(e) => handleReprocess(job.id, e)} className="job-card-reprocess" aria-label="Reprocess job" title="Reprocess">↻</button>
+                )}
+                <button onClick={(e) => handleDelete(job.id, e)} className="job-card-delete" aria-label="Delete job" title="Delete">×</button>
+              </div>
             </div>
             <div className="job-card-date">
               {new Date(job.createdAt).toLocaleString()}
@@ -642,27 +660,75 @@ function RecorderPanel({ onRecordingComplete }: { onRecordingComplete: (file: Fi
   const [paused, setPaused] = useState(false);
   const [elapsed, setElapsed] = useState(0);
   const [permissionDenied, setPermissionDenied] = useState(false);
+  const [audioSettings, setAudioSettings] = useState<AudioSettings>({ mode: "mic", micDeviceId: "" });
+  
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
   const timerRef = useRef<number>(0);
+  const audioContextRef = useRef<AudioContext | null>(null);
+  const sourcesRef = useRef<MediaStreamAudioSourceNode[]>([]);
+  const compositeStreamRef = useRef<MediaStream | null>(null);
 
   useEffect(() => {
     return () => {
       window.clearInterval(timerRef.current);
       if (mediaRecorderRef.current && mediaRecorderRef.current.state !== "inactive") {
         mediaRecorderRef.current.stop();
-        mediaRecorderRef.current.stream.getTracks().forEach((t) => t.stop());
       }
+      compositeStreamRef.current?.getTracks().forEach((t) => t.stop());
+      sourcesRef.current.forEach((s) => s.disconnect());
+      audioContextRef.current?.close().catch(() => {});
     };
   }, []);
 
   async function startRecording() {
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const mode = audioSettings.mode;
+      const customStreams: MediaStream[] = [];
+
+      if (mode === "mic" || mode === "both") {
+        const micStream = await navigator.mediaDevices.getUserMedia({
+          audio: audioSettings.micDeviceId ? { deviceId: { exact: audioSettings.micDeviceId } } : true,
+          video: false
+        });
+        customStreams.push(micStream);
+      }
+
+      if (mode === "system" || mode === "both") {
+        const sysStream = await navigator.mediaDevices.getDisplayMedia({
+          video: true,
+          audio: true
+        });
+        if (sysStream.getAudioTracks().length === 0) {
+          throw new Error("No system audio provided.");
+        }
+        customStreams.push(sysStream);
+      }
+
+      if (customStreams.length === 0) {
+        throw new Error("No streams acquired");
+      }
+
+      let recordingStream: MediaStream;
+      if (customStreams.length === 1) {
+        recordingStream = new MediaStream(customStreams[0].getTracks());
+      } else {
+        const ctx = new AudioContext();
+        audioContextRef.current = ctx;
+        const dest = ctx.createMediaStreamDestination();
+        sourcesRef.current = [];
+        for (const s of customStreams) {
+          const src = ctx.createMediaStreamSource(s);
+          src.connect(dest);
+          sourcesRef.current.push(src);
+        }
+        recordingStream = dest.stream;
+      }
+      compositeStreamRef.current = new MediaStream(customStreams.flatMap(s => s.getTracks()));
       const mimeType = MediaRecorder.isTypeSupported("audio/webm;codecs=opus")
         ? "audio/webm;codecs=opus"
         : "audio/webm";
-      const recorder = new MediaRecorder(stream, { mimeType });
+      const recorder = new MediaRecorder(recordingStream, { mimeType });
       chunksRef.current = [];
 
       recorder.ondataavailable = (e) => {
@@ -673,7 +739,10 @@ function RecorderPanel({ onRecordingComplete }: { onRecordingComplete: (file: Fi
         const blob = new Blob(chunksRef.current, { type: recorder.mimeType });
         const ext = recorder.mimeType.includes("webm") ? "webm" : "ogg";
         const file = new File([blob], `recording-${Date.now()}.${ext}`, { type: recorder.mimeType });
-        stream.getTracks().forEach((t) => t.stop());
+        
+        compositeStreamRef.current?.getTracks().forEach((t) => t.stop());
+        sourcesRef.current.forEach((s) => s.disconnect());
+        audioContextRef.current?.close().catch(() => {});
         onRecordingComplete(file);
       };
 
@@ -714,8 +783,11 @@ function RecorderPanel({ onRecordingComplete }: { onRecordingComplete: (file: Fi
       mediaRecorderRef.current.ondataavailable = null;
       mediaRecorderRef.current.onstop = null;
       mediaRecorderRef.current.stop();
-      mediaRecorderRef.current.stream.getTracks().forEach((t) => t.stop());
     }
+    compositeStreamRef.current?.getTracks().forEach((t) => t.stop());
+    sourcesRef.current.forEach((s) => s.disconnect());
+    audioContextRef.current?.close().catch(() => {});
+    
     window.clearInterval(timerRef.current);
     chunksRef.current = [];
     setRecording(false);
@@ -737,9 +809,12 @@ function RecorderPanel({ onRecordingComplete }: { onRecordingComplete: (file: Fi
 
   if (!recording) {
     return (
-      <button className="btn-primary" onClick={startRecording} style={{ width: "100%" }}>
-        Start Recording
-      </button>
+      <div style={{ display: "flex", flexDirection: "column", gap: "1.5rem" }}>
+        <AudioSettingsPanel settings={audioSettings} onChange={setAudioSettings} />
+        <button className="btn-primary" onClick={startRecording} style={{ width: "100%" }}>
+          Start Recording
+        </button>
+      </div>
     );
   }
 
@@ -1107,6 +1182,17 @@ export function App() {
     setAutoSwitchToEnglish(false);
   }
 
+  async function handleReprocessCurrentJob() {
+    if (!job) return;
+    if (!confirm("Reprocess this job from the beginning?")) return;
+    try {
+      const updatedJob = await reprocessJob(job.id);
+      setJob(updatedJob);
+    } catch (err) {
+      alert("Failed to reprocess job");
+    }
+  }
+
   const visibleTranscript: TranscriptVariant | undefined =
     selectedVariant === "english" && transcript?.english ? transcript.english : transcript?.source;
   const progress: JobProgress = job?.progress ?? {
@@ -1348,8 +1434,15 @@ export function App() {
             <div className="processing-dash">
               <div className="glass-panel highlight">
                 <div className="status-header">
-                  <h3>{job.sourceMedia?.originalName || 'Processing File...'}</h3>
-                  <span style={{ color: 'var(--accent-primary)', fontWeight: 600 }}>{job.stage}</span>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                    <h3 style={{ margin: 0 }}>{job.sourceMedia?.originalName || 'Processing File...'}</h3>
+                    <span style={{ color: 'var(--accent-primary)', fontWeight: 600 }}>{job.stage}</span>
+                  </div>
+                  {job.status === "queued" && (
+                    <button onClick={handleReprocessCurrentJob} className="btn-secondary" style={{ padding: '0.4rem 0.8rem', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <span style={{ fontSize: '1.2em' }}>↻</span> Reprocess
+                    </button>
+                  )}
                 </div>
 
                 <div className="progress-track">
@@ -1482,7 +1575,10 @@ export function App() {
               <div className="glass-panel" style={{ borderLeft: '4px solid var(--danger)' }}>
                 <h3 style={{ color: 'var(--danger)', marginBottom: '1rem' }}>Processing Failed</h3>
                 <p style={{ marginBottom: '1rem' }}>{job.error}</p>
-                <button className="btn-secondary" onClick={resetToUpload}>Try Again</button>
+                <div style={{ display: 'flex', gap: '1rem' }}>
+                  <button className="btn-primary" onClick={handleReprocessCurrentJob}>Retry Processing</button>
+                  <button className="btn-secondary" onClick={resetToUpload}>New Session</button>
+                </div>
               </div>
               <LogsPanel logs={logs} title="Logs" defaultExpanded={true} />
             </div>
