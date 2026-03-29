@@ -1,4 +1,4 @@
-import { config } from "../config.js"
+import { resolveServiceLlm } from "./llm/index.js"
 import type { LiveTranscriptSegment, MentionEvent, MentionEventIntent } from "../types.js"
 
 /**
@@ -33,7 +33,7 @@ Response:`
 }
 
 /**
- * Calls Ollama to generate a grounded assistant response.
+ * Calls the configured LLM provider to generate a grounded assistant response.
  * Returns the response text, or throws on failure.
  */
 export async function requestAssistantResponse(
@@ -42,32 +42,16 @@ export async function requestAssistantResponse(
   signal?: AbortSignal
 ): Promise<string> {
   const prompt = buildAssistantPrompt(mention, contextSegments)
+  const { provider, model } = resolveServiceLlm("LIVE_ASSISTANT")
 
-  const response = await fetch(`${config.ollamaBaseUrl}/api/generate`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      model: config.ollamaModel,
-      prompt,
-      stream: false,
-      options: {
-        temperature: 0.2,
-        num_predict: 120,
-        num_ctx: 4096
-      }
-    }),
+  const result = await provider.generate({
+    model,
+    prompt,
+    temperature: 0.2,
+    maxTokens: 120,
+    contextSize: 4096,
     signal
   })
 
-  if (!response.ok) {
-    throw new Error(`Ollama request failed: ${response.status} ${response.statusText}`)
-  }
-
-  const data = (await response.json()) as { response?: string }
-  const text = data.response?.trim()
-  if (!text) {
-    throw new Error("Ollama returned empty response")
-  }
-
-  return text
+  return result.text
 }

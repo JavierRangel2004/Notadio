@@ -1,4 +1,5 @@
 import { config } from "../config.js";
+import { resolveServiceLlm } from "./llm/index.js";
 import {
   MeetingActionItem,
   SummaryContentType,
@@ -1345,46 +1346,19 @@ ${serializedPartials}`;
 }
 
 async function requestStructuredSummary(prompt: string): Promise<Record<string, unknown>> {
-  const options: Record<string, number> = {
-    temperature: 0.15
-  };
+  const { provider, model } = resolveServiceLlm("SUMMARY");
 
-  if (config.summaryOllamaNumPredict !== undefined) {
-    options.num_predict = config.summaryOllamaNumPredict;
-  }
-
-  if (config.summaryOllamaNumCtx !== undefined) {
-    options.num_ctx = config.summaryOllamaNumCtx;
-  }
-
-  const payload: Record<string, unknown> = {
-    model: config.ollamaModel,
+  const result = await provider.generate({
+    model,
     prompt,
-    format: "json",
-    stream: false,
-    options
-  };
-
-  if (config.summaryOllamaKeepAlive) {
-    payload.keep_alive = config.summaryOllamaKeepAlive;
-  }
-
-  const response = await fetch(`${config.ollamaBaseUrl}/api/generate`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(payload)
+    temperature: 0.15,
+    maxTokens: config.summaryOllamaNumPredict,
+    contextSize: config.summaryOllamaNumCtx,
+    json: true,
+    keepAlive: config.summaryOllamaKeepAlive
   });
 
-  if (!response.ok) {
-    throw new Error(`Ollama HTTP ${response.status}: ${await response.text()}`);
-  }
-
-  const data = await response.json();
-  if (typeof data?.response !== "string" || !data.response.trim()) {
-    throw new Error("Ollama returned an empty response body.");
-  }
-
-  return parseJsonFromLlmResponse(data.response);
+  return parseJsonFromLlmResponse(result.text);
 }
 
 async function requestStructuredSummaryTimed(prompt: string): Promise<SummaryRequestResult> {
