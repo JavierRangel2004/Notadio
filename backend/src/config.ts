@@ -168,12 +168,18 @@ export const config = {
   maxConcurrentJobs: Number(process.env.MAX_CONCURRENT_JOBS ?? "1"),
   liveTranscriptionEnabled: readBoolean(process.env.LIVE_TRANSCRIPTION_ENABLED, true),
   liveAssistantEnabled: readBoolean(process.env.LIVE_ASSISTANT_ENABLED, false),
-  liveWindowMs: readNumber(process.env.LIVE_WINDOW_MS, 20000, { min: 10000, max: 60000 }),
-  liveIntervalMs: readNumber(process.env.LIVE_INTERVAL_MS, 3500, { min: 1000, max: 10000 }),
-  liveOverlapMs: readNumber(process.env.LIVE_OVERLAP_MS, 7000, { min: 1000, max: 15000 }),
+  liveWindowMs: readNumber(process.env.LIVE_WINDOW_MS, 15000, { min: 5000, max: 60000 }),
+  liveIntervalMs: readNumber(process.env.LIVE_INTERVAL_MS, 1500, { min: 500, max: 10000 }),
+  liveOverlapMs: readNumber(process.env.LIVE_OVERLAP_MS, 3000, { min: 1000, max: 15000 }),
   liveWhisperThreads: readNumber(process.env.LIVE_WHISPER_THREADS, 2, { min: 1, max: 8 }),
   liveMaxConcurrentWindows: readNumber(process.env.LIVE_MAX_CONCURRENT_WINDOWS, 2, { min: 1, max: 4 }),
   liveMentionContextWindowMs: readNumber(process.env.LIVE_MENTION_CONTEXT_WINDOW_MS, 5000, { min: 1000, max: 15000 }),
   liveSessionGracePeriodMs: readNumber(process.env.LIVE_SESSION_GRACE_PERIOD_MS, 30000, { min: 5000, max: 120000 }),
-  liveMinWindowMs: readNumber(process.env.LIVE_MIN_WINDOW_MS, 5000, { min: 2000, max: 30000 }),
+  liveMinWindowMs: readNumber(process.env.LIVE_MIN_WINDOW_MS, 2000, { min: 1000, max: 30000 }),
+
+  // --- Live Translation ---
+  liveTranslationEnabled: readBoolean(process.env.LIVE_TRANSLATION_ENABLED, false),
+  liveTranslationTargetLang: process.env.LIVE_TRANSLATION_TARGET_LANG?.trim() || "es",
+  liveTranslationSourceLang: process.env.LIVE_TRANSLATION_SOURCE_LANG?.trim() || "en",
+  liveTranslationMaxBatch: readNumber(process.env.LIVE_TRANSLATION_MAX_BATCH, 4, { min: 1, max: 10 }),
 };

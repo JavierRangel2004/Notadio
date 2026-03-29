@@ -228,6 +228,13 @@ export type LiveTranscriptSegment = {
   windowSeq: number
 }
 
+export type TranslatedSegment = {
+  /** Matches the id of the original LiveTranscriptSegment. */
+  segmentId: string
+  text: string
+  targetLang: string
+}
+
 export type MentionEventIntent = "question" | "task_assignment" | "information_request" | "greeting" | "unknown"
 
 export type MentionEvent = {
