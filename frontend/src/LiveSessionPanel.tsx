@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react"
 import { useLiveSession, type LiveSessionPhase } from "./useLiveSession.js"
-import type { SessionConfig, MentionEvent, LiveTranscriptSegment } from "./liveApi.js"
+import type { SessionConfig, MentionEvent, LiveTranscriptSegment, TranslatedSegment } from "./liveApi.js"
 import { AudioSettingsPanel, type AudioSettings } from "./AudioSettingsPanel.js"
 
 function formatTime(seconds: number): string {
@@ -34,6 +34,8 @@ export function LiveSessionPanel({ onJobCreated }: Props) {
   const [aliasList, setAliasList] = useState<string[]>([])
   const [enableAssistant, setEnableAssistant] = useState(false)
   
+  const [showSubtitles, setShowSubtitles] = useState(false)
+
   const [audioSettings, setAudioSettings] = useState<AudioSettings>({
     mode: "mic",
     micDeviceId: ""
@@ -68,7 +70,7 @@ export function LiveSessionPanel({ onJobCreated }: Props) {
     const cfg: SessionConfig = {
       aliases: aliasList,
       enableAssistant,
-      assistantContextWindowSegments: 10
+      assistantContextWindowSegments: 30
     }
     await session.start(cfg, audioSettings.mode, audioSettings.micDeviceId)
   }
@@ -136,6 +138,20 @@ export function LiveSessionPanel({ onJobCreated }: Props) {
               <span>Enable AI response suggestions</span>
             </label>
             <p className="live-hint">Requires Ollama. Off by default.</p>
+          </div>
+
+          <div className="live-assistant-toggle">
+            <label className="live-toggle-label">
+              <input
+                type="checkbox"
+                checked={showSubtitles}
+                onChange={(e) => setShowSubtitles(e.target.checked)}
+              />
+              <span>Show translated subtitles</span>
+            </label>
+            <p className="live-hint">
+              Live translation to configured target language. Requires LIVE_TRANSLATION_ENABLED on the server.
+            </p>
           </div>
           
           <AudioSettingsPanel 
@@ -242,6 +258,29 @@ export function LiveSessionPanel({ onJobCreated }: Props) {
           </div>
         </div>
 
+        {/* Translated Subtitles */}
+        {showSubtitles && session.translatedSegments.size > 0 && (
+          <div className="live-subtitle-panel glass-panel">
+            <div className="live-subtitle-header">
+              <span className="section-label">Translated Subtitles</span>
+            </div>
+            <div className="live-subtitle-scroll">
+              <div className="live-subtitle-flow">
+                {session.confirmedSegments.map((seg, i) => {
+                  const translated = session.translatedSegments.get(seg.id)
+                  if (!translated) return null
+                  const needsSpace = i > 0 && !",.!?".includes(translated.text[0] ?? "")
+                  return (
+                    <span key={seg.id} className="live-segment-inline live-segment--translated">
+                      {needsSpace ? " " + translated.text : translated.text}
+                    </span>
+                  )
+                })}
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Mentions Panel */}
         {session.mentions.length > 0 && (
           <div className="live-mentions-panel">
@@ -251,7 +290,17 @@ export function LiveSessionPanel({ onJobCreated }: Props) {
             </div>
             <div className="live-mentions-list">
               {session.mentions.map((mention) => (
-                <MentionCard key={mention.id} mention={mention} />
+                <MentionCard 
+                  key={mention.id} 
+                  mention={mention} 
+                  onAskAi={session.askAi} 
+                  onCopyPrompt={(m) => {
+                    const ctx = session.confirmedSegments.filter(s => s.start <= m.detectedAt + 10).slice(-30);
+                    const text = ctx.map(s => `[${s.start.toFixed(1)}s] ${s.text.trim()}`).join("\n");
+                    const prompt = `You are monitoring a live meeting. Someone just addressed "${m.mentionedAlias}".\n\nRecent conversation context:\n${text}\n\nThe mention that triggered this: "${m.triggerText}"\nDetected intent: ${m.intent}\n\nResponse:`;
+                    navigator.clipboard.writeText(prompt).catch(() => {});
+                  }}
+                />
               ))}
             </div>
           </div>
@@ -281,7 +330,16 @@ function InlineConfirmedSegment({
   )
 }
 
-function MentionCard({ mention }: { mention: MentionEvent }) {
+function MentionCard({ 
+  mention, 
+  onAskAi,
+  onCopyPrompt
+}: { 
+  mention: MentionEvent; 
+  onAskAi: (id: string) => void;
+  onCopyPrompt: (mention: MentionEvent) => void;
+}) {
+  const showAskButton = mention.assistantStatus === "pending" || mention.assistantStatus === "skipped"
   return (
     <div className="live-mention-card glass-panel">
       <div className="live-mention-card-header">
@@ -290,21 +348,31 @@ function MentionCard({ mention }: { mention: MentionEvent }) {
         <span className="live-mention-intent">{intentLabel(mention.intent)}</span>
       </div>
       <p className="live-mention-text">{mention.triggerText}</p>
-      {mention.assistantStatus === "generating" && (
-        <p className="live-mention-assistant live-mention-assistant--generating">
-          Generating response…
-        </p>
-      )}
-      {mention.assistantStatus === "ready" && mention.assistantResponse && (
-        <p className="live-mention-assistant live-mention-assistant--ready">
-          {mention.assistantResponse}
-        </p>
-      )}
-      {mention.assistantStatus === "failed" && (
-        <p className="live-mention-assistant live-mention-assistant--failed">
-          Response unavailable
-        </p>
-      )}
+      <div className="live-mention-actions">
+        <button className="btn-mention-ask" onClick={() => onCopyPrompt(mention)}>
+          Copy Prompt
+        </button>
+        {showAskButton && (
+          <button className="btn-mention-ask" onClick={() => onAskAi(mention.id)}>
+            Ask Ollama AI
+          </button>
+        )}
+        {mention.assistantStatus === "generating" && (
+          <p className="live-mention-assistant live-mention-assistant--generating">
+            Generating response…
+          </p>
+        )}
+        {mention.assistantStatus === "ready" && mention.assistantResponse && (
+          <p className="live-mention-assistant live-mention-assistant--ready">
+            {mention.assistantResponse}
+          </p>
+        )}
+        {mention.assistantStatus === "failed" && (
+          <button className="btn-mention-ask" onClick={() => onAskAi(mention.id)}>
+            Retry AI
+          </button>
+        )}
+      </div>
     </div>
   )
 }

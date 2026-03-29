@@ -1284,29 +1284,31 @@ export function App() {
           )}
 
           {view === "upload" && !job && (
-            <div className="hero-upload">
-              <section className="hero-copy fade-in-section" ref={heroCopyRef}>
-                <span className="hero-badge">Private transcription atelier</span>
-                <h1>Turn dense recordings into structured, local-first intelligence.</h1>
-                <p className="hero-subtitle">
-                  Notadio is built for high-value audio: meetings, interviews, strategy calls, and voice notes that need premium clarity, fast exports, and zero cloud transcription dependency.
-                </p>
+            <div className={`hero-upload ${sourceMode === "live" ? "hero-upload--live" : ""}`}>
+              {sourceMode !== "live" && (
+                <section className="hero-copy fade-in-section" ref={heroCopyRef}>
+                  <span className="hero-badge">Private transcription atelier</span>
+                  <h1>Turn dense recordings into structured, local-first intelligence.</h1>
+                  <p className="hero-subtitle">
+                    Notadio is built for high-value audio: meetings, interviews, strategy calls, and voice notes that need premium clarity, fast exports, and zero cloud transcription dependency.
+                  </p>
 
-                <div className="hero-proof-list">
-                  {HERO_PROOF_ITEMS.map((item) => (
-                    <div key={item} className="hero-proof-item">{item}</div>
-                  ))}
-                </div>
+                  <div className="hero-proof-list">
+                    {HERO_PROOF_ITEMS.map((item) => (
+                      <div key={item} className="hero-proof-item">{item}</div>
+                    ))}
+                  </div>
 
-                <div className="hero-signal-grid fade-in-section delay-2" ref={signalGridRef}>
-                  {HERO_SIGNAL_ITEMS.map((item) => (
-                    <div key={item.label} className="hero-signal-card">
-                      <span>{item.label}</span>
-                      <strong>{item.value}</strong>
-                    </div>
-                  ))}
-                </div>
-              </section>
+                  <div className="hero-signal-grid fade-in-section delay-2" ref={signalGridRef}>
+                    {HERO_SIGNAL_ITEMS.map((item) => (
+                      <div key={item.label} className="hero-signal-card">
+                        <span>{item.label}</span>
+                        <strong>{item.value}</strong>
+                      </div>
+                    ))}
+                  </div>
+                </section>
+              )}
 
               <section className="upload-studio fade-in-section delay-1" ref={uploadStudioRef}>
                 <div className="upload-studio-shell">

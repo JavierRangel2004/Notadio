@@ -3,11 +3,13 @@ import {
   connectWebSocket,
   sendStartSession,
   sendStopSession,
+  sendRequestAssistant,
   startAudioCapture,
   type SessionConfig,
   type WsServerMessage,
   type LiveTranscriptSegment,
   type MentionEvent,
+  type TranslatedSegment,
   type AudioCaptureHandles,
   type AudioSourceMode
 } from "./liveApi.js"
@@ -27,12 +29,15 @@ export type UseLiveSessionReturn = {
   confirmedSegments: LiveTranscriptSegment[]
   provisionalSegments: LiveTranscriptSegment[]
   mentions: MentionEvent[]
+  /** Map of segmentId → translated text for live subtitles. */
+  translatedSegments: Map<string, TranslatedSegment>
   elapsedSeconds: number
   errorMessage: string | null
   totalFrames: number
   start: (cfg: SessionConfig, mode?: AudioSourceMode, micDeviceId?: string) => Promise<void>
   stop: () => void
   reset: () => void
+  askAi: (mentionId: string) => void
 }
 
 export function useLiveSession(): UseLiveSessionReturn {
@@ -45,6 +50,7 @@ export function useLiveSession(): UseLiveSessionReturn {
   const [elapsedSeconds, setElapsedSeconds] = useState(0)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
   const [totalFrames, setTotalFrames] = useState(0)
+  const [translatedSegments, setTranslatedSegments] = useState<Map<string, TranslatedSegment>>(new Map())
 
   const wsRef = useRef<WebSocket | null>(null)
   const captureRef = useRef<AudioCaptureHandles | null>(null)
@@ -96,6 +102,16 @@ export function useLiveSession(): UseLiveSessionReturn {
         setProvisionalSegments(msg.provisional)
         break
 
+      case "translated_segments":
+        setTranslatedSegments((prev) => {
+          const next = new Map(prev)
+          for (const seg of msg.segments) {
+            next.set(seg.segmentId, seg)
+          }
+          return next
+        })
+        break
+
       case "mention_detected":
         setMentions((prev) => [...prev, msg.mention])
         break
@@ -134,6 +150,7 @@ export function useLiveSession(): UseLiveSessionReturn {
     setConfirmedSegments([])
     setProvisionalSegments([])
     setMentions([])
+    setTranslatedSegments(new Map())
     setElapsedSeconds(0)
     setTotalFrames(0)
     setSessionId(null)
@@ -190,6 +207,12 @@ export function useLiveSession(): UseLiveSessionReturn {
     }
   }, [stopElapsedTimer])
 
+  const askAi = useCallback((mentionId: string): void => {
+    if (wsRef.current?.readyState === WebSocket.OPEN) {
+      sendRequestAssistant(wsRef.current, mentionId)
+    }
+  }, [])
+
   const reset = useCallback((): void => {
     captureRef.current?.stop()
     captureRef.current = null
@@ -202,6 +225,7 @@ export function useLiveSession(): UseLiveSessionReturn {
     setConfirmedSegments([])
     setProvisionalSegments([])
     setMentions([])
+    setTranslatedSegments(new Map())
     setElapsedSeconds(0)
     setErrorMessage(null)
     setTotalFrames(0)
@@ -223,11 +247,13 @@ export function useLiveSession(): UseLiveSessionReturn {
     confirmedSegments,
     provisionalSegments,
     mentions,
+    translatedSegments,
     elapsedSeconds,
     errorMessage,
     totalFrames,
     start,
     stop,
-    reset
+    reset,
+    askAi
   }
 }

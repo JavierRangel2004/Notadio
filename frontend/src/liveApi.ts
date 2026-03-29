@@ -40,10 +40,17 @@ export type SessionConfig = {
   assistantContextWindowSegments: number
 }
 
+export type TranslatedSegment = {
+  segmentId: string
+  text: string
+  targetLang: string
+}
+
 export type WsServerMessage =
   | { type: "session_created"; sessionId: string }
   | { type: "session_resumed"; sessionId: string; confirmed: LiveTranscriptSegment[]; mentions: MentionEvent[] }
   | { type: "transcript"; confirmed: LiveTranscriptSegment[]; provisional: LiveTranscriptSegment[] }
+  | { type: "translated_segments"; segments: TranslatedSegment[] }
   | { type: "mention_detected"; mention: MentionEvent }
   | { type: "mention_updated"; mentionId: string; assistantResponse?: string; assistantStatus: string }
   | { type: "session_stopped"; jobId: string }
@@ -83,6 +90,10 @@ export function sendResumeSession(ws: WebSocket, sessionId: string): void {
 
 export function sendStopSession(ws: WebSocket): void {
   ws.send(JSON.stringify({ type: "stop_session" }))
+}
+
+export function sendRequestAssistant(ws: WebSocket, mentionId: string): void {
+  ws.send(JSON.stringify({ type: "request_assistant", mentionId }))
 }
 
 export function sendPing(ws: WebSocket): void {
