@@ -12,10 +12,12 @@ The repo also includes a real-time “Live Session” mode that streams micropho
 
 NPM workspaces: `frontend/` (React + Vite) and `backend/` (Express + TypeScript).
 
-- **Backend services** (`backend/src/services/`): transcription (whisper-cli), media normalization (ffmpeg), export (TXT/SRT/JSON), diarization (Python), summaries (Ollama), device profiling
+- **Backend services** (`backend/src/services/`): transcription (whisper-cli), media normalization (ffmpeg), export (TXT/SRT/JSON), diarization (Python), summaries, live assistant, live translation, mention detection, device profiling
+- **LLM provider abstraction** (`backend/src/services/llm/`): pluggable providers (`ollama`, `openai-compatible`) consumed by summary, live assistant, and live translation services; per-service overrides via `LLM_<SERVICE>_*` env vars
+- **Live sessions** (`backend/src/sessions/`): `liveSessionOrchestrator.ts` (rolling-window transcription loop), `liveSessionStore.ts` (in-memory session state), `pcmRingBuffer.ts`; WebSocket protocol handler in `backend/src/routes/sessionWebSocket.ts`
 - **Backend store** (`backend/src/store/jobStore.ts`): in-memory job map with debounced disk persistence and SSE listener infrastructure
-- **Backend utils** (`backend/src/utils/`): filesystem helpers, child process spawning, concurrency-limited job queue
-- **Frontend** (`frontend/src/`): single-page app — `App.tsx` (main component), `api.ts` (fetch client + EventSource for SSE), `styles.css` (CSS variables design system)
+- **Backend utils** (`backend/src/utils/`): filesystem helpers, child process spawning, concurrency-limited job queue, disk space checks
+- **Frontend** (`frontend/src/`): single-page app — `App.tsx` (main component), `api.ts` (fetch client + EventSource for SSE), `liveApi.ts` + `useLiveSession.ts` + `LiveSessionPanel.tsx` (live session WebSocket client and UI), `styles.css` (CSS variables design system)
 
 ## Commands
 
@@ -28,9 +30,18 @@ npm run build                    # Production build both
 npm run build:backend            # Backend only
 npm run build:frontend           # Frontend only
 npm run doctor                   # Pre-flight checks (ffmpeg, whisper-cli, model, etc.)
-npm run setup:diarization        # Configure optional Python diarization env
-npm --workspace backend test     # Run backend tests (Node.js built-in test runner)
+npm run setup:diarization          # Configure optional Python diarization env (macOS/Linux)
+npm run setup:diarization:windows  # Same, for Windows (PowerShell)
+npm --workspace backend test     # Run all backend tests (Node.js built-in test runner)
 ```
+
+Run a single backend test file (from `backend/`):
+
+```bash
+node --import tsx --test src/services/summaryService.test.ts
+```
+
+There are no frontend tests and no lint command.
 
 ## Architecture
 
@@ -39,6 +50,10 @@ npm --workspace backend test     # Run backend tests (Node.js built-in test runn
 Upload → normalize (ffmpeg, 15%) → transcribe (whisper, 55%) → translate (whisper, 17%) → diarize (Python, 5%) → summarize (Ollama, 8%) → export artifacts (3%)
 
 Jobs flow through states: `queued` → `processing` → `completed`/`failed`. Real-time progress is streamed to the frontend via SSE (`/api/jobs/:jobId/events`).
+
+### Live Session Pipeline
+
+Browser mic audio (Int16 PCM, mono, 16 kHz via AudioWorklet) streams over WebSocket (`/api/sessions/ws`) into a per-session ring buffer. On an interval (`LIVE_INTERVAL_MS`), the orchestrator runs whisper on a rolling window (`LIVE_WINDOW_MS`): segments before the overlap cutoff (`windowEnd - LIVE_OVERLAP_MS`) are appended as confirmed; newer ones are provisional and replaced each window. Optional layers: alias mention detection, Ollama reply suggestions (`LIVE_ASSISTANT_ENABLED`), and subtitle translation of confirmed segments (`LIVE_TRANSLATION_ENABLED`, never alters the original transcript). Sessions are in-memory with a reconnect grace period; stopping a session archives the PCM, converts to WAV, and enqueues a normal batch job through the upload pipeline. Protocol spec: `docs/api/live-session-websocket.md`; architecture: `docs/architecture/live-session.md`.
 
 ### Key API Endpoints
 
@@ -76,7 +91,13 @@ Live sessions:
 
 ## Environment Setup
 
-Copy `.env.example` to `.env`. Required system dependencies: Node.js 20+, ffmpeg, whisper-cli, and a local Whisper model file. Optional: Python 3.9+ (diarization), Ollama (summaries).
+Copy `.env.example` to `.env`. Required system dependencies: Node.js 20+, ffmpeg, whisper-cli, and a local Whisper model file (`WHISPER_MODEL_PATH`). Optional: Python 3.9+ (diarization), Ollama (summaries, live assistant, live translation).
+
+LLM features default to the global `OLLAMA_BASE_URL`/`OLLAMA_MODEL` but can be overridden per service (SUMMARY, LIVE_ASSISTANT, LIVE_TRANSLATION, ...) with `LLM_<SERVICE>_PROVIDER` / `_BASE_URL` / `_API_KEY` / `_MODEL`, where provider is `ollama` or `openai-compatible`. Full config reference: `docs/backend/configuration.md`.
+
+## Documentation
+
+Primary docs live under `docs/` (start at `docs/README.md`): `docs/api/http-api.md`, `docs/api/live-session-websocket.md`, `docs/backend/configuration.md`, `docs/architecture/{overview,live-session,summarization}.md`. Update the relevant doc when changing API surfaces or configuration.
 
 ## Commit Style
 

@@ -3,8 +3,10 @@ import path from "node:path";
 import { spawnSync } from "node:child_process";
 import { config } from "../config.js";
 import { detectProcessingProfile } from "./deviceProfileService.js";
+import { findInstalledOllamaModel } from "./ollamaModelMatch.js";
 import { ReadinessCheck, ReadinessReport } from "../types.js";
 import { parseArgs } from "../utils/process.js";
+import { formatBytes, getDiskSpaceSnapshot } from "../utils/diskSpace.js";
 
 function isPathLike(value: string): boolean {
   return (
@@ -173,13 +175,15 @@ async function checkOptionalSummary(results: ReadinessCheck[]): Promise<void> {
 
     const payload = await response.json() as { models?: Array<{ name?: string }> };
     const installedModels = (payload.models ?? []).map((model) => model.name).filter(Boolean) as string[];
-    const hasConfiguredModel = installedModels.some((name) => name === config.ollamaModel || name.startsWith(`${config.ollamaModel}:`));
+    const matchedModel = findInstalledOllamaModel(config.ollamaModel, installedModels);
 
     results.push({
-      status: hasConfiguredModel ? "ok" : "warn",
+      status: matchedModel ? "ok" : "fail",
       label: "Ollama",
-      detail: hasConfiguredModel
-        ? `Reachable and model ${config.ollamaModel} is installed.`
+      detail: matchedModel
+        ? matchedModel === config.ollamaModel
+          ? `Reachable and model ${config.ollamaModel} is installed.`
+          : `Reachable. Configured model ${config.ollamaModel} is not installed, but compatible model ${matchedModel} is available. Update OLLAMA_MODEL=${matchedModel} to avoid runtime pull/failures.`
         : `Reachable, but model ${config.ollamaModel} is not installed. Run: ollama pull ${config.ollamaModel}`
     });
   } catch (error) {
@@ -211,6 +215,25 @@ export async function getReadinessReport(): Promise<ReadinessReport> {
     label: "Storage root",
     detail: config.storageRoot
   });
+
+  try {
+    const disk = await getDiskSpaceSnapshot(config.storageRoot);
+    const hasMinimumFree = disk.freeBytes >= config.minFreeDiskBytes;
+    results.push({
+      status: hasMinimumFree ? "ok" : "warn",
+      label: "Storage disk space",
+      detail: hasMinimumFree
+        ? `${formatBytes(disk.freeBytes)} free on ${disk.path} (minimum ${formatBytes(config.minFreeDiskBytes)}).`
+        : `Only ${formatBytes(disk.freeBytes)} free on ${disk.path}; recommended minimum is ${formatBytes(config.minFreeDiskBytes)} before large uploads.`
+    });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    results.push({
+      status: "warn",
+      label: "Storage disk space",
+      detail: `Could not inspect free disk space for ${config.storageRoot}: ${message}`
+    });
+  }
 
   const ffmpegCheck = runCommandCheck(config.ffmpegPath, ["-version"]);
   results.push({

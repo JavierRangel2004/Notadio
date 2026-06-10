@@ -233,11 +233,23 @@ export function buildWhisperArgs(
 function estimateWhisperStagePct(
   elapsedSeconds: number,
   durationSeconds: number | undefined,
-  mode: "transcribe" | "translate"
+  mode: "transcribe" | "translate",
+  processingProfile?: JobProcessingProfile
 ): number {
   const fallbackRuntime = mode === "translate" ? 45 : 75;
+  const runtimeClass = processingProfile?.runtimeClass;
+  let speedFactor = mode === "translate" ? 0.35 : 0.6;
+
+  if (runtimeClass === "windows-gpu") {
+    speedFactor = mode === "translate" ? 0.32 : 0.28;
+  } else if (runtimeClass === "macos-arm") {
+    speedFactor = mode === "translate" ? 0.18 : 0.15;
+  } else if (runtimeClass === "windows-cpu" || runtimeClass === "macos-intel") {
+    speedFactor = mode === "translate" ? 0.55 : 0.85;
+  }
+
   const expectedRuntime = durationSeconds
-    ? Math.max(20, durationSeconds * (mode === "translate" ? 0.35 : 0.6))
+    ? Math.max(20, durationSeconds * speedFactor)
     : fallbackRuntime;
   return Math.min(96, (elapsedSeconds / expectedRuntime) * 100);
 }
@@ -507,7 +519,12 @@ async function runWhisperTask(
     }
 
     const elapsedSeconds = (Date.now() - startedAt) / 1000;
-    const estimatedPct = estimateWhisperStagePct(elapsedSeconds, options.durationSeconds, mode);
+    const estimatedPct = estimateWhisperStagePct(
+      elapsedSeconds,
+      options.durationSeconds,
+      mode,
+      options.processingProfile
+    );
     if (estimatedPct > lastExplicitPct) {
       options.onProgress?.(estimatedPct);
     }

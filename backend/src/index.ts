@@ -29,14 +29,36 @@ import {
   TranscriptRecord
 } from "./types.js";
 import { JobQueue } from "./utils/jobQueue.js";
+import {
+  assertDiskSpaceForJob,
+  formatBytes,
+  InsufficientDiskSpaceError
+} from "./utils/diskSpace.js";
 import { attachWebSocketHandler } from "./routes/sessionWebSocket.js";
 import { liveSessionStore } from "./sessions/liveSessionStore.js";
 import { getSession } from "./sessions/liveSessionOrchestrator.js";
 
 const app = express();
-const upload = multer({ dest: path.join(config.storageRoot, ".tmp") });
+const upload = multer({
+  dest: path.join(config.storageRoot, ".tmp"),
+  limits: {
+    fileSize: config.uploadMaxBytes
+  }
+});
 const uploadSingle = upload.single("media") as unknown as RequestHandler;
 const jobQueue = new JobQueue(config.maxConcurrentJobs);
+
+async function ensureJobDiskSpace(sourceBytes: number): Promise<void> {
+  await assertDiskSpaceForJob(config.storageRoot, sourceBytes, {
+    multiplier: config.diskSpaceJobMultiplier,
+    fixedHeadroomBytes: config.diskSpaceFixedHeadroomBytes,
+    minFreeBytes: config.minFreeDiskBytes
+  });
+}
+
+function sendUploadError(res: express.Response, status: number, message: string): void {
+  res.status(status).json({ error: message });
+}
 
 type PipelineStageKey = "queued" | "normalize" | "transcribe" | "translate" | "diarize" | "summarize" | "export";
 
@@ -221,11 +243,15 @@ function estimateStageWeight(
 ): number {
   const duration = Math.max(60, durationSeconds ?? 0);
   const appleSilicon = processing.deviceSummary.toLowerCase().includes("apple silicon");
+  const windowsGpu = processing.runtimeClass === "windows-gpu";
 
   switch (stageKey) {
     case "normalize":
       return Math.max(12, Math.min(36, duration * 0.02));
     case "transcribe":
+      if (windowsGpu) {
+        return Math.max(20, duration * 0.32);
+      }
       if (appleSilicon) {
         return Math.max(20, duration * 0.035);
       }
@@ -237,6 +263,9 @@ function estimateStageWeight(
       }
       return Math.max(26, duration * 0.09);
     case "translate":
+      if (windowsGpu) {
+        return Math.max(18, duration * 0.36);
+      }
       if (appleSilicon) {
         return Math.max(18, duration * 0.03);
       }
@@ -677,6 +706,11 @@ async function processBaseJob(jobId: string): Promise<void> {
     if (!job?.sourceMedia) {
       throw new Error("Missing uploaded media file.");
     }
+
+    await ensureJobDiskSpace(job.sourceMedia.sizeBytes);
+    applyTelemetryUpdate(jobId, telemetry, {
+      logLine: `Disk space check passed for ${formatBytes(job.sourceMedia.sizeBytes)} source file.`
+    });
 
     const jobDir = jobStore.getJobDir(jobId);
     const workingDir = path.join(jobDir, "working");
@@ -1285,12 +1319,43 @@ app.post("/api/jobs/:jobId/reprocess", async (req, res) => {
   res.json(makeJobResponse(jobStore.get(jobId)!));
 });
 
-app.post("/api/uploads", uploadSingle, async (req, res) => {
+app.post("/api/uploads", (req, res, next) => {
+  uploadSingle(req, res, (error) => {
+    if (!error) {
+      next();
+      return;
+    }
+
+    if (error instanceof multer.MulterError && error.code === "LIMIT_FILE_SIZE") {
+      sendUploadError(
+        res,
+        413,
+        `Upload exceeds configured limit of ${formatBytes(config.uploadMaxBytes)}. Increase UPLOAD_MAX_BYTES if needed.`
+      );
+      return;
+    }
+
+    next(error);
+  });
+}, async (req, res) => {
   const uploadedFile = req.file;
 
   if (!uploadedFile) {
-    res.status(400).send("Expected a media file in the `media` field.");
+    sendUploadError(res, 400, "Expected a media file in the `media` field.");
     return;
+  }
+
+  try {
+    await ensureJobDiskSpace(uploadedFile.size);
+  } catch (error) {
+    await fs.unlink(uploadedFile.path).catch(() => undefined);
+
+    if (error instanceof InsufficientDiskSpaceError) {
+      sendUploadError(res, 507, error.message);
+      return;
+    }
+
+    throw error;
   }
 
   const originalName = normalizeUploadFilename(uploadedFile.originalname);

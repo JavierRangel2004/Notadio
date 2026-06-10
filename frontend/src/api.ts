@@ -229,7 +229,18 @@ export async function uploadMedia(
   });
 
   if (!response.ok) {
-    throw new Error(await response.text());
+    const raw = await response.text();
+    try {
+      const payload = JSON.parse(raw) as { error?: string };
+      if (payload.error) {
+        throw new Error(payload.error);
+      }
+    } catch (error) {
+      if (error instanceof Error && error.message !== raw) {
+        throw error;
+      }
+    }
+    throw new Error(raw || `Upload failed with status ${response.status}.`);
   }
 
   return response.json();

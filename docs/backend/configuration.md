@@ -86,6 +86,15 @@ Setup:
 - `MAX_CONCURRENT_JOBS`: limits concurrent batch jobs
 - `WHISPER_PARALLEL`: controls parallelism within Whisper + translation paths (see code)
 
+## Upload / Disk Safeguards
+
+- `UPLOAD_MAX_BYTES`: maximum upload size accepted by multer (default 12 GiB)
+- `MIN_FREE_DISK_BYTES`: minimum free space that must remain on `STORAGE_ROOT` after reserving job space (default 10 GiB)
+- `DISK_SPACE_JOB_MULTIPLIER`: multiplier applied to source file size when estimating per-job disk needs (default `2.2`)
+- `DISK_SPACE_FIXED_HEADROOM_BYTES`: fixed bytes added to each job estimate for WAV/JSON/artifacts (default 512 MiB)
+
+Uploads and job processing fail fast with HTTP `507` when the storage volume does not have enough free space.
+
 ## Live Sessions (Real-Time Transcription)
 
 Feature flags:
