@@ -191,6 +191,40 @@ function appendArgIfMissing(args: string[], names: string[], values: string[] = 
   return [...args, names[0]!, ...values];
 }
 
+/**
+ * Appends Whisper quality/accuracy flags (max-context, max-len, split-on-word,
+ * suppress-nst, no-speech threshold, VAD) unless already present in `args`.
+ *
+ * Shared by batch transcription and live windowing so both paths get the same
+ * hallucination/VAD guards. Threading is applied separately by each caller
+ * (batch uses the device profile, live uses LIVE_WHISPER_THREADS).
+ */
+export function applyWhisperQualityArgs(args: string[]): string[] {
+  let next = appendArgIfMissing(args, ["-mc", "--max-context"], [String(config.whisperMaxContext)]);
+  next = appendArgIfMissing(next, ["-ml", "--max-len"], [String(config.whisperMaxLen)]);
+
+  if (config.whisperSplitOnWord) {
+    next = appendArgIfMissing(next, ["-sow", "--split-on-word"]);
+  }
+
+  if (config.whisperSuppressNst) {
+    next = appendArgIfMissing(next, ["-sns", "--suppress-nst"]);
+  }
+
+  next = appendArgIfMissing(next, ["-nth", "--no-speech-thold"], [String(config.whisperNoSpeechThold)]);
+
+  if (config.whisperEnableVad && config.whisperVadModelPath) {
+    next = appendArgIfMissing(next, ["--vad"]);
+    next = appendArgIfMissing(next, ["-vm", "--vad-model"], [config.whisperVadModelPath]);
+    next = appendArgIfMissing(next, ["-vt", "--vad-threshold"], [String(config.whisperVadThreshold)]);
+    next = appendArgIfMissing(next, ["-vspd", "--vad-min-speech-duration-ms"], [String(config.whisperVadMinSpeechMs)]);
+    next = appendArgIfMissing(next, ["-vsd", "--vad-min-silence-duration-ms"], [String(config.whisperVadMinSilenceMs)]);
+    next = appendArgIfMissing(next, ["-vp", "--vad-speech-pad-ms"], [String(config.whisperVadSpeechPadMs)]);
+  }
+
+  return next;
+}
+
 export function buildWhisperArgs(
   inputPath: string,
   outputBase: string,
@@ -201,31 +235,12 @@ export function buildWhisperArgs(
   let args = parseArgs(template, {
     input: inputPath,
     model: config.whisperModelPath,
-    outputBase
+    outputBase,
+    vocabulary: config.whisperVocabulary
   });
 
   args = withPerformanceArgs(args, processingProfile);
-  args = appendArgIfMissing(args, ["-mc", "--max-context"], [String(config.whisperMaxContext)]);
-  args = appendArgIfMissing(args, ["-ml", "--max-len"], [String(config.whisperMaxLen)]);
-
-  if (config.whisperSplitOnWord) {
-    args = appendArgIfMissing(args, ["-sow", "--split-on-word"]);
-  }
-
-  if (config.whisperSuppressNst) {
-    args = appendArgIfMissing(args, ["-sns", "--suppress-nst"]);
-  }
-
-  args = appendArgIfMissing(args, ["-nth", "--no-speech-thold"], [String(config.whisperNoSpeechThold)]);
-
-  if (config.whisperEnableVad && config.whisperVadModelPath) {
-    args = appendArgIfMissing(args, ["--vad"]);
-    args = appendArgIfMissing(args, ["-vm", "--vad-model"], [config.whisperVadModelPath]);
-    args = appendArgIfMissing(args, ["-vt", "--vad-threshold"], [String(config.whisperVadThreshold)]);
-    args = appendArgIfMissing(args, ["-vspd", "--vad-min-speech-duration-ms"], [String(config.whisperVadMinSpeechMs)]);
-    args = appendArgIfMissing(args, ["-vsd", "--vad-min-silence-duration-ms"], [String(config.whisperVadMinSilenceMs)]);
-    args = appendArgIfMissing(args, ["-vp", "--vad-speech-pad-ms"], [String(config.whisperVadSpeechPadMs)]);
-  }
+  args = applyWhisperQualityArgs(args);
 
   return args;
 }

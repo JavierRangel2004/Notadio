@@ -103,6 +103,12 @@ function readOptionalNumber(
   return readNumber(value, parsed, options);
 }
 
+// Default vocabulary biasing for Whisper's initial prompt. Helps the model spell
+// brand/company names, technical terms, and common Spanglish words correctly.
+// Override globally with WHISPER_VOCABULARY; live sessions also append per-session aliases.
+const DEFAULT_WHISPER_VOCABULARY =
+  "Sentry, sprint, daily, frontend, backend, webhook, API, bug, parche, login, servidor, índices, optimizar, consulta, pasarela, producción";
+
 function readTranslationStrategy(value: string | undefined): "whisper-first" | "hybrid" | "ollama-first" {
   switch (value?.trim().toLowerCase()) {
     case "hybrid":
@@ -125,10 +131,11 @@ export const config = {
   whisperModelPath: process.env.WHISPER_MODEL_PATH ? resolveProjectPath(process.env.WHISPER_MODEL_PATH, "") : "",
   whisperArgs:
     process.env.WHISPER_ARGS ??
-    '-m "{model}" -f "{input}" --output-json --output-srt --output-file "{outputBase}" --language auto --prompt "Sentry, sprint, daily, frontend, backend, webhook, API, bug, parche, login, servidor, índices, optimizar, consulta, pasarela, producción"',
+    '-m "{model}" -f "{input}" --output-json --output-srt --output-file "{outputBase}" --language auto --prompt "{vocabulary}"',
   whisperTranslateArgs:
     process.env.WHISPER_TRANSLATE_ARGS ??
-    '-m "{model}" -f "{input}" --output-json --output-file "{outputBase}" --language auto --translate --prompt "Sentry, sprint, daily, frontend, backend, webhook, API, bug, parche, login, servidor, índices, optimizar, consulta, pasarela, producción"',
+    '-m "{model}" -f "{input}" --output-json --output-file "{outputBase}" --language auto --translate --prompt "{vocabulary}"',
+  whisperVocabulary: process.env.WHISPER_VOCABULARY?.trim() || DEFAULT_WHISPER_VOCABULARY,
   whisperPerfProfile: process.env.WHISPER_PERF_PROFILE ?? "auto",
   whisperThreads: process.env.WHISPER_THREADS ? Number(process.env.WHISPER_THREADS) : undefined,
   whisperEnableVad: readBoolean(process.env.WHISPER_ENABLE_VAD, true),
@@ -185,6 +192,10 @@ export const config = {
   liveWhisperModelPath: process.env.LIVE_WHISPER_MODEL_PATH
     ? resolveProjectPath(process.env.LIVE_WHISPER_MODEL_PATH, "")
     : undefined,
+  // Pin the language for live windows (e.g. "es"). Leave unset to inherit the
+  // template's `--language auto`. Auto-detection per short window flip-flops on
+  // Spanglish; pinning the dominant language stabilizes live output.
+  liveWhisperLanguage: process.env.LIVE_WHISPER_LANGUAGE?.trim() || undefined,
 
   // --- Live Translation ---
   liveTranslationEnabled: readBoolean(process.env.LIVE_TRANSLATION_ENABLED, false),

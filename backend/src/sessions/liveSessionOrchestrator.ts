@@ -15,7 +15,11 @@ import {
 } from "../services/mentionDetectionService.js"
 import { requestAssistantResponse } from "../services/liveAssistantService.js"
 import { translateLiveSegments } from "../services/liveTranslationService.js"
-import { parseWhisperOutput } from "../services/transcriptionService.js"
+import {
+  parseWhisperOutput,
+  applyWhisperQualityArgs,
+  trimTrailingHallucinatedLoop
+} from "../services/transcriptionService.js"
 import type {
   LiveSession,
   LiveTranscriptSegment,
@@ -132,26 +136,42 @@ function getDuplicateIndex(session: LiveSession, absStart: number, text: string)
   return -1
 }
 
-function buildLiveWhisperArgs(inputPath: string, outputBase: string): string[] {
-  const liveModel = config.liveWhisperModelPath ?? config.whisperModelPath
-  const args = parseArgs(config.whisperArgs, {
-    input: inputPath,
-    model: liveModel,
-    outputBase
-  })
-
-  // Replace any thread arg with the live-specific value
-  const tIdx = args.indexOf("-t")
-  if (tIdx !== -1 && tIdx + 1 < args.length) {
-    args[tIdx + 1] = String(config.liveWhisperThreads)
-  } else {
-    const threadsIdx = args.indexOf("--threads")
-    if (threadsIdx !== -1 && threadsIdx + 1 < args.length) {
-      args[threadsIdx + 1] = String(config.liveWhisperThreads)
-    } else {
-      args.push("-t", String(config.liveWhisperThreads))
+/** Replace the value following any of `flags` in `args`, or append flag+value if absent. */
+function setArgValue(args: string[], flags: string[], value: string): void {
+  for (const flag of flags) {
+    const idx = args.indexOf(flag)
+    if (idx !== -1 && idx + 1 < args.length) {
+      args[idx + 1] = value
+      return
     }
   }
+  args.push(flags[0]!, value)
+}
+
+function buildLiveWhisperArgs(inputPath: string, outputBase: string, aliases: string[] = []): string[] {
+  const liveModel = config.liveWhisperModelPath ?? config.whisperModelPath
+
+  // Live prompt = global vocabulary + this session's aliases (names/brands the
+  // model should spell correctly during the call).
+  const vocabulary = [config.whisperVocabulary, ...aliases].filter(Boolean).join(", ")
+
+  let args = parseArgs(config.whisperArgs, {
+    input: inputPath,
+    model: liveModel,
+    outputBase,
+    vocabulary
+  })
+
+  // Same VAD / hallucination / max-len guards as the batch path.
+  args = applyWhisperQualityArgs(args)
+
+  // Pin language for Spanglish stability (auto re-detects per window otherwise).
+  if (config.liveWhisperLanguage) {
+    setArgValue(args, ["-l", "--language"], config.liveWhisperLanguage)
+  }
+
+  // Live-specific thread count.
+  setArgValue(args, ["-t", "--threads"], String(config.liveWhisperThreads))
 
   return args
 }
@@ -358,7 +378,7 @@ async function runWindowTranscription(sessionId: string): Promise<void> {
     await fs.writeFile(wavPath, wavBuf)
 
     // Run whisper
-    const args = buildLiveWhisperArgs(wavPath, outputBase)
+    const args = buildLiveWhisperArgs(wavPath, outputBase, session.config.aliases)
     await runCommand(config.whisperCommand, args, { cwd: windowDir })
 
     // Parse output
@@ -370,7 +390,9 @@ async function runWindowTranscription(sessionId: string): Promise<void> {
       return // whisper produced no JSON output — skip window
     }
 
-    const variant = parseWhisperOutput(whisperPayload, true)
+    const parsed = parseWhisperOutput(whisperPayload, true)
+    // Strip trailing hallucination loops (e.g. repeated phrases on silence).
+    const { variant } = trimTrailingHallucinatedLoop(parsed)
     if (!variant || variant.segments.length === 0) return
 
     const newConfirmed: LiveTranscriptSegment[] = []

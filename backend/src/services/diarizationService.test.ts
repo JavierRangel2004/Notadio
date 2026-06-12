@@ -102,7 +102,9 @@ test("postProcessDiarization preserves all 4 distinct speakers when maxSpeakers=
 
   try {
     const result = await postProcessDiarization(transcriptSegments, diarizationSlices, 8);
-    const uniqueSpeakers = [...new Set(result.map((segment) => segment.speaker).filter(Boolean))];
+    const uniqueSpeakers = [
+      ...new Set(result.map((segment) => segment.speaker).filter((s): s is string => Boolean(s)))
+    ];
 
     assert.equal(uniqueSpeakers.length, 4);
     // Fallback labels should use alphabet: SPEAKER_A, SPEAKER_B, SPEAKER_C, SPEAKER_D
