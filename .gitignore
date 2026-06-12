@@ -52,3 +52,4 @@ Desktop.ini
 DEPLOYMENT_PLAN.md
 .claude/
 .mcp.json
+generate_diff.py

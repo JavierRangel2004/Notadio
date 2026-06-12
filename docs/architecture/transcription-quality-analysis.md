@@ -13,6 +13,28 @@ Last updated: 2026-06-11
 
 ---
 
+## Fixes applied (2026-06-11)
+
+The following levers from this analysis are now implemented:
+
+1. **Live quality parity** — live windows now apply the same VAD + `no-speech-thold`
+   + `suppress-nst` + `max-len` guards as batch, via the shared
+   `applyWhisperQualityArgs()` in `transcriptionService.ts`. Live output also runs
+   through `trimTrailingHallucinatedLoop()` to strip repeated phrases on silence.
+2. **Live language pinning** — `LIVE_WHISPER_LANGUAGE` pins the dominant language
+   for live windows (default inherits `--language auto`), stabilizing Spanglish.
+3. **Configurable vocabulary biasing** — `WHISPER_VOCABULARY` feeds Whisper's
+   `--prompt` via a `{vocabulary}` placeholder in `WHISPER_ARGS` (batch + live).
+   Live sessions additionally append per-session aliases (names/brands) to the prompt.
+4. **Global LLM provider switch** — `LLM_PROVIDER` / `LLM_BASE_URL` / `LLM_API_KEY` /
+   `LLM_MODEL` route every LLM feature through one OpenAI-compatible gateway
+   (OpenCode/OpenAI/OpenRouter/...) with an API key, instead of per-service config.
+
+Still open (higher effort): multi-track capture, post-ASR constrained correction,
+final-transcript reconciliation in the UI, fuzzy alias matching, and an eval harness.
+
+---
+
 ## Executive summary
 
 Commercial tools (Otter, Fathom, Fireflies, etc.) and interview copilots (Final Round AI, LockedIn, etc.) exist and are priced roughly **$0–$60+/month** depending on features. They typically combine:
@@ -186,10 +208,10 @@ Build a fixed set of real dailies (good/bad mic, spanglish, 2/5/8 speakers) and 
 |----------------|------------------------|--------|
 | Partial vs final transcript | Confirmed + provisional live segments; overlap cutoff | **Strong** |
 | Live fast + final slow | Live windowed Whisper; stop → WAV → batch pipeline | **Partial** — final pass exists; UI may not reconcile live vs batch |
-| VAD before ASR | Silero VAD in batch Whisper (`WHISPER_ENABLE_VAD`) | **Batch only** — live runs on full windows |
+| VAD before ASR | Silero VAD in batch + live Whisper (`WHISPER_ENABLE_VAD`, shared `applyWhisperQualityArgs`) | **Both paths** |
 | Diarization + alignment | Python `diarize` → overlap align + collapse + smooth + optional LLM names | **Good batch engineering** — not live |
 | Audio per participant | Single mixed stream (mic and/or system tab) | **Major gap** for multi-speaker dailies |
-| Workspace vocabulary | Static `--prompt` in `WHISPER_ARGS` | **Minimal** |
+| Workspace vocabulary | `WHISPER_VOCABULARY` + per-session aliases injected into `--prompt` | **Configurable** (no post-ASR correction yet) |
 | Post-ASR correction | None dedicated | **Missing** |
 | Mention alerts | Regex + intent + context window | **Good v1** — no fuzzy aliases |
 | STT provider abstraction | Fixed `whisper-cli` | LLM is pluggable; STT is not |

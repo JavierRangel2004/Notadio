@@ -28,8 +28,9 @@ These are required for the core transcription flow:
 
 - `WHISPER_COMMAND`: path or name of `whisper-cli`
 - `WHISPER_MODEL_PATH`: path to `.bin` model file
-- `WHISPER_ARGS`: CLI args template for source transcription
+- `WHISPER_ARGS`: CLI args template for source transcription (supports `{model}`, `{input}`, `{outputBase}`, `{vocabulary}` placeholders)
 - `WHISPER_TRANSLATE_ARGS`: CLI args template for Whisper translation
+- `WHISPER_VOCABULARY`: comma-separated brand/company names, technical terms, and Spanglish words injected wherever `{vocabulary}` appears in the args templates (batch + live). Biases Whisper's initial prompt toward correct spelling. Live sessions also append the session's aliases.
 
 Quality/long-form guards (used by the transcription service):
 
@@ -110,6 +111,11 @@ Windowing and performance:
 - `LIVE_WHISPER_THREADS`
 - `LIVE_MAX_CONCURRENT_WINDOWS`
 - `LIVE_MIN_WINDOW_MS`
+- `LIVE_WHISPER_MODEL_PATH`: smaller/faster model for live windows (final batch pass still uses `WHISPER_MODEL_PATH`)
+- `LIVE_WHISPER_LANGUAGE`: pin the language for live windows (e.g. `es`); leave unset to inherit `--language auto`. Stabilizes Spanglish output by avoiding per-window language flip-flop
+
+Live windows reuse the same VAD / hallucination / `max-len` guards as batch
+(`applyWhisperQualityArgs`) and run through `trimTrailingHallucinatedLoop`.
 
 Mentions and resilience:
 
@@ -125,18 +131,25 @@ Live translation:
 
 ## LLM Provider Abstraction
 
-By default all LLM features use `OLLAMA_BASE_URL` / `OLLAMA_MODEL`. Each service can be overridden independently.
+By default all LLM features use `OLLAMA_BASE_URL` / `OLLAMA_MODEL`. Resolution order for each setting is **per-service → global → Ollama default** (first non-empty wins).
 
 Service keys: `SUMMARY`, `LIVE_ASSISTANT`, `LIVE_TRANSLATION`, `TRANSLATION`, `DIARIZATION`
 
-Per-service env vars:
+Global provider switch (route every LLM feature through one OpenAI-compatible gateway — OpenCode, OpenAI, OpenRouter, Groq, ... — with an API key):
+
+- `LLM_PROVIDER`: `ollama` (default) or `openai-compatible`
+- `LLM_BASE_URL`: endpoint (e.g. `https://your-endpoint/v1`)
+- `LLM_API_KEY`: API key
+- `LLM_MODEL`: model identifier
+
+Per-service overrides (take priority over the globals):
 
 - `LLM_{SERVICE}_PROVIDER`: `ollama` (default) or `openai-compatible`
 - `LLM_{SERVICE}_MODEL`: model identifier override
 - `LLM_{SERVICE}_BASE_URL`: endpoint override
 - `LLM_{SERVICE}_API_KEY`: API key (for openai-compatible providers)
 
-Global fallback for openai-compatible:
+Legacy global fallback for openai-compatible (still honored; prefer `LLM_BASE_URL` / `LLM_API_KEY`):
 
 - `LLM_OPENAI_BASE_URL`
 - `LLM_OPENAI_API_KEY`
