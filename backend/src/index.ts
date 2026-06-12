@@ -1,5 +1,6 @@
 import fs from "node:fs/promises";
 import http from "node:http";
+import os from "node:os";
 import { createReadStream } from "node:fs";
 import path from "node:path";
 import express, { type RequestHandler } from "express";
@@ -24,6 +25,7 @@ import {
   JobManifest,
   JobProcessingProfile,
   JobProgress,
+  NoteConversionConfig,
   SourceOrigin,
   StageTiming,
   TranscriptRecord
@@ -700,6 +702,137 @@ async function completePostCompletionAction(
   });
 }
 
+async function processNoteConversionJob(jobId: string): Promise<void> {
+  try {
+    const job = jobStore.get(jobId);
+    if (!job) {
+      throw new Error(`Job ${jobId} not found.`);
+    }
+    const conversionConfig = job.noteConversionConfig;
+    if (!conversionConfig) {
+      throw new Error(`Job ${jobId} is not configured for note conversion.`);
+    }
+
+    await updateJobImmediate(jobId, (current) => {
+      current.status = "processing";
+      current.stage = "Rewriting note content using LLM";
+      current.error = undefined;
+      current.progress = {
+        stageKey: "summarize",
+        overallPct: 20,
+        stagePct: 50,
+        elapsedSeconds: 1
+      };
+      if (current.sourceMedia) {
+        current.sourceMedia.storedPath = "";
+        current.sourceMedia.sizeBytes = 0;
+      }
+    });
+
+    await updateJobImmediate(jobId, (current) => {
+      appendLog(current, "Reading note file...");
+    });
+
+    const resolvedVaultPath = path.resolve(
+      conversionConfig.vaultPath.trim().replace(/^["']|["']$/g, "").replace(/^~/, process.env.HOME || "")
+    );
+    const absoluteNotePath = path.resolve(resolvedVaultPath, conversionConfig.notePath);
+    const noteContent = await fs.readFile(absoluteNotePath, "utf-8");
+
+    await updateJobImmediate(jobId, (current) => {
+      appendLog(current, "Sending content to LLM for script adaptation...");
+    });
+
+    const { provider, model } = buildProviderFromRequest(conversionConfig.provider, conversionConfig.model);
+    await updateJobImmediate(jobId, (current) => {
+      appendLog(current, `Using LLM provider: ${provider.name} (model: ${model})`);
+    });
+
+    const llmResult = await provider.generate({
+      model,
+      system: "Actúa como un adaptador de audiolibros y podcasts. Toma la siguiente nota de Obsidian en Markdown y conviértela en un monólogo explicativo fluido, ameno y fácil de escuchar. REGLAS CRÍTICAS:\n1. Si hay tablas de datos, NO las leas celda por celda. Tradúcelas en conclusiones y explicaciones narrativas naturales.\n2. Si hay listas con demasiados puntos, sintetízalas o agrúpalas en ideas principales.\n3. Omite sintaxis Markdown como enlaces, imágenes, y YAML frontmatter.\n4. Mantén un tono conversacional en español.",
+      prompt: noteContent,
+    });
+
+    const script = llmResult.text;
+
+    await updateJobImmediate(jobId, (current) => {
+      current.stage = "Synthesizing voice using Edge TTS";
+      current.progress = { stageKey: "diarize", overallPct: 50, stagePct: 50, elapsedSeconds: 2 };
+      appendLog(current, "LLM script generated. Synthesizing audio via Edge TTS...");
+    });
+
+    const jobDir = jobStore.getJobDir(jobId);
+    const uploadsDir = path.join(jobDir, "uploads");
+    await ensureDir(uploadsDir);
+    const mp3Path = path.join(uploadsDir, "source.mp3");
+
+    await synthesizeSpeech(script, mp3Path, conversionConfig.voice || "es-MX-DaliaNeural");
+
+    await updateJobImmediate(jobId, (current) => {
+      current.stage = "Converting audio to WAV";
+      current.progress = { stageKey: "normalize", overallPct: 80, stagePct: 50, elapsedSeconds: 3 };
+      appendLog(current, "Audio synthesized. Normalizing media format to WAV...");
+    });
+
+    const normalization = await normalizeMediaToWav(mp3Path, jobDir);
+    const wavStat = await fs.stat(normalization.outputPath);
+
+    const noteName = path.basename(conversionConfig.notePath, ".md");
+    const transcriptRecord: TranscriptRecord = {
+      jobId,
+      sourceMedia: {
+        originalName: `${noteName}.wav`,
+        mimeType: "audio/wav",
+        sizeBytes: wavStat.size
+      },
+      durationSeconds: normalization.durationSeconds || 0,
+      detectedLanguage: "es",
+      warnings: [],
+      source: {
+        language: "es",
+        text: script,
+        segments: [
+          {
+            start: 0,
+            end: normalization.durationSeconds || 0,
+            text: script
+          }
+        ]
+      }
+    };
+
+    const transcriptPath = path.join(jobDir, "transcript.json");
+    await writeJsonFile(transcriptPath, transcriptRecord);
+    jobStore.setTranscript(jobId, transcriptRecord);
+
+    await updateJobImmediate(jobId, (current) => {
+      current.status = "completed";
+      current.stage = "Completed";
+      current.normalizedAudioPath = normalization.outputPath;
+      current.transcriptReady = true;
+      current.transcriptPath = transcriptPath;
+      current.durationSeconds = normalization.durationSeconds || 0;
+      current.sourceMedia = {
+        originalName: `${noteName}.mp3`,
+        mimeType: "audio/mpeg",
+        sizeBytes: wavStat.size,
+        storedPath: mp3Path
+      };
+      current.progress = { stageKey: "export", overallPct: 100, stagePct: 100, elapsedSeconds: 4 };
+      appendLog(current, "Note conversion successfully completed!");
+    });
+  } catch (err) {
+    console.error("Conversion error for note job", jobId, err);
+    await updateJobImmediate(jobId, (current) => {
+      current.status = "failed";
+      current.stage = "Failed";
+      current.error = err instanceof Error ? err.message : String(err);
+      appendLog(current, `Error during conversion: ${current.error}`);
+    });
+  }
+}
+
 async function processBaseJob(jobId: string): Promise<void> {
   const processingProfile = detectProcessingProfile();
   let telemetry = buildBaseTelemetryContext(processingProfile);
@@ -1307,17 +1440,23 @@ app.post("/api/jobs/:jobId/reprocess", async (req, res) => {
     return;
   }
 
+  const isNoteJob = !!job.noteConversionConfig;
+
   await updateJobImmediate(jobId, (current) => {
     current.status = "queued";
-    current.stage = "Queued for processing";
+    current.stage = isNoteJob ? "Queued for conversion" : "Queued for processing";
     current.error = undefined;
     const now = new Date().toISOString();
     current.progress = buildDefaultProgress(now);
     current.processing = buildDefaultProcessing();
-    appendLog(current, "Manually re-enqueued for base processing.");
+    appendLog(current, isNoteJob ? "Manually re-enqueued for note conversion." : "Manually re-enqueued for base processing.");
   });
 
-  jobQueue.enqueue(() => processBaseJob(jobId));
+  if (isNoteJob) {
+    jobQueue.enqueue(() => processNoteConversionJob(jobId));
+  } else {
+    jobQueue.enqueue(() => processBaseJob(jobId));
+  }
 
   res.json(makeJobResponse(jobStore.get(jobId)!));
 });
@@ -1892,6 +2031,76 @@ app.get("/api/vault/scan", async (req, res) => {
   }
 });
 
+// Strip YAML frontmatter, markdown syntax, and collapse whitespace so the UI
+// can show a plain-text excerpt for a note without rendering the whole file.
+function noteExcerpt(content: string, maxChars = 320): string {
+  let body = content.replace(/^﻿/, "");
+  if (body.startsWith("---")) {
+    const end = body.indexOf("\n---", 3);
+    if (end !== -1) body = body.slice(body.indexOf("\n", end + 1) + 1);
+  }
+  const plain = body
+    .replace(/```[\s\S]*?```/g, " ")       // fenced code blocks
+    .replace(/!\[[^\]]*\]\([^)]*\)/g, " ")  // images
+    .replace(/\[!\w+\][-+]?/g, " ")         // Obsidian callout markers [!info]
+    .replace(/\[\[([^\]|]*\|)?([^\]]*)\]\]/g, "$2") // wikilinks
+    .replace(/\[([^\]]*)\]\([^)]*\)/g, "$1") // md links
+    .replace(/[#>*_`~\-[\]]/g, " ")         // md punctuation + stray brackets
+    .replace(/\|/g, " ")                     // table pipes
+    .replace(/\s+/g, " ")
+    .trim();
+  return plain.length > maxChars ? `${plain.slice(0, maxChars).trimEnd()}…` : plain;
+}
+
+app.get("/api/vault/note", async (req, res) => {
+  const vaultPath = req.query.vaultPath as string;
+  const notePath = req.query.path as string;
+  if (!vaultPath || !notePath) {
+    res.status(400).json({ excerpt: "", error: "vaultPath and path are required." });
+    return;
+  }
+  try {
+    const resolvedVault = path.resolve(vaultPath.trim().replace(/^["']|["']$/g, "").replace(/^~/, process.env.HOME || ""));
+    const absolute = path.resolve(resolvedVault, notePath);
+    // Guard against path traversal outside the vault root.
+    if (!absolute.startsWith(resolvedVault)) {
+      res.status(400).json({ excerpt: "", error: "Path escapes vault root." });
+      return;
+    }
+    const content = await fs.readFile(absolute, "utf-8");
+    res.json({ excerpt: noteExcerpt(content), wordCount: content.split(/\s+/).filter(Boolean).length });
+  } catch (err) {
+    res.status(404).json({ excerpt: "", error: err instanceof Error ? err.message : String(err) });
+  }
+});
+
+// Short spoken sample so users can audition a voice before converting notes.
+// Cached per voice under the OS temp dir (Edge TTS returns MP3 audio).
+const voicePreviewDir = path.join(os.tmpdir(), "notadio-voice-previews");
+const VOICE_PREVIEW_TEXT = "Hola, así suena esta voz para narrar tus notas.";
+
+app.get("/api/tts/preview", async (req, res) => {
+  const voice = (req.query.voice as string) || "es-MX-DaliaNeural";
+  if (!/^[a-zA-Z-]+Neural$/.test(voice)) {
+    res.status(400).send("Invalid voice id.");
+    return;
+  }
+  try {
+    await ensureDir(voicePreviewDir);
+    const cachePath = path.join(voicePreviewDir, `${voice}.mp3`);
+    try {
+      await fs.access(cachePath);
+    } catch {
+      await synthesizeSpeech(VOICE_PREVIEW_TEXT, cachePath, voice);
+    }
+    res.setHeader("Content-Type", "audio/mpeg");
+    res.setHeader("Cache-Control", "public, max-age=86400");
+    createReadStream(cachePath).pipe(res);
+  } catch (err) {
+    res.status(500).send(err instanceof Error ? err.message : String(err));
+  }
+});
+
 app.post("/api/vault/convert", async (req, res) => {
   const { vaultPath, notes, voice, provider: requestProvider, model: requestModel } = req.body;
   if (!vaultPath || !notes || !Array.isArray(notes) || notes.length === 0) {
@@ -1913,12 +2122,19 @@ app.post("/api/vault/convert", async (req, res) => {
       stage: "Queued for conversion",
       createdAt: now,
       updatedAt: now,
-      sourceOrigin: "upload",
+      sourceOrigin: "note",
       sourceMedia: {
         originalName: `${noteName}.wav`,
         mimeType: "audio/wav",
         sizeBytes: 0,
         storedPath: ""
+      },
+      noteConversionConfig: {
+        vaultPath,
+        notePath,
+        voice,
+        provider: requestProvider,
+        model: requestModel
       },
       warnings: [],
       logs: ["Scheduled conversion task."],
@@ -1936,102 +2152,7 @@ app.post("/api/vault/convert", async (req, res) => {
 
     await jobStore.save(job);
 
-    // Process asynchronously in the background
-    setTimeout(async () => {
-      try {
-        job.status = "processing";
-        job.stage = "Rewriting note content using LLM";
-        job.progress = { stageKey: "summarize", overallPct: 20, stagePct: 50, elapsedSeconds: 1 };
-        job.logs?.push("Reading note file...");
-        await jobStore.save(job);
-
-        const resolvedVaultPath = path.resolve(vaultPath.trim().replace(/^["']|["']$/g, "").replace(/^~/, process.env.HOME || ""));
-        const absoluteNotePath = path.resolve(resolvedVaultPath, notePath);
-        const noteContent = await fs.readFile(absoluteNotePath, "utf-8");
-
-        job.logs?.push("Sending content to LLM for script adaptation...");
-        await jobStore.save(job);
-
-        const { provider, model } = buildProviderFromRequest(requestProvider, requestModel);
-        job.logs?.push(`Using LLM provider: ${provider.name} (model: ${model})`);
-        const llmResult = await provider.generate({
-          model,
-          system: "Actúa como un adaptador de audiolibros y podcasts. Toma la siguiente nota de Obsidian en Markdown y conviértela en un monólogo explicativo fluido, ameno y fácil de escuchar. REGLAS CRÍTICAS:\n1. Si hay tablas de datos, NO las leas celda por celda. Tradúcelas en conclusiones y explicaciones narrativas naturales.\n2. Si hay listas con demasiados puntos, sintetízalas o agrúpalas en ideas principales.\n3. Omite sintaxis Markdown como enlaces, imágenes, y YAML frontmatter.\n4. Mantén un tono conversacional en español.",
-          prompt: noteContent,
-        });
-
-        const script = llmResult.text;
-        job.logs?.push("LLM script generated. Synthesizing audio via Edge TTS...");
-        job.stage = "Synthesizing voice using Edge TTS";
-        job.progress = { stageKey: "diarize", overallPct: 50, stagePct: 50, elapsedSeconds: 2 };
-        await jobStore.save(job);
-
-        const jobDir = jobStore.getJobDir(jobId);
-        const uploadsDir = path.join(jobDir, "uploads");
-        await ensureDir(uploadsDir);
-        const mp3Path = path.join(uploadsDir, "source.mp3");
-
-        await synthesizeSpeech(script, mp3Path, voice || "es-MX-DaliaNeural");
-
-        job.logs?.push("Audio synthesized. Normalizing media format to WAV...");
-        job.stage = "Converting audio to WAV";
-        job.progress = { stageKey: "normalize", overallPct: 80, stagePct: 50, elapsedSeconds: 3 };
-        await jobStore.save(job);
-
-        const normalization = await normalizeMediaToWav(mp3Path, jobDir);
-        const wavStat = await fs.stat(normalization.outputPath);
-
-        const transcriptRecord: TranscriptRecord = {
-          jobId,
-          sourceMedia: {
-            originalName: `${noteName}.wav`,
-            mimeType: "audio/wav",
-            sizeBytes: wavStat.size
-          },
-          durationSeconds: normalization.durationSeconds || 0,
-          detectedLanguage: "es",
-          warnings: [],
-          source: {
-            language: "es",
-            text: script,
-            segments: [
-              {
-                start: 0,
-                end: normalization.durationSeconds || 0,
-                text: script
-              }
-            ]
-          }
-        };
-
-        const transcriptPath = path.join(jobDir, "transcript.json");
-        await writeJsonFile(transcriptPath, transcriptRecord);
-        jobStore.setTranscript(jobId, transcriptRecord);
-
-        job.status = "completed";
-        job.stage = "Completed";
-        job.normalizedAudioPath = normalization.outputPath;
-        job.transcriptReady = true;
-        job.transcriptPath = transcriptPath;
-        job.durationSeconds = normalization.durationSeconds || 0;
-        job.sourceMedia = {
-          originalName: `${noteName}.mp3`,
-          mimeType: "audio/mpeg",
-          sizeBytes: wavStat.size,
-          storedPath: mp3Path
-        };
-        job.progress = { stageKey: "export", overallPct: 100, stagePct: 100, elapsedSeconds: 4 };
-        job.logs?.push("Note conversion successfully completed!");
-        await jobStore.persist(job);
-      } catch (err) {
-        console.error("Conversion error for note", notePath, err);
-        job.status = "failed";
-        job.stage = "Failed";
-        job.error = err instanceof Error ? err.message : String(err);
-        job.logs?.push(`Error during conversion: ${job.error}`);
-        await jobStore.persist(job);
-      }
-    }, 0);
+    jobQueue.enqueue(() => processNoteConversionJob(jobId));
   }
 
   res.json({ jobIds });

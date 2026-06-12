@@ -1,6 +1,6 @@
 export type JobStatus = "queued" | "processing" | "completed" | "failed";
 
-export type SourceOrigin = "upload" | "recording";
+export type SourceOrigin = "upload" | "recording" | "note";
 
 export type SummaryPreset = "meeting" | "whatsappVoiceNote" | "genericMedia" | "contentCreation" | "analysisEssay";
 
@@ -180,7 +180,16 @@ export type ReadinessReport = {
   processing: JobProcessingProfile;
 };
 
+export type NoteConversionConfig = {
+  vaultPath: string;
+  notePath: string;
+  voice?: string;
+  provider?: string;
+  model?: string;
+};
+
 export type JobManifest = {
+  noteConversionConfig?: NoteConversionConfig;
   id: string;
   status: JobStatus;
   stage: string;

@@ -86,8 +86,9 @@ export class OpenAICompatibleProvider implements LlmProvider {
       throw new Error(`OpenAI-compatible HTTP ${response.status}: ${body}`)
     }
 
-    const data = (await response.json()) as { data?: { id?: string }[] }
+    const data = (await response.json()) as { data?: { id?: string; owned_by?: string; status?: string }[] }
     return (data.data ?? [])
+      .filter((m) => !m.status || m.status === "active")
       .map((m) => m.id)
       .filter((id): id is string => Boolean(id))
   }

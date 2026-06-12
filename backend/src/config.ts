@@ -6,9 +6,27 @@ const configFileDir = path.dirname(fileURLToPath(import.meta.url));
 const backendRoot = path.resolve(configFileDir, "..");
 const projectRoot = path.resolve(backendRoot, "..");
 
+const isTesting =
+  process.env.NODE_ENV === "test" ||
+  process.env.NODE_TEST_CONTEXT !== undefined ||
+  process.argv.some((arg) => arg.includes("test") || arg.includes(".test.ts"));
+
 dotenv.config({ path: path.join(projectRoot, ".env") });
 dotenv.config({ path: path.join(backendRoot, ".env") });
 dotenv.config();
+
+if (isTesting) {
+  process.env.LLM_PROVIDER = "ollama";
+  delete process.env.LLM_BASE_URL;
+  delete process.env.LLM_API_KEY;
+  delete process.env.LLM_OPENAI_BASE_URL;
+  delete process.env.LLM_OPENAI_API_KEY;
+  for (const key of Object.keys(process.env)) {
+    if (key.startsWith("LLM_") && key !== "LLM_PROVIDER") {
+      delete process.env[key];
+    }
+  }
+}
 
 function expandHomeDir(value: string): string {
   if (!value.startsWith("~")) {

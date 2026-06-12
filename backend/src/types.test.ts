@@ -91,8 +91,8 @@ test("All SummaryPreset values are valid", () => {
 });
 
 test("All SourceOrigin values are valid", () => {
-  const origins: SourceOrigin[] = ["upload", "recording"];
-  assert.equal(origins.length, 2);
+  const origins: SourceOrigin[] = ["upload", "recording", "note"];
+  assert.equal(origins.length, 3);
 });
 
 test("All EnhancementStageKey values are valid", () => {

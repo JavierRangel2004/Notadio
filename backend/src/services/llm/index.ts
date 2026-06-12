@@ -170,7 +170,18 @@ export async function listModelsForProvider(providerId: string): Promise<string[
   }
 
   if (!provider.listModels) return []
-  return provider.listModels()
+  const models = await provider.listModels()
+
+  // When LLM_MODEL_ALLOWLIST is set (comma-separated), show only those models.
+  // Useful when the provider's /models endpoint returns the full platform catalog
+  // regardless of subscription tier (e.g. OpenCode Zen lists all plans).
+  const allowlist = process.env.LLM_MODEL_ALLOWLIST?.trim()
+  if (allowlist) {
+    const allowed = new Set(allowlist.split(",").map((s) => s.trim()).filter(Boolean))
+    return models.filter((id) => allowed.has(id))
+  }
+
+  return models
 }
 
 /**
