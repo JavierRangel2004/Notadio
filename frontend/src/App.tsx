@@ -1,4 +1,4 @@
-import { FormEvent, useCallback, useEffect, useRef, useState, forwardRef, useImperativeHandle } from "react";
+import { FormEvent, useCallback, useEffect, useRef, useState, forwardRef, useImperativeHandle, useMemo } from "react";
 import { LiveSessionPanel } from "./LiveSessionPanel.js";
 import { AudioSettingsPanel, type AudioSettings } from "./AudioSettingsPanel.js";
 import {
@@ -31,7 +31,12 @@ import {
   TranscriptPayload,
   TranscriptSegment,
   TranscriptVariant,
-  uploadMedia
+  uploadMedia,
+  scanVault,
+  convertNotesToAudio,
+  getProviders,
+  type NoteInfo,
+  type ProviderInfo
 } from "./api";
 
 const ACCEPTED_TYPES = "audio/*,video/*,.mkv";
@@ -959,7 +964,7 @@ function EnhancementPrompt({ job, onSubmit, onSkip }: {
 type AppView = "upload" | "processing" | "enhancements" | "results" | "workspace";
 
 export function App() {
-  const [sourceMode, setSourceMode] = useState<"upload" | "record" | "live">("upload");
+  const [sourceMode, setSourceMode] = useState<"upload" | "record" | "live" | "notes">("upload");
   const [file, setFile] = useState<File | null>(null);
   const [sourceOrigin, setSourceOrigin] = useState<SourceOrigin>("upload");
   const [job, setJob] = useState<JobPayload | null>(null);
@@ -972,6 +977,120 @@ export function App() {
   const [copiedState, setCopiedState] = useState<"summary" | "transcript" | null>(null);
   const [isDragOver, setIsDragOver] = useState(false);
   const [view, setView] = useState<AppView>("upload");
+
+  // Vault Notes State & Functions
+  const [vaultPath, setVaultPath] = useState(
+    localStorage.getItem("notadio_vault_path") || "/Users/javierrangel/Google Drive/My Drive/ObsNote"
+  );
+  const [notes, setNotes] = useState<NoteInfo[]>([]);
+  const [selectedNotes, setSelectedNotes] = useState<string[]>([]);
+  const [isScanning, setIsScanning] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [selectedTag, setSelectedTag] = useState("");
+  const [selectedVoice, setSelectedVoice] = useState("es-MX-DaliaNeural");
+  const [isConverting, setIsConverting] = useState(false);
+  const [providers, setProviders] = useState<ProviderInfo[]>([]);
+  const [selectedProvider, setSelectedProvider] = useState("");
+  const [selectedModel, setSelectedModel] = useState("");
+
+  // Extract all unique tags
+  const allTags = useMemo(() => {
+    const tagsSet = new Set<string>();
+    notes.forEach(note => {
+      note.tags.forEach(tag => tagsSet.add(tag));
+    });
+    return Array.from(tagsSet).sort();
+  }, [notes]);
+
+  // Filter notes based on search query and selected tag
+  const filteredNotes = useMemo(() => {
+    return notes.filter(n => {
+      const matchesSearch = n.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                            n.relativePath.toLowerCase().includes(searchQuery.toLowerCase());
+      const matchesTag = selectedTag === "" || n.tags.includes(selectedTag);
+      return matchesSearch && matchesTag;
+    });
+  }, [notes, searchQuery, selectedTag]);
+
+  async function handleScanVault() {
+    if (!vaultPath.trim()) return;
+    setIsScanning(true);
+    setError(null);
+    try {
+      const result = await scanVault(vaultPath);
+      setNotes(result);
+      setSelectedNotes([]);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to scan vault");
+    } finally {
+      setIsScanning(false);
+    }
+  }
+
+  // Fetch available LLM providers on mount
+  useEffect(() => {
+    getProviders()
+      .then((list) => {
+        setProviders(list);
+        if (list.length > 0 && !selectedProvider) {
+          setSelectedProvider(list[0].id);
+          setSelectedModel(list[0].defaultModel);
+        }
+      })
+      .catch(() => {});
+  }, []);
+
+  function handleProviderChange(providerId: string) {
+    setSelectedProvider(providerId);
+    const info = providers.find((p) => p.id === providerId);
+    if (info) {
+      setSelectedModel(info.defaultModel);
+    }
+  }
+
+  function handleToggleNote(path: string) {
+    setSelectedNotes(prev => {
+      if (prev.includes(path)) {
+        return prev.filter(p => p !== path);
+      } else {
+        return [...prev, path];
+      }
+    });
+  }
+
+  function handleSelectAllNotes() {
+    setSelectedNotes(filteredNotes.map(n => n.relativePath));
+  }
+
+  function handleDeselectAllNotes() {
+    setSelectedNotes([]);
+  }
+
+  async function handleConvertNotes() {
+    if (selectedNotes.length === 0) return;
+    setIsConverting(true);
+    setError(null);
+    try {
+      const { jobIds } = await convertNotesToAudio(
+        vaultPath,
+        selectedNotes,
+        selectedVoice,
+        selectedProvider || undefined,
+        selectedModel || undefined
+      );
+      if (jobIds.length > 0) {
+        const firstJobId = jobIds[0];
+        const j = await getJob(firstJobId);
+        setJob(j);
+        setView("processing");
+        setSelectedNotes([]);
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to convert notes");
+    } finally {
+      setIsConverting(false);
+    }
+  }
   const [showTranslateConfirm, setShowTranslateConfirm] = useState(false);
   const [autoSwitchToEnglish, setAutoSwitchToEnglish] = useState(false);
   const audioPlayerRef = useRef<{ seek: (t: number) => void }>(null);
@@ -1339,6 +1458,13 @@ export function App() {
                       >
                         Live Session
                       </button>
+                      <button
+                        className={`control-btn ${sourceMode === "notes" ? "active" : ""}`}
+                        onClick={() => { setSourceMode("notes"); setFile(null); }}
+                        type="button"
+                      >
+                        Vault Notes
+                      </button>
                     </div>
                   </div>
 
@@ -1425,6 +1551,181 @@ export function App() {
                   {sourceMode === "live" && (
                     <div className="upload-workflow">
                       <LiveSessionPanel onJobCreated={(jobId) => void handleLiveJobCreated(jobId)} />
+                    </div>
+                  )}
+
+                  {sourceMode === "notes" && (
+                    <div className="upload-workflow">
+                      <div className="glass-panel" style={{ padding: "1.5rem", display: "flex", flexDirection: "column", gap: "1rem" }}>
+                        <div style={{ display: "flex", gap: "0.5rem", flexDirection: "column" }}>
+                          <label style={{ fontSize: "0.9rem", fontWeight: 500, color: "var(--text)" }}>Ruta del Vault de Obsidian</label>
+                          <div style={{ display: "flex", gap: "0.5rem" }}>
+                            <input
+                              type="text"
+                              className="text-input"
+                              placeholder="/Users/usuario/Obsidian/MiVault"
+                              value={vaultPath}
+                              onChange={(e) => {
+                                setVaultPath(e.target.value);
+                                localStorage.setItem("notadio_vault_path", e.target.value);
+                              }}
+                              style={{ flex: 1, padding: "0.5rem", borderRadius: "4px", border: "1px solid var(--border)", background: "var(--background)", color: "var(--text)" }}
+                            />
+                            <button
+                              className="btn-secondary"
+                              onClick={handleScanVault}
+                              disabled={isScanning || !vaultPath.trim()}
+                              type="button"
+                              style={{ padding: "0.5rem 1rem" }}
+                            >
+                              {isScanning ? "Escaneando..." : "Escanear"}
+                            </button>
+                          </div>
+                        </div>
+
+                        {notes.length > 0 && (
+                          <div style={{ display: "flex", flexDirection: "column", gap: "1rem", marginTop: "1rem" }}>
+                            <div style={{ display: "flex", gap: "1rem", flexWrap: "wrap", justifyContent: "space-between" }}>
+                              <div style={{ display: "flex", gap: "0.5rem", flex: 1, minWidth: "200px" }}>
+                                <input
+                                  type="text"
+                                  className="text-input"
+                                  placeholder="Buscar notas..."
+                                  value={searchQuery}
+                                  onChange={(e) => setSearchQuery(e.target.value)}
+                                  style={{ flex: 1, padding: "0.4rem", borderRadius: "4px", border: "1px solid var(--border)", background: "var(--background)", color: "var(--text)", fontSize: "0.85rem" }}
+                                />
+                              </div>
+                              <div style={{ display: "flex", gap: "0.5rem", flexShrink: 0 }}>
+                                <select
+                                  value={selectedTag}
+                                  onChange={(e) => setSelectedTag(e.target.value)}
+                                  style={{ padding: "0.4rem", borderRadius: "4px", border: "1px solid var(--border)", background: "var(--background)", color: "var(--text)", fontSize: "0.85rem" }}
+                                >
+                                  <option value="">Todos los tags</option>
+                                  {allTags.map(tag => (
+                                    <option key={tag} value={tag}>{tag}</option>
+                                  ))}
+                                </select>
+                              </div>
+                            </div>
+
+                            <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.85rem", color: "var(--text-muted)" }}>
+                              <span>{filteredNotes.length} notas encontradas ({selectedNotes.length} seleccionadas)</span>
+                              <div style={{ display: "flex", gap: "0.5rem" }}>
+                                <button type="button" onClick={handleSelectAllNotes} style={{ background: "none", border: "none", color: "var(--primary)", cursor: "pointer", padding: 0 }}>Seleccionar todas</button>
+                                <span>|</span>
+                                <button type="button" onClick={handleDeselectAllNotes} style={{ background: "none", border: "none", color: "var(--primary)", cursor: "pointer", padding: 0 }}>Deseleccionar todas</button>
+                              </div>
+                            </div>
+
+                            <div className="notes-list-scroll" style={{ maxHeight: "250px", overflowY: "auto", border: "1px solid var(--border)", borderRadius: "6px", padding: "0.5rem", background: "rgba(0,0,0,0.1)" }}>
+                              {filteredNotes.length === 0 ? (
+                                <div style={{ padding: "1rem", textAlign: "center", color: "var(--text-muted)" }}>No se encontraron notas</div>
+                              ) : (
+                                filteredNotes.map(n => {
+                                  const isSelected = selectedNotes.includes(n.relativePath);
+                                  return (
+                                    <div
+                                      key={n.relativePath}
+                                      onClick={() => handleToggleNote(n.relativePath)}
+                                      style={{
+                                        display: "flex",
+                                        alignItems: "center",
+                                        gap: "0.5rem",
+                                        padding: "0.5rem",
+                                        borderRadius: "4px",
+                                        cursor: "pointer",
+                                        background: isSelected ? "rgba(255,255,255,0.05)" : "transparent",
+                                        borderBottom: "1px solid rgba(255,255,255,0.05)"
+                                      }}
+                                    >
+                                      <input
+                                        type="checkbox"
+                                        checked={isSelected}
+                                        onChange={() => {}}
+                                        style={{ cursor: "pointer" }}
+                                      />
+                                      <div style={{ flex: 1, minWidth: 0 }}>
+                                        <div style={{ fontWeight: 500, color: "var(--text)", textOverflow: "ellipsis", overflow: "hidden", whiteSpace: "nowrap" }}>{n.title}</div>
+                                        <div style={{ fontSize: "0.75rem", color: "var(--text-muted)", textOverflow: "ellipsis", overflow: "hidden", whiteSpace: "nowrap" }}>{n.relativePath}</div>
+                                      </div>
+                                      {n.tags.length > 0 && (
+                                        <div style={{ display: "flex", gap: "0.2rem", flexWrap: "wrap" }}>
+                                          {n.tags.slice(0, 2).map(t => (
+                                            <span key={t} style={{ fontSize: "0.7rem", padding: "0.1rem 0.3rem", borderRadius: "3px", background: "rgba(255,255,255,0.1)", color: "var(--text-muted)" }}>{t}</span>
+                                          ))}
+                                        </div>
+                                      )}
+                                    </div>
+                                  );
+                                })
+                              )}
+                            </div>
+
+                            <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem", marginTop: "0.5rem" }}>
+                              <label style={{ fontSize: "0.9rem", fontWeight: 500, color: "var(--text)" }}>Voz para la Narración</label>
+                              <select
+                                value={selectedVoice}
+                                onChange={(e) => setSelectedVoice(e.target.value)}
+                                style={{ padding: "0.5rem", borderRadius: "4px", border: "1px solid var(--border)", background: "var(--background)", color: "var(--text)" }}
+                              >
+                                <optgroup label="Voces de México">
+                                  <option value="es-MX-DaliaNeural">Dalia (Femenina - MX)</option>
+                                  <option value="es-MX-JorgeNeural">Jorge (Masculina - MX)</option>
+                                </optgroup>
+                                <optgroup label="Voces de España">
+                                  <option value="es-ES-ElviraNeural">Elvira (Femenina - ES)</option>
+                                  <option value="es-ES-AlvaroNeural">Álvaro (Masculina - ES)</option>
+                                </optgroup>
+                                <optgroup label="Voces de EE.UU.">
+                                  <option value="es-US-AlonsoNeural">Alonso (Masculina - US)</option>
+                                  <option value="es-US-PalomaNeural">Paloma (Femenina - US)</option>
+                                </optgroup>
+                                <optgroup label="Voces en Inglés (USA)">
+                                  <option value="en-US-AvaNeural">Ava (Femenina - US)</option>
+                                  <option value="en-US-AndrewNeural">Andrew (Masculina - US)</option>
+                                </optgroup>
+                              </select>
+                            </div>
+
+                            <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem", marginTop: "0.5rem" }}>
+                              <label style={{ fontSize: "0.9rem", fontWeight: 500, color: "var(--text)" }}>Proveedor LLM</label>
+                              <div style={{ display: "flex", gap: "0.5rem" }}>
+                                <select
+                                  value={selectedProvider}
+                                  onChange={(e) => handleProviderChange(e.target.value)}
+                                  style={{ flex: 1, padding: "0.5rem", borderRadius: "4px", border: "1px solid var(--border)", background: "var(--background)", color: "var(--text)" }}
+                                >
+                                  {providers.length === 0 && (
+                                    <option value="">Cargando proveedores...</option>
+                                  )}
+                                  {providers.map(p => (
+                                    <option key={p.id} value={p.id}>{p.label}</option>
+                                  ))}
+                                </select>
+                                <input
+                                  type="text"
+                                  className="text-input"
+                                  placeholder="Modelo (ej. llama3.2)"
+                                  value={selectedModel}
+                                  onChange={(e) => setSelectedModel(e.target.value)}
+                                  style={{ flex: 1, padding: "0.5rem", borderRadius: "4px", border: "1px solid var(--border)", background: "var(--background)", color: "var(--text)", fontSize: "0.85rem" }}
+                                />
+                              </div>
+                            </div>
+
+                            <button
+                              className="btn-primary premium-cta"
+                              onClick={handleConvertNotes}
+                              disabled={selectedNotes.length === 0 || isConverting}
+                              style={{ marginTop: "0.5rem" }}
+                            >
+                              {isConverting ? `Convirtiendo ${selectedNotes.length} notas...` : `Convertir a Audio (${selectedNotes.length})`}
+                            </button>
+                          </div>
+                        )}
+                      </div>
                     </div>
                   )}
                 </div>

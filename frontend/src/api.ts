@@ -393,3 +393,51 @@ export function subscribeToJob(
 
   return () => source.close();
 }
+
+export type NoteInfo = {
+  relativePath: string;
+  title: string;
+  tags: string[];
+  sizeBytes: number;
+};
+
+export async function scanVault(vaultPath: string): Promise<NoteInfo[]> {
+  const response = await fetch(`${API_BASE}/vault/scan?path=${encodeURIComponent(vaultPath)}`);
+  if (!response.ok) {
+    throw new Error(await response.text());
+  }
+  return response.json();
+}
+
+export type ProviderInfo = {
+  id: string;
+  label: string;
+  defaultModel: string;
+};
+
+export async function getProviders(): Promise<ProviderInfo[]> {
+  const response = await fetch(`${API_BASE}/llm/providers`);
+  if (!response.ok) {
+    throw new Error(await response.text());
+  }
+  return response.json();
+}
+
+export async function convertNotesToAudio(
+  vaultPath: string,
+  notes: string[],
+  voice?: string,
+  provider?: string,
+  model?: string
+): Promise<{ jobIds: string[] }> {
+  const response = await fetch(`${API_BASE}/vault/convert`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ vaultPath, notes, voice, provider, model })
+  });
+  if (!response.ok) {
+    throw new Error(await response.text());
+  }
+  return response.json();
+}
+

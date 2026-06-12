@@ -10,11 +10,17 @@ import { OpenAICompatibleProvider } from "./openaiCompatibleProvider.js"
 /**
  * Service keys that can each have their own provider/model override.
  *
- * Environment variable pattern:
- *   LLM_{SERVICE}_PROVIDER  — "ollama" | "openai-compatible"
- *   LLM_{SERVICE}_MODEL     — model identifier
- *   LLM_{SERVICE}_BASE_URL  — endpoint override
- *   LLM_{SERVICE}_API_KEY   — API key (for openai-compatible)
+ * Resolution order (first non-empty wins):
+ *   1. Per-service:  LLM_{SERVICE}_PROVIDER / _MODEL / _BASE_URL / _API_KEY
+ *   2. Global:       LLM_PROVIDER / LLM_MODEL / LLM_BASE_URL / LLM_API_KEY
+ *   3. Ollama defaults (OLLAMA_BASE_URL / OLLAMA_MODEL)
+ *
+ * To route every LLM feature through a hosted OpenAI-compatible gateway
+ * (e.g. OpenCode, OpenAI, OpenRouter) instead of Ollama, set the globals:
+ *   LLM_PROVIDER=openai-compatible
+ *   LLM_BASE_URL=https://your-endpoint/v1
+ *   LLM_API_KEY=sk-...
+ *   LLM_MODEL=<model-id>
  */
 export type LlmServiceKey =
   | "SUMMARY"
@@ -27,6 +33,7 @@ type ProviderType = "ollama" | "openai-compatible"
 
 function readProviderType(envKey: string): ProviderType {
   const raw = process.env[envKey]?.trim().toLowerCase()
+    || process.env.LLM_PROVIDER?.trim().toLowerCase()
   if (raw === "openai-compatible" || raw === "openai") return "openai-compatible"
   return "ollama"
 }
@@ -56,10 +63,12 @@ function buildProvider(type: ProviderType, baseUrl: string, apiKey: string): Llm
 export function resolveProvider(service: LlmServiceKey): LlmProvider {
   const providerType = readProviderType(`LLM_${service}_PROVIDER`)
   const baseUrl = process.env[`LLM_${service}_BASE_URL`]?.trim()
+    || process.env.LLM_BASE_URL?.trim()
     || (providerType === "openai-compatible"
       ? process.env.LLM_OPENAI_BASE_URL?.trim() || `${config.ollamaBaseUrl}/v1`
       : config.ollamaBaseUrl)
   const apiKey = process.env[`LLM_${service}_API_KEY`]?.trim()
+    || process.env.LLM_API_KEY?.trim()
     || process.env.LLM_OPENAI_API_KEY?.trim()
     || ""
 
@@ -71,7 +80,9 @@ export function resolveProvider(service: LlmServiceKey): LlmProvider {
  * Checks LLM_{SERVICE}_MODEL first, falls back to OLLAMA_MODEL.
  */
 export function resolveModel(service: LlmServiceKey): string {
-  return process.env[`LLM_${service}_MODEL`]?.trim() || config.ollamaModel
+  return process.env[`LLM_${service}_MODEL`]?.trim()
+    || process.env.LLM_MODEL?.trim()
+    || config.ollamaModel
 }
 
 /**
@@ -81,5 +92,92 @@ export function resolveServiceLlm(service: LlmServiceKey): { provider: LlmProvid
   return {
     provider: resolveProvider(service),
     model: resolveModel(service)
+  }
+}
+
+/**
+ * Descriptor returned by getAvailableProviders() for the frontend to render
+ * a dynamic provider/model picker.
+ */
+export type ProviderInfo = {
+  id: string
+  label: string
+  defaultModel: string
+}
+
+/**
+ * Return a list of providers that are configured and available for use.
+ * Always includes "ollama" (built-in default) and conditionally includes
+ * "openai-compatible" when env vars configure it (or "opencode" label
+ * when LLM_PROVIDER hints at it).
+ */
+export function getAvailableProviders(): ProviderInfo[] {
+  const providers: ProviderInfo[] = [
+    {
+      id: "ollama",
+      label: "Ollama (Local)",
+      defaultModel: config.ollamaModel
+    }
+  ]
+
+  const globalProvider = process.env.LLM_PROVIDER?.trim().toLowerCase()
+  const hasOpenAIConfig = globalProvider === "openai-compatible"
+    || globalProvider === "openai"
+    || !!process.env.LLM_BASE_URL?.trim()
+    || !!process.env.LLM_API_KEY?.trim()
+    || !!process.env.LLM_OPENAI_BASE_URL?.trim()
+
+  if (hasOpenAIConfig) {
+    // Derive a friendlier label from the base URL when possible
+    const baseUrl = process.env.LLM_BASE_URL?.trim()
+      || process.env.LLM_OPENAI_BASE_URL?.trim() || ""
+    let label = "OpenAI-Compatible"
+    if (baseUrl.includes("opencode")) label = "OpenCode"
+    else if (baseUrl.includes("openrouter")) label = "OpenRouter"
+    else if (baseUrl.includes("groq")) label = "Groq"
+    else if (baseUrl.includes("together")) label = "Together AI"
+    else if (baseUrl.includes("api.openai.com")) label = "OpenAI"
+
+    providers.push({
+      id: "openai-compatible",
+      label,
+      defaultModel: process.env.LLM_MODEL?.trim() || config.ollamaModel
+    })
+  }
+
+  return providers
+}
+
+/**
+ * Build a provider+model pair from explicit request parameters.
+ * Used when the UI sends a specific provider/model selection instead of
+ * relying on environment-based resolution.
+ */
+export function buildProviderFromRequest(
+  providerId?: string,
+  model?: string
+): { provider: LlmProvider; model: string } {
+  // Fall back to default env-based resolution when no explicit provider given
+  if (!providerId) {
+    return resolveServiceLlm("SUMMARY")
+  }
+
+  if (providerId === "openai-compatible") {
+    const baseUrl = process.env.LLM_BASE_URL?.trim()
+      || process.env.LLM_OPENAI_BASE_URL?.trim()
+      || `${config.ollamaBaseUrl}/v1`
+    const apiKey = process.env.LLM_API_KEY?.trim()
+      || process.env.LLM_OPENAI_API_KEY?.trim()
+      || ""
+    return {
+      provider: buildProvider("openai-compatible", baseUrl, apiKey),
+      model: model || process.env.LLM_MODEL?.trim() || config.ollamaModel
+    }
+  }
+
+  // Default: ollama
+  return {
+    provider: buildProvider("ollama", config.ollamaBaseUrl, ""),
+    model: model || config.ollamaModel
   }
 }
