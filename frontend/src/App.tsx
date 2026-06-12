@@ -1,4 +1,4 @@
-import { FormEvent, useCallback, useEffect, useRef, useState, forwardRef, useImperativeHandle, useMemo } from "react";
+import { FormEvent, useCallback, useEffect, useRef, useState, forwardRef, useImperativeHandle } from "react";
 import { LiveSessionPanel } from "./LiveSessionPanel.js";
 import { AudioSettingsPanel, type AudioSettings } from "./AudioSettingsPanel.js";
 import {
@@ -31,13 +31,9 @@ import {
   TranscriptPayload,
   TranscriptSegment,
   TranscriptVariant,
-  uploadMedia,
-  scanVault,
-  convertNotesToAudio,
-  getProviders,
-  type NoteInfo,
-  type ProviderInfo
+  uploadMedia
 } from "./api";
+import { VaultNotesPanel } from "./VaultNotesPanel";
 
 const ACCEPTED_TYPES = "audio/*,video/*,.mkv";
 const mojibakePattern = /[ÃÂÐÑÌÒÙ]/;
@@ -525,7 +521,13 @@ function WorkspaceView({ onSelectJob }: { onSelectJob: (job: JobPayload) => void
   }
 
   if (loading) return <div style={{ padding: '2rem', color: 'var(--text-muted)' }}>Loading workspace...</div>;
-  if (jobs.length === 0) return <div style={{ padding: '2rem', color: 'var(--text-muted)' }}>No jobs found in your workspace.</div>;
+  if (jobs.length === 0) {
+    return (
+      <div className="vault-empty" style={{ margin: '2rem auto', maxWidth: '32rem' }}>
+        <p>Your workspace is empty. Process a recording, live session, or vault note and it will appear here.</p>
+      </div>
+    );
+  }
 
   return (
     <div>
@@ -878,81 +880,67 @@ function EnhancementPrompt({ job, onSubmit, onSkip }: {
   }
 
   return (
-    <div className="glass-panel" style={{ padding: "1.5rem" }}>
-      <h4 style={{ marginBottom: "0.5rem" }}>Enhance Your Transcript</h4>
-      <p style={{ color: "var(--text-muted)", marginBottom: "1.5rem", fontSize: "0.9rem" }}>
-        Base transcription is ready. Choose optional enhancements to run.
-      </p>
+    <div className="enhancement-prompt">
+      <div className="enhancement-intro">
+        <h4>Enhance Your Transcript</h4>
+        <p>Base transcription is ready. Choose optional enhancements to run.</p>
+      </div>
 
-      <div style={{ display: "flex", flexDirection: "column", gap: "1rem", marginBottom: "1.5rem" }}>
-        <label style={{ display: "flex", alignItems: "flex-start", gap: "0.75rem", cursor: "pointer" }}>
+      <div className="enhancement-options">
+        <label className={`enh-option ${summarizeEnabled ? "active" : ""}`}>
           <input
             type="checkbox"
             checked={summarizeEnabled}
             onChange={(e) => setSummarizeEnabled(e.target.checked)}
-            style={{ marginTop: "0.2rem" }}
           />
-          <div>
+          <div className="enh-option-body">
             <strong>Structured Summary</strong>
-            <p style={{ color: "var(--text-muted)", fontSize: "0.85rem", margin: 0 }}>
-              Choose a summary style that matches the real content instead of forcing a meeting recap
-            </p>
+            <p>Choose a summary style that matches the real content instead of forcing a meeting recap</p>
+            {summarizeEnabled && (
+              <div className="enh-preset-wrap">
+                <label>Summary type</label>
+                <select
+                  value={summaryPreset}
+                  onChange={(e) => handlePresetChange(e.target.value as SummaryPreset)}
+                  className="enhancement-select"
+                >
+                  {Object.entries(PRESET_DESCRIPTIONS).map(([key, info]) => (
+                    <option key={key} value={key}>{info.label}</option>
+                  ))}
+                </select>
+                <span className="enh-preset-desc">{PRESET_DESCRIPTIONS[summaryPreset].description}</span>
+              </div>
+            )}
           </div>
         </label>
 
-        {summarizeEnabled && (
-          <div style={{ marginLeft: "2rem" }}>
-            <label style={{ display: "block", marginBottom: "0.5rem", fontSize: "0.85rem", color: "var(--text-muted)" }}>
-              Summary type
-            </label>
-            <select
-              value={summaryPreset}
-              onChange={(e) => handlePresetChange(e.target.value as SummaryPreset)}
-              className="enhancement-select"
-            >
-              {Object.entries(PRESET_DESCRIPTIONS).map(([key, info]) => (
-                <option key={key} value={key}>{info.label}</option>
-              ))}
-            </select>
-            <p style={{ color: "var(--text-muted)", fontSize: "0.8rem", margin: "0.4rem 0 0" }}>
-              {PRESET_DESCRIPTIONS[summaryPreset].description}
-            </p>
-          </div>
-        )}
-
-        <label style={{ display: "flex", alignItems: "flex-start", gap: "0.75rem", cursor: "pointer" }}>
+        <label className={`enh-option ${diarizeEnabled ? "active" : ""}`}>
           <input
             type="checkbox"
             checked={diarizeEnabled}
             onChange={(e) => setDiarizeEnabled(e.target.checked)}
-            style={{ marginTop: "0.2rem" }}
           />
-          <div>
+          <div className="enh-option-body">
             <strong>Speaker Identification</strong>
-            <p style={{ color: "var(--text-muted)", fontSize: "0.85rem", margin: 0 }}>
-              Identify who said what in the recording
-            </p>
+            <p>Identify who said what in the recording</p>
           </div>
         </label>
 
-        <label style={{ display: "flex", alignItems: "flex-start", gap: "0.75rem", cursor: "pointer" }}>
+        <label className={`enh-option ${translateEnabled ? "active" : ""}`}>
           <input
             type="checkbox"
             checked={translateEnabled}
             onChange={(e) => setTranslateEnabled(e.target.checked)}
-            style={{ marginTop: "0.2rem" }}
           />
-          <div>
+          <div className="enh-option-body">
             <strong>English Translation</strong>
-            <p style={{ color: "var(--text-muted)", fontSize: "0.85rem", margin: 0 }}>
-              Translate transcript to English
-            </p>
+            <p>Translate transcript to English</p>
           </div>
         </label>
       </div>
 
-      <div style={{ display: "flex", gap: "1rem" }}>
-        <button className="btn-secondary" onClick={onSkip} disabled={submitting}>Skip Enhancements</button>
+      <div className="enhancement-actions">
+        <button className="btn-secondary" onClick={onSkip} disabled={submitting}>Skip</button>
         <button className="btn-primary" onClick={handleSubmit} disabled={submitting}>
           {submitting ? "Starting..." : "Run Selected"}
         </button>
@@ -978,119 +966,6 @@ export function App() {
   const [isDragOver, setIsDragOver] = useState(false);
   const [view, setView] = useState<AppView>("upload");
 
-  // Vault Notes State & Functions
-  const [vaultPath, setVaultPath] = useState(
-    localStorage.getItem("notadio_vault_path") || "/Users/javierrangel/Google Drive/My Drive/ObsNote"
-  );
-  const [notes, setNotes] = useState<NoteInfo[]>([]);
-  const [selectedNotes, setSelectedNotes] = useState<string[]>([]);
-  const [isScanning, setIsScanning] = useState(false);
-  const [searchQuery, setSearchQuery] = useState("");
-  const [selectedTag, setSelectedTag] = useState("");
-  const [selectedVoice, setSelectedVoice] = useState("es-MX-DaliaNeural");
-  const [isConverting, setIsConverting] = useState(false);
-  const [providers, setProviders] = useState<ProviderInfo[]>([]);
-  const [selectedProvider, setSelectedProvider] = useState("");
-  const [selectedModel, setSelectedModel] = useState("");
-
-  // Extract all unique tags
-  const allTags = useMemo(() => {
-    const tagsSet = new Set<string>();
-    notes.forEach(note => {
-      note.tags.forEach(tag => tagsSet.add(tag));
-    });
-    return Array.from(tagsSet).sort();
-  }, [notes]);
-
-  // Filter notes based on search query and selected tag
-  const filteredNotes = useMemo(() => {
-    return notes.filter(n => {
-      const matchesSearch = n.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                            n.relativePath.toLowerCase().includes(searchQuery.toLowerCase());
-      const matchesTag = selectedTag === "" || n.tags.includes(selectedTag);
-      return matchesSearch && matchesTag;
-    });
-  }, [notes, searchQuery, selectedTag]);
-
-  async function handleScanVault() {
-    if (!vaultPath.trim()) return;
-    setIsScanning(true);
-    setError(null);
-    try {
-      const result = await scanVault(vaultPath);
-      setNotes(result);
-      setSelectedNotes([]);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to scan vault");
-    } finally {
-      setIsScanning(false);
-    }
-  }
-
-  // Fetch available LLM providers on mount
-  useEffect(() => {
-    getProviders()
-      .then((list) => {
-        setProviders(list);
-        if (list.length > 0 && !selectedProvider) {
-          setSelectedProvider(list[0].id);
-          setSelectedModel(list[0].defaultModel);
-        }
-      })
-      .catch(() => {});
-  }, []);
-
-  function handleProviderChange(providerId: string) {
-    setSelectedProvider(providerId);
-    const info = providers.find((p) => p.id === providerId);
-    if (info) {
-      setSelectedModel(info.defaultModel);
-    }
-  }
-
-  function handleToggleNote(path: string) {
-    setSelectedNotes(prev => {
-      if (prev.includes(path)) {
-        return prev.filter(p => p !== path);
-      } else {
-        return [...prev, path];
-      }
-    });
-  }
-
-  function handleSelectAllNotes() {
-    setSelectedNotes(filteredNotes.map(n => n.relativePath));
-  }
-
-  function handleDeselectAllNotes() {
-    setSelectedNotes([]);
-  }
-
-  async function handleConvertNotes() {
-    if (selectedNotes.length === 0) return;
-    setIsConverting(true);
-    setError(null);
-    try {
-      const { jobIds } = await convertNotesToAudio(
-        vaultPath,
-        selectedNotes,
-        selectedVoice,
-        selectedProvider || undefined,
-        selectedModel || undefined
-      );
-      if (jobIds.length > 0) {
-        const firstJobId = jobIds[0];
-        const j = await getJob(firstJobId);
-        setJob(j);
-        setView("processing");
-        setSelectedNotes([]);
-      }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to convert notes");
-    } finally {
-      setIsConverting(false);
-    }
-  }
   const [showTranslateConfirm, setShowTranslateConfirm] = useState(false);
   const [autoSwitchToEnglish, setAutoSwitchToEnglish] = useState(false);
   const audioPlayerRef = useRef<{ seek: (t: number) => void }>(null);
@@ -1556,176 +1431,14 @@ export function App() {
 
                   {sourceMode === "notes" && (
                     <div className="upload-workflow">
-                      <div className="glass-panel" style={{ padding: "1.5rem", display: "flex", flexDirection: "column", gap: "1rem" }}>
-                        <div style={{ display: "flex", gap: "0.5rem", flexDirection: "column" }}>
-                          <label style={{ fontSize: "0.9rem", fontWeight: 500, color: "var(--text)" }}>Ruta del Vault de Obsidian</label>
-                          <div style={{ display: "flex", gap: "0.5rem" }}>
-                            <input
-                              type="text"
-                              className="text-input"
-                              placeholder="/Users/usuario/Obsidian/MiVault"
-                              value={vaultPath}
-                              onChange={(e) => {
-                                setVaultPath(e.target.value);
-                                localStorage.setItem("notadio_vault_path", e.target.value);
-                              }}
-                              style={{ flex: 1, padding: "0.5rem", borderRadius: "4px", border: "1px solid var(--border)", background: "var(--background)", color: "var(--text)" }}
-                            />
-                            <button
-                              className="btn-secondary"
-                              onClick={handleScanVault}
-                              disabled={isScanning || !vaultPath.trim()}
-                              type="button"
-                              style={{ padding: "0.5rem 1rem" }}
-                            >
-                              {isScanning ? "Escaneando..." : "Escanear"}
-                            </button>
-                          </div>
-                        </div>
-
-                        {notes.length > 0 && (
-                          <div style={{ display: "flex", flexDirection: "column", gap: "1rem", marginTop: "1rem" }}>
-                            <div style={{ display: "flex", gap: "1rem", flexWrap: "wrap", justifyContent: "space-between" }}>
-                              <div style={{ display: "flex", gap: "0.5rem", flex: 1, minWidth: "200px" }}>
-                                <input
-                                  type="text"
-                                  className="text-input"
-                                  placeholder="Buscar notas..."
-                                  value={searchQuery}
-                                  onChange={(e) => setSearchQuery(e.target.value)}
-                                  style={{ flex: 1, padding: "0.4rem", borderRadius: "4px", border: "1px solid var(--border)", background: "var(--background)", color: "var(--text)", fontSize: "0.85rem" }}
-                                />
-                              </div>
-                              <div style={{ display: "flex", gap: "0.5rem", flexShrink: 0 }}>
-                                <select
-                                  value={selectedTag}
-                                  onChange={(e) => setSelectedTag(e.target.value)}
-                                  style={{ padding: "0.4rem", borderRadius: "4px", border: "1px solid var(--border)", background: "var(--background)", color: "var(--text)", fontSize: "0.85rem" }}
-                                >
-                                  <option value="">Todos los tags</option>
-                                  {allTags.map(tag => (
-                                    <option key={tag} value={tag}>{tag}</option>
-                                  ))}
-                                </select>
-                              </div>
-                            </div>
-
-                            <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.85rem", color: "var(--text-muted)" }}>
-                              <span>{filteredNotes.length} notas encontradas ({selectedNotes.length} seleccionadas)</span>
-                              <div style={{ display: "flex", gap: "0.5rem" }}>
-                                <button type="button" onClick={handleSelectAllNotes} style={{ background: "none", border: "none", color: "var(--primary)", cursor: "pointer", padding: 0 }}>Seleccionar todas</button>
-                                <span>|</span>
-                                <button type="button" onClick={handleDeselectAllNotes} style={{ background: "none", border: "none", color: "var(--primary)", cursor: "pointer", padding: 0 }}>Deseleccionar todas</button>
-                              </div>
-                            </div>
-
-                            <div className="notes-list-scroll" style={{ maxHeight: "250px", overflowY: "auto", border: "1px solid var(--border)", borderRadius: "6px", padding: "0.5rem", background: "rgba(0,0,0,0.1)" }}>
-                              {filteredNotes.length === 0 ? (
-                                <div style={{ padding: "1rem", textAlign: "center", color: "var(--text-muted)" }}>No se encontraron notas</div>
-                              ) : (
-                                filteredNotes.map(n => {
-                                  const isSelected = selectedNotes.includes(n.relativePath);
-                                  return (
-                                    <div
-                                      key={n.relativePath}
-                                      onClick={() => handleToggleNote(n.relativePath)}
-                                      style={{
-                                        display: "flex",
-                                        alignItems: "center",
-                                        gap: "0.5rem",
-                                        padding: "0.5rem",
-                                        borderRadius: "4px",
-                                        cursor: "pointer",
-                                        background: isSelected ? "rgba(255,255,255,0.05)" : "transparent",
-                                        borderBottom: "1px solid rgba(255,255,255,0.05)"
-                                      }}
-                                    >
-                                      <input
-                                        type="checkbox"
-                                        checked={isSelected}
-                                        onChange={() => {}}
-                                        style={{ cursor: "pointer" }}
-                                      />
-                                      <div style={{ flex: 1, minWidth: 0 }}>
-                                        <div style={{ fontWeight: 500, color: "var(--text)", textOverflow: "ellipsis", overflow: "hidden", whiteSpace: "nowrap" }}>{n.title}</div>
-                                        <div style={{ fontSize: "0.75rem", color: "var(--text-muted)", textOverflow: "ellipsis", overflow: "hidden", whiteSpace: "nowrap" }}>{n.relativePath}</div>
-                                      </div>
-                                      {n.tags.length > 0 && (
-                                        <div style={{ display: "flex", gap: "0.2rem", flexWrap: "wrap" }}>
-                                          {n.tags.slice(0, 2).map(t => (
-                                            <span key={t} style={{ fontSize: "0.7rem", padding: "0.1rem 0.3rem", borderRadius: "3px", background: "rgba(255,255,255,0.1)", color: "var(--text-muted)" }}>{t}</span>
-                                          ))}
-                                        </div>
-                                      )}
-                                    </div>
-                                  );
-                                })
-                              )}
-                            </div>
-
-                            <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem", marginTop: "0.5rem" }}>
-                              <label style={{ fontSize: "0.9rem", fontWeight: 500, color: "var(--text)" }}>Voz para la Narración</label>
-                              <select
-                                value={selectedVoice}
-                                onChange={(e) => setSelectedVoice(e.target.value)}
-                                style={{ padding: "0.5rem", borderRadius: "4px", border: "1px solid var(--border)", background: "var(--background)", color: "var(--text)" }}
-                              >
-                                <optgroup label="Voces de México">
-                                  <option value="es-MX-DaliaNeural">Dalia (Femenina - MX)</option>
-                                  <option value="es-MX-JorgeNeural">Jorge (Masculina - MX)</option>
-                                </optgroup>
-                                <optgroup label="Voces de España">
-                                  <option value="es-ES-ElviraNeural">Elvira (Femenina - ES)</option>
-                                  <option value="es-ES-AlvaroNeural">Álvaro (Masculina - ES)</option>
-                                </optgroup>
-                                <optgroup label="Voces de EE.UU.">
-                                  <option value="es-US-AlonsoNeural">Alonso (Masculina - US)</option>
-                                  <option value="es-US-PalomaNeural">Paloma (Femenina - US)</option>
-                                </optgroup>
-                                <optgroup label="Voces en Inglés (USA)">
-                                  <option value="en-US-AvaNeural">Ava (Femenina - US)</option>
-                                  <option value="en-US-AndrewNeural">Andrew (Masculina - US)</option>
-                                </optgroup>
-                              </select>
-                            </div>
-
-                            <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem", marginTop: "0.5rem" }}>
-                              <label style={{ fontSize: "0.9rem", fontWeight: 500, color: "var(--text)" }}>Proveedor LLM</label>
-                              <div style={{ display: "flex", gap: "0.5rem" }}>
-                                <select
-                                  value={selectedProvider}
-                                  onChange={(e) => handleProviderChange(e.target.value)}
-                                  style={{ flex: 1, padding: "0.5rem", borderRadius: "4px", border: "1px solid var(--border)", background: "var(--background)", color: "var(--text)" }}
-                                >
-                                  {providers.length === 0 && (
-                                    <option value="">Cargando proveedores...</option>
-                                  )}
-                                  {providers.map(p => (
-                                    <option key={p.id} value={p.id}>{p.label}</option>
-                                  ))}
-                                </select>
-                                <input
-                                  type="text"
-                                  className="text-input"
-                                  placeholder="Modelo (ej. llama3.2)"
-                                  value={selectedModel}
-                                  onChange={(e) => setSelectedModel(e.target.value)}
-                                  style={{ flex: 1, padding: "0.5rem", borderRadius: "4px", border: "1px solid var(--border)", background: "var(--background)", color: "var(--text)", fontSize: "0.85rem" }}
-                                />
-                              </div>
-                            </div>
-
-                            <button
-                              className="btn-primary premium-cta"
-                              onClick={handleConvertNotes}
-                              disabled={selectedNotes.length === 0 || isConverting}
-                              style={{ marginTop: "0.5rem" }}
-                            >
-                              {isConverting ? `Convirtiendo ${selectedNotes.length} notas...` : `Convertir a Audio (${selectedNotes.length})`}
-                            </button>
-                          </div>
-                        )}
-                      </div>
+                      <VaultNotesPanel
+                        onJobStarted={(startedJob) => {
+                          setError(null);
+                          setJob(startedJob);
+                          setView("processing");
+                        }}
+                        onError={(message) => setError(message)}
+                      />
                     </div>
                   )}
                 </div>
@@ -1805,8 +1518,8 @@ export function App() {
               </div>
 
               {processingWarnings.length > 0 && (
-                <div className="glass-panel" style={{ borderLeft: "4px solid #f59e0b" }}>
-                  <h4 style={{ marginBottom: "0.75rem" }}>Warnings</h4>
+                <div className="alert-panel alert-panel--warning">
+                  <h4>Warnings</h4>
                   <div style={{ display: "grid", gap: "0.5rem" }}>
                     {processingWarnings.map((warning) => (
                       <div key={warning} style={{ color: "var(--text-muted)", lineHeight: 1.5 }}>{warning}</div>
@@ -1821,14 +1534,14 @@ export function App() {
 
           {view === "enhancements" && job && transcript && (
             <div className="results-workspace">
-              <div className="glass-panel results-overview-card" style={{ gridColumn: '1 / -1', display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', padding: '1rem', alignItems: 'center' }}>
-                <div style={{ fontWeight: 600, fontSize: '1.1rem' }}>
+              <div className="results-header">
+                <div className="results-file-name">
                   {job.sourceMedia?.originalName}
                   {job.sourceOrigin === "recording" && <span className="tag-outline" style={{ fontSize: '0.7rem', padding: '0.1rem 0.4rem', marginLeft: '0.5rem', verticalAlign: 'middle' }}>mic</span>}
                 </div>
-                <div style={{ display: 'flex', gap: '1.5rem', fontSize: '0.9rem' }}>
-                  {job.durationSeconds && <span><span style={{ color: 'var(--text-muted)', marginRight: '4px' }}>Duration:</span>{formatTime(job.durationSeconds)}</span>}
-                  <span><span style={{ color: 'var(--text-muted)', marginRight: '4px' }}>Language:</span>{job.detectedLanguage || 'auto'}</span>
+                <div className="results-meta-strip">
+                  {job.durationSeconds && <span className="results-meta-item">Duration<strong>{formatTime(job.durationSeconds)}</strong></span>}
+                  <span className="results-meta-item">Language<strong>{job.detectedLanguage || 'auto'}</strong></span>
                 </div>
               </div>
 
@@ -1875,8 +1588,8 @@ export function App() {
 
           {view === "results" && job && job.status === "failed" && (
               <div className="processing-dash">
-              <div className="glass-panel" style={{ borderLeft: '4px solid var(--danger)' }}>
-                <h3 style={{ color: 'var(--danger)', marginBottom: '1rem' }}>Processing Failed</h3>
+              <div className="alert-panel alert-panel--danger">
+                <h3 style={{ marginBottom: '1rem' }}>Processing Failed</h3>
                 <p style={{ marginBottom: '1rem' }}>{job.error}</p>
                 <div style={{ display: 'flex', gap: '1rem' }}>
                   <button className="btn-primary" onClick={handleReprocessCurrentJob}>Retry Processing</button>
@@ -1890,21 +1603,21 @@ export function App() {
           {view === "results" && job && isCompleted && transcript && (
             <div className="results-workspace">
 
-              <div className="glass-panel results-overview-card" style={{ gridColumn: '1 / -1', display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', padding: '1rem', alignItems: 'center' }}>
-                <div style={{ fontWeight: 600, fontSize: '1.1rem' }}>
+              <div className="results-header">
+                <div className="results-file-name">
                   {job.sourceMedia?.originalName}
                   {job.sourceOrigin === "recording" && <span className="tag-outline" style={{ fontSize: '0.7rem', padding: '0.1rem 0.4rem', marginLeft: '0.5rem', verticalAlign: 'middle' }}>mic</span>}
                 </div>
-                <div style={{ display: 'flex', gap: '1.5rem', fontSize: '0.9rem' }}>
-                  {job.sourceMedia?.sizeBytes && <span><span style={{ color: 'var(--text-muted)', marginRight: '4px' }}>Size:</span>{formatBytes(job.sourceMedia?.sizeBytes)}</span>}
-                  <span><span style={{ color: 'var(--text-muted)', marginRight: '4px' }}>Duration:</span>{formatTime(job.durationSeconds || 0)}</span>
-                  <span><span style={{ color: 'var(--text-muted)', marginRight: '4px' }}>Language:</span>{job.detectedLanguage || 'auto'}</span>
+                <div className="results-meta-strip">
+                  {job.sourceMedia?.sizeBytes && <span className="results-meta-item">Size<strong>{formatBytes(job.sourceMedia?.sizeBytes)}</strong></span>}
+                  <span className="results-meta-item">Duration<strong>{formatTime(job.durationSeconds || 0)}</strong></span>
+                  <span className="results-meta-item">Language<strong>{job.detectedLanguage || 'auto'}</strong></span>
                 </div>
               </div>
 
               {processingWarnings.length > 0 && (
-                <div className="glass-panel" style={{ gridColumn: "1 / -1", borderLeft: "4px solid #f59e0b" }}>
-                  <h4 style={{ marginBottom: "0.75rem" }}>Runtime Warnings</h4>
+                <div className="alert-panel alert-panel--warning" style={{ gridColumn: "1 / -1" }}>
+                  <h4>Runtime Warnings</h4>
                   <div style={{ display: "grid", gap: "0.5rem" }}>
                     {processingWarnings.map((warning) => (
                       <div key={warning} style={{ color: "var(--text-muted)", lineHeight: 1.5 }}>{warning}</div>
@@ -1914,26 +1627,22 @@ export function App() {
               )}
 
               <aside className="summary-rail">
-                <div className="glass-panel" style={{ padding: '1rem' }}>
-                  <button className="btn-secondary" style={{ width: '100%' }} onClick={resetToUpload}>
-                    New Session
-                  </button>
-                </div>
+                <button className="btn-secondary" style={{ width: '100%' }} onClick={resetToUpload}>
+                  New Session
+                </button>
 
                 {displaySummary ? (
                   <>
-                    <div className="glass-panel">
-                      <h4 style={{ marginBottom: '0.5rem', color: 'var(--text-muted)', fontSize: '0.85rem', textTransform: 'uppercase' }}>
-                        {getSummaryHeading(displaySummary.contentType)}
-                      </h4>
-                      <p style={{ fontSize: '1.1rem', marginBottom: '1rem' }}>{displaySummary.headline}</p>
-                      <p style={{ color: 'var(--text-muted)' }}>{displaySummary.brief}</p>
+                    <div className="summary-lede-card">
+                      <span className="summary-label">{getSummaryHeading(displaySummary.contentType)}</span>
+                      <p className="summary-lede-headline">{displaySummary.headline}</p>
+                      <p className="summary-lede-brief">{displaySummary.brief}</p>
                     </div>
 
                     {displaySummary.coreClaims && displaySummary.coreClaims.length > 0 && !isOperationalSummary(displaySummary) && (
                       <div className="glass-panel">
-                        <h4 style={{ marginBottom: '1rem', color: 'var(--text-muted)', fontSize: '0.85rem', textTransform: 'uppercase' }}>Core Claims</h4>
-                        <ul style={{ margin: 0, paddingLeft: '1.2rem', color: 'rgba(255,255,255,0.9)' }}>
+                        <h4 className="summary-label">Core Claims</h4>
+                        <ul className="summary-list">
                           {displaySummary.coreClaims.map((claim, i) => <li key={i} style={{ marginBottom: '0.5rem' }}>{claim}</li>)}
                         </ul>
                       </div>
@@ -1941,8 +1650,8 @@ export function App() {
 
                     {displaySummary.evidenceMoments && displaySummary.evidenceMoments.length > 0 && !isOperationalSummary(displaySummary) && (
                       <div className="glass-panel">
-                        <h4 style={{ marginBottom: '1rem', color: 'var(--text-muted)', fontSize: '0.85rem', textTransform: 'uppercase' }}>Evidence Moments</h4>
-                        <ul style={{ margin: 0, paddingLeft: '1.2rem', color: 'rgba(255,255,255,0.9)' }}>
+                        <h4 className="summary-label">Evidence Moments</h4>
+                        <ul className="summary-list">
                           {displaySummary.evidenceMoments.map((moment, i) => <li key={i} style={{ marginBottom: '0.5rem' }}>{moment}</li>)}
                         </ul>
                       </div>
@@ -1950,8 +1659,8 @@ export function App() {
 
                     {displaySummary.keyDecisions && displaySummary.keyDecisions.length > 0 && isOperationalSummary(displaySummary) && (
                       <div className="glass-panel">
-                        <h4 style={{ marginBottom: '1rem', color: 'var(--text-muted)', fontSize: '0.85rem', textTransform: 'uppercase' }}>Key Decisions</h4>
-                        <ul style={{ margin: 0, paddingLeft: '1.2rem', color: 'rgba(255,255,255,0.9)' }}>
+                        <h4 className="summary-label">Key Decisions</h4>
+                        <ul className="summary-list">
                           {displaySummary.keyDecisions.map((dec, i) => <li key={i} style={{ marginBottom: '0.5rem' }}>{dec}</li>)}
                         </ul>
                       </div>
@@ -1959,7 +1668,7 @@ export function App() {
 
                     {displaySummary.actionItems && displaySummary.actionItems.length > 0 && isOperationalSummary(displaySummary) && (
                       <div className="glass-panel">
-                        <h4 style={{ marginBottom: '1rem', color: 'var(--text-muted)', fontSize: '0.85rem', textTransform: 'uppercase' }}>Action Items</h4>
+                        <h4 className="summary-label">Action Items</h4>
                         {displaySummary.actionItems.map((item, i) => (
                           <div className="task-card" key={i}>
                             <p>{item.task}</p>
@@ -1974,7 +1683,7 @@ export function App() {
 
                     {displaySummary.actionItems && displaySummary.actionItems.length > 0 && !isOperationalSummary(displaySummary) && (
                       <div className="glass-panel">
-                        <h4 style={{ marginBottom: '1rem', color: 'var(--text-muted)', fontSize: '0.85rem', textTransform: 'uppercase' }}>Literal Commitments Mentioned</h4>
+                        <h4 className="summary-label">Literal Commitments Mentioned</h4>
                         {displaySummary.actionItems.map((item, i) => (
                           <div className="task-card" key={i}>
                             <p>{item.task}</p>
@@ -1989,10 +1698,10 @@ export function App() {
 
                     {displaySummary.sections && displaySummary.sections.length > 0 && displaySummary.sections.map((sec, i) => (
                       <div className="glass-panel" key={i}>
-                        <h4 style={{ marginBottom: '0.5rem', color: 'var(--text-muted)', fontSize: '0.85rem', textTransform: 'uppercase' }}>{sec.title}</h4>
+                        <h4 className="summary-label">{sec.title}</h4>
                         <p style={{ color: 'rgba(255,255,255,0.9)', marginBottom: '0.5rem', fontSize: '0.95rem' }}>{sec.summary}</p>
                         {sec.bullets && sec.bullets.length > 0 && (
-                          <ul style={{ margin: 0, paddingLeft: '1.2rem', color: 'rgba(255,255,255,0.9)', fontSize: '0.9rem' }}>
+                          <ul className="summary-list">
                             {sec.bullets.map((b, bi) => <li key={bi} style={{ marginBottom: '0.3rem' }}>{b}</li>)}
                           </ul>
                         )}
@@ -2001,8 +1710,8 @@ export function App() {
 
                     {displaySummary.keyDecisions && displaySummary.keyDecisions.length > 0 && !isOperationalSummary(displaySummary) && (
                       <div className="glass-panel">
-                        <h4 style={{ marginBottom: '0.5rem', color: 'var(--text-muted)', fontSize: '0.85rem', textTransform: 'uppercase' }}>Literal Decisions Mentioned</h4>
-                        <ul style={{ margin: 0, paddingLeft: '1.2rem', color: 'rgba(255,255,255,0.9)', fontSize: '0.9rem' }}>
+                        <h4 className="summary-label">Literal Decisions Mentioned</h4>
+                        <ul className="summary-list">
                           {displaySummary.keyDecisions.map((q, i) => <li key={i} style={{ marginBottom: '0.3rem' }}>{q}</li>)}
                         </ul>
                       </div>
@@ -2010,15 +1719,15 @@ export function App() {
 
                     {displaySummary.openQuestions && displaySummary.openQuestions.length > 0 && (
                       <div className="glass-panel">
-                        <h4 style={{ marginBottom: '0.5rem', color: 'var(--text-muted)', fontSize: '0.85rem', textTransform: 'uppercase' }}>Open Questions</h4>
-                        <ul style={{ margin: 0, paddingLeft: '1.2rem', color: 'rgba(255,255,255,0.9)', fontSize: '0.9rem' }}>
+                        <h4 className="summary-label">Open Questions</h4>
+                        <ul className="summary-list">
                           {displaySummary.openQuestions.map((q, i) => <li key={i} style={{ marginBottom: '0.3rem' }}>{q}</li>)}
                         </ul>
                       </div>
                     )}
 
-                    <div className="glass-panel">
-                      <h4 style={{ marginBottom: '1rem', color: 'var(--text-muted)', fontSize: '0.85rem', textTransform: 'uppercase' }}>Summary Diagnostics</h4>
+                    <details className="rail-details glass-panel">
+                      <summary>Summary Diagnostics</summary>
                       <div style={{ display: 'grid', gap: '0.75rem' }}>
                         <div>
                           <div style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>Strategy</div>
@@ -2083,11 +1792,11 @@ export function App() {
                           </details>
                         )}
                       </div>
-                    </div>
+                    </details>
 
                     {stageTimings.length > 0 && (
-                      <div className="glass-panel">
-                        <h4 style={{ marginBottom: '1rem', color: 'var(--text-muted)', fontSize: '0.85rem', textTransform: 'uppercase' }}>Pipeline Timings</h4>
+                      <details className="rail-details glass-panel">
+                        <summary>Pipeline Timings</summary>
                         <div style={{ display: 'grid', gap: '0.5rem' }}>
                           {stageTimings.map((stageTiming) => (
                             <div key={stageTiming.key} className="task-card">
@@ -2102,7 +1811,7 @@ export function App() {
                             </div>
                           ))}
                         </div>
-                      </div>
+                      </details>
                     )}
 
                   <div className="glass-panel">
@@ -2136,8 +1845,8 @@ export function App() {
                 )}
 
                 {!displaySummary && summaryDiagnostics && (
-                  <div className="glass-panel">
-                    <h4 style={{ marginBottom: '1rem', color: 'var(--text-muted)', fontSize: '0.85rem', textTransform: 'uppercase' }}>Summary Diagnostics</h4>
+                  <details className="rail-details glass-panel">
+                    <summary>Summary Diagnostics</summary>
                     <div style={{ display: 'grid', gap: '0.75rem' }}>
                       <div>
                         <div style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>Strategy</div>
@@ -2150,12 +1859,12 @@ export function App() {
                         {summaryDiagnostics.sampled ? "Transcript input was sampled before summarization." : "Full selected transcript blocks were used."}
                       </div>
                     </div>
-                  </div>
+                  </details>
                 )}
 
                 {!displaySummary && stageTimings.length > 0 && (
-                  <div className="glass-panel">
-                    <h4 style={{ marginBottom: '1rem', color: 'var(--text-muted)', fontSize: '0.85rem', textTransform: 'uppercase' }}>Pipeline Timings</h4>
+                  <details className="rail-details glass-panel">
+                    <summary>Pipeline Timings</summary>
                     <div style={{ display: 'grid', gap: '0.5rem' }}>
                       {stageTimings.map((stageTiming) => (
                         <div key={stageTiming.key} className="task-card">
@@ -2170,7 +1879,7 @@ export function App() {
                         </div>
                       ))}
                     </div>
-                  </div>
+                  </details>
                 )}
               </aside>
 
