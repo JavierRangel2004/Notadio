@@ -35,4 +35,6 @@ export type LlmGenerateResult = {
 export interface LlmProvider {
   readonly name: string
   generate(options: LlmGenerateOptions): Promise<LlmGenerateResult>
+  /** List model identifiers the provider currently offers, if it supports discovery. */
+  listModels?(signal?: AbortSignal): Promise<string[]>
 }

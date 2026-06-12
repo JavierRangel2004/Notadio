@@ -423,6 +423,20 @@ export async function getProviders(): Promise<ProviderInfo[]> {
   return response.json();
 }
 
+// Discover the model ids a provider currently offers (Ollama `ollama list`,
+// OpenCode `/models`). Returns [] on any failure so the UI keeps free-text entry.
+export async function getProviderModels(providerId: string): Promise<string[]> {
+  try {
+    const response = await fetch(
+      `${API_BASE}/llm/providers/${encodeURIComponent(providerId)}/models`
+    );
+    const data = (await response.json()) as { models?: string[] };
+    return data.models ?? [];
+  } catch {
+    return [];
+  }
+}
+
 export async function convertNotesToAudio(
   vaultPath: string,
   notes: string[],

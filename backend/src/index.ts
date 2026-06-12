@@ -37,7 +37,7 @@ import {
 import { attachWebSocketHandler } from "./routes/sessionWebSocket.js";
 import { liveSessionStore } from "./sessions/liveSessionStore.js";
 import { getSession } from "./sessions/liveSessionOrchestrator.js";
-import { resolveServiceLlm, getAvailableProviders, buildProviderFromRequest } from "./services/llm/index.js";
+import { resolveServiceLlm, getAvailableProviders, buildProviderFromRequest, listModelsForProvider } from "./services/llm/index.js";
 import { synthesizeSpeech } from "./services/ttsService.js";
 
 
@@ -1863,6 +1863,20 @@ app.get("/api/llm/providers", (_req, res) => {
   res.json(getAvailableProviders());
 });
 
+app.get("/api/llm/providers/:id/models", async (req, res) => {
+  try {
+    const models = await listModelsForProvider(req.params.id);
+    res.json({ models });
+  } catch (error) {
+    // Unreachable provider or missing API key — return empty so the UI keeps
+    // its free-text fallback instead of erroring.
+    res.status(502).json({
+      models: [],
+      error: error instanceof Error ? error.message : String(error)
+    });
+  }
+});
+
 app.get("/api/vault/scan", async (req, res) => {
   const vaultPath = req.query.path as string;
   if (!vaultPath) {
@@ -1870,7 +1884,7 @@ app.get("/api/vault/scan", async (req, res) => {
     return;
   }
   try {
-    const resolvedPath = path.resolve(vaultPath.replace(/^~/, process.env.HOME || ""));
+    const resolvedPath = path.resolve(vaultPath.trim().replace(/^["']|["']$/g, "").replace(/^~/, process.env.HOME || ""));
     const files = await getMarkdownFiles(resolvedPath);
     res.json(files);
   } catch (err) {
@@ -1931,7 +1945,7 @@ app.post("/api/vault/convert", async (req, res) => {
         job.logs?.push("Reading note file...");
         await jobStore.save(job);
 
-        const resolvedVaultPath = path.resolve(vaultPath.replace(/^~/, process.env.HOME || ""));
+        const resolvedVaultPath = path.resolve(vaultPath.trim().replace(/^["']|["']$/g, "").replace(/^~/, process.env.HOME || ""));
         const absoluteNotePath = path.resolve(resolvedVaultPath, notePath);
         const noteContent = await fs.readFile(absoluteNotePath, "utf-8");
 

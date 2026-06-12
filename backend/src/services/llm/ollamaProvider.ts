@@ -58,4 +58,16 @@ export class OllamaProvider implements LlmProvider {
         : undefined
     }
   }
+
+  /** Locally installed models, mirroring `ollama list` (GET /api/tags). */
+  async listModels(signal?: AbortSignal): Promise<string[]> {
+    const response = await fetch(`${this.baseUrl}/api/tags`, { signal })
+    if (!response.ok) {
+      throw new Error(`Ollama HTTP ${response.status}`)
+    }
+    const data = (await response.json()) as { models?: { name?: string }[] }
+    return (data.models ?? [])
+      .map((m) => m.name)
+      .filter((name): name is string => Boolean(name))
+  }
 }

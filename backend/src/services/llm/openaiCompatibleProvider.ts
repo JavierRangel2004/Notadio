@@ -72,4 +72,23 @@ export class OpenAICompatibleProvider implements LlmProvider {
 
     return { text }
   }
+
+  /** Models offered by the endpoint (GET /models), e.g. OpenCode Zen's catalog. */
+  async listModels(signal?: AbortSignal): Promise<string[]> {
+    const headers: Record<string, string> = {}
+    if (this.apiKey) {
+      headers["Authorization"] = `Bearer ${this.apiKey}`
+    }
+
+    const response = await fetch(`${this.baseUrl}/models`, { headers, signal })
+    if (!response.ok) {
+      const body = await response.text().catch(() => "")
+      throw new Error(`OpenAI-compatible HTTP ${response.status}: ${body}`)
+    }
+
+    const data = (await response.json()) as { data?: { id?: string }[] }
+    return (data.data ?? [])
+      .map((m) => m.id)
+      .filter((id): id is string => Boolean(id))
+  }
 }

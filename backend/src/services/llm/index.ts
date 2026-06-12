@@ -149,6 +149,31 @@ export function getAvailableProviders(): ProviderInfo[] {
 }
 
 /**
+ * List the model identifiers a provider currently offers, for populating the
+ * UI model picker. Ollama mirrors `ollama list` (GET /api/tags); the
+ * openai-compatible provider queries its /models endpoint (e.g. OpenCode Zen).
+ * Resolves base URL / API key from the same env vars as resolveProvider's
+ * global tier. Throws if the provider is unreachable or unauthorized.
+ */
+export async function listModelsForProvider(providerId: string): Promise<string[]> {
+  let provider: LlmProvider
+  if (providerId === "openai-compatible") {
+    const baseUrl = process.env.LLM_BASE_URL?.trim()
+      || process.env.LLM_OPENAI_BASE_URL?.trim()
+      || `${config.ollamaBaseUrl}/v1`
+    const apiKey = process.env.LLM_API_KEY?.trim()
+      || process.env.LLM_OPENAI_API_KEY?.trim()
+      || ""
+    provider = buildProvider("openai-compatible", baseUrl, apiKey)
+  } else {
+    provider = buildProvider("ollama", config.ollamaBaseUrl, "")
+  }
+
+  if (!provider.listModels) return []
+  return provider.listModels()
+}
+
+/**
  * Build a provider+model pair from explicit request parameters.
  * Used when the UI sends a specific provider/model selection instead of
  * relying on environment-based resolution.
