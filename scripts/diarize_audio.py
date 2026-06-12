@@ -11,7 +11,7 @@ warnings.filterwarnings("ignore", category=UserWarning, module="torchaudio")
 warnings.filterwarnings("ignore", category=FutureWarning, module="torchaudio")
 
 
-def load_diarize_runner():
+def load_diarize_runner(num_speakers=None, min_speakers=None, max_speakers=None):
     try:
         import diarize as diarize_module
     except Exception as exc:
@@ -26,11 +26,23 @@ def load_diarize_runner():
         )
         sys.exit(1)
 
+    kwargs = {}
+    if num_speakers is not None:
+        kwargs["num_speakers"] = num_speakers
+    if min_speakers is not None:
+        kwargs["min_speakers"] = min_speakers
+    if max_speakers is not None:
+        kwargs["max_speakers"] = max_speakers
+
+    if kwargs:
+        hint_parts = [f"{k}={v}" for k, v in kwargs.items()]
+        print(f"Speaker hints: {', '.join(hint_parts)}", file=sys.stderr)
+
     if hasattr(diarize_module, "Diarizer"):
         diarizer_class = diarize_module.Diarizer
 
         def run_diarization(audio_path):
-            diarizer = diarizer_class()
+            diarizer = diarizer_class(**kwargs)
             return diarizer.diarize(audio_path)
 
         return run_diarization
@@ -39,7 +51,7 @@ def load_diarize_runner():
         diarize_fn = diarize_module.diarize
 
         def run_diarization(audio_path):
-            result = diarize_fn(audio_path)
+            result = diarize_fn(audio_path, **kwargs)
             return getattr(result, "segments", result)
 
         return run_diarization
@@ -75,13 +87,20 @@ def main():
     parser = argparse.ArgumentParser(description="CPU-only Speaker Diarization for Notadio using diarize library")
     parser.add_argument("--input", required=True, help="Path to input audio/video file")
     parser.add_argument("--output", required=True, help="Path to output JSON file")
+    parser.add_argument("--num-speakers", type=int, default=None, help="Exact number of speakers (overrides min/max)")
+    parser.add_argument("--min-speakers", type=int, default=None, help="Minimum expected number of speakers")
+    parser.add_argument("--max-speakers", type=int, default=None, help="Maximum expected number of speakers")
     args = parser.parse_args()
 
     if not os.path.exists(args.input):
         print(f"Error: Input file does not exist: {args.input}", file=sys.stderr)
         sys.exit(1)
 
-    run_diarization = load_diarize_runner()
+    run_diarization = load_diarize_runner(
+        num_speakers=args.num_speakers,
+        min_speakers=args.min_speakers,
+        max_speakers=args.max_speakers,
+    )
 
     print(f"Loading diarization models (this may download weights on first run)...", file=sys.stderr)
 

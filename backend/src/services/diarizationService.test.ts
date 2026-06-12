@@ -49,7 +49,7 @@ function installFetchSteps(steps: FetchStep[]): { restore: () => void; calls: ()
   };
 }
 
-test("postProcessDiarization collapses noisy diarization to two stable speakers", async () => {
+test("postProcessDiarization collapses noisy diarization to two stable speakers when maxSpeakers=2", async () => {
   const transcriptSegments: TranscriptSegment[] = [
     { start: 0, end: 6, text: "Iniciamos la llamada." },
     { start: 6, end: 12, text: "Revisamos acuerdos y pendientes." },
@@ -71,11 +71,42 @@ test("postProcessDiarization collapses noisy diarization to two stable speakers"
   ]);
 
   try {
-    const result = await postProcessDiarization(transcriptSegments, diarizationSlices);
+    const result = await postProcessDiarization(transcriptSegments, diarizationSlices, 2);
     const uniqueSpeakers = [...new Set(result.map((segment) => segment.speaker).filter(Boolean))];
 
     assert.equal(uniqueSpeakers.length, 2);
     assert.deepEqual(uniqueSpeakers, ["SPEAKER_A", "SPEAKER_B"]);
+  } finally {
+    restore();
+  }
+});
+
+test("postProcessDiarization preserves all 4 distinct speakers when maxSpeakers=8", async () => {
+  const transcriptSegments: TranscriptSegment[] = [
+    { start: 0, end: 6, text: "Hola a todos, arranquemos." },
+    { start: 6, end: 12, text: "Perfecto, yo comento el bloqueo." },
+    { start: 12, end: 18, text: "De mi lado, PR listo para review." },
+    { start: 18, end: 24, text: "Los tests siguen fallando en CI." }
+  ];
+
+  const diarizationSlices = [
+    { start: 0, end: 6, speaker: "SPEAKER_01" },
+    { start: 6, end: 12, speaker: "SPEAKER_02" },
+    { start: 12, end: 18, speaker: "SPEAKER_03" },
+    { start: 18, end: 24, speaker: "SPEAKER_04" }
+  ];
+
+  const { restore } = installFetchSteps([
+    { payload: JSON.stringify({}) }
+  ]);
+
+  try {
+    const result = await postProcessDiarization(transcriptSegments, diarizationSlices, 8);
+    const uniqueSpeakers = [...new Set(result.map((segment) => segment.speaker).filter(Boolean))];
+
+    assert.equal(uniqueSpeakers.length, 4);
+    // Fallback labels should use alphabet: SPEAKER_A, SPEAKER_B, SPEAKER_C, SPEAKER_D
+    assert.ok(uniqueSpeakers.every((s) => /^SPEAKER_[A-H]$/.test(s)), `Unexpected labels: ${uniqueSpeakers.join(", ")}`);
   } finally {
     restore();
   }

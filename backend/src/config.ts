@@ -151,7 +151,9 @@ export const config = {
   diarizationCommand: resolveCommandPath(process.env.DIARIZATION_COMMAND, ""),
   diarizationArgs:
     process.env.DIARIZATION_ARGS ??
-    '"{projectRoot}/scripts/diarize_audio.py" --input "{input}" --output "{outputFile}"',
+    '"{projectRoot}/scripts/diarize_audio.py" --input "{input}" --output "{outputFile}" --min-speakers "{minSpeakers}" --max-speakers "{maxSpeakers}"',
+  diarizationMinSpeakers: readNumber(process.env.DIARIZATION_MIN_SPEAKERS, 1, { min: 1, max: 20 }),
+  diarizationMaxSpeakers: readNumber(process.env.DIARIZATION_MAX_SPEAKERS, 8, { min: 1, max: 20 }),
   ollamaBaseUrl: process.env.OLLAMA_BASE_URL ?? "http://localhost:11434",
   ollamaModel: process.env.OLLAMA_MODEL ?? "llama3.2",
   enableSummary: readBoolean(process.env.ENABLE_SUMMARY, true),
@@ -180,6 +182,9 @@ export const config = {
   liveMentionContextWindowMs: readNumber(process.env.LIVE_MENTION_CONTEXT_WINDOW_MS, 5000, { min: 1000, max: 15000 }),
   liveSessionGracePeriodMs: readNumber(process.env.LIVE_SESSION_GRACE_PERIOD_MS, 30000, { min: 5000, max: 120000 }),
   liveMinWindowMs: readNumber(process.env.LIVE_MIN_WINDOW_MS, 2000, { min: 1000, max: 30000 }),
+  liveWhisperModelPath: process.env.LIVE_WHISPER_MODEL_PATH
+    ? resolveProjectPath(process.env.LIVE_WHISPER_MODEL_PATH, "")
+    : undefined,
 
   // --- Live Translation ---
   liveTranslationEnabled: readBoolean(process.env.LIVE_TRANSLATION_ENABLED, false),

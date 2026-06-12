@@ -133,9 +133,10 @@ function getDuplicateIndex(session: LiveSession, absStart: number, text: string)
 }
 
 function buildLiveWhisperArgs(inputPath: string, outputBase: string): string[] {
+  const liveModel = config.liveWhisperModelPath ?? config.whisperModelPath
   const args = parseArgs(config.whisperArgs, {
     input: inputPath,
-    model: config.whisperModelPath,
+    model: liveModel,
     outputBase
   })
 

@@ -17,6 +17,10 @@ const MAX_MERGE_GAP_SECONDS = 0.35;
 const MIN_SLICE_DURATION_SECONDS = 0.2;
 const ISOLATED_FLIP_MAX_DURATION_SECONDS = 6;
 
+// Alphabet labels used when an LLM cannot infer real names.
+// Supports up to 26 distinct speakers before falling back to numeric labels.
+const SPEAKER_ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("");
+
 function estimateDiarizationStagePct(elapsedSeconds: number, durationSeconds: number | undefined): number {
   const expectedRuntime = durationSeconds ? Math.max(45, durationSeconds * 0.15) : 120;
   return Math.min(95, (elapsedSeconds / expectedRuntime) * 100);
@@ -87,13 +91,13 @@ function speakerDurations(slices: SpeakerSlice[]): Map<string, number> {
   return durations;
 }
 
-function pickDominantSpeakers(slices: SpeakerSlice[]): string[] {
+function pickDominantSpeakers(slices: SpeakerSlice[], maxCount: number): string[] {
   const durations = speakerDurations(slices);
   const ranked = [...durations.entries()].sort((left, right) => right[1] - left[1]);
   const nonUnknown = ranked.filter(([speaker]) => speaker !== UNKNOWN_SPEAKER);
-  const dominant = nonUnknown.slice(0, 2).map(([speaker]) => speaker);
+  const dominant = nonUnknown.slice(0, maxCount).map(([speaker]) => speaker);
 
-  if (dominant.length === 2) {
+  if (dominant.length >= maxCount) {
     return dominant;
   }
 
@@ -101,7 +105,7 @@ function pickDominantSpeakers(slices: SpeakerSlice[]): string[] {
     if (!dominant.includes(speaker)) {
       dominant.push(speaker);
     }
-    if (dominant.length === 2) {
+    if (dominant.length >= maxCount) {
       break;
     }
   }
@@ -149,17 +153,17 @@ function assignSliceToDominantSpeaker(
   return bestSpeaker;
 }
 
-function collapseToTwoSpeakers(slices: SpeakerSlice[]): SpeakerSlice[] {
+function collapseToMaxSpeakers(slices: SpeakerSlice[], maxSpeakers: number): SpeakerSlice[] {
   if (slices.length === 0) {
     return slices;
   }
 
   const uniqueSpeakers = [...new Set(slices.map((slice) => slice.speaker))];
-  if (uniqueSpeakers.length <= 2) {
+  if (uniqueSpeakers.length <= maxSpeakers) {
     return slices;
   }
 
-  const dominantSpeakers = pickDominantSpeakers(slices);
+  const dominantSpeakers = pickDominantSpeakers(slices, maxSpeakers);
   if (dominantSpeakers.length === 0) {
     return slices;
   }
@@ -307,14 +311,11 @@ function fallbackSpeakerNames(segments: TranscriptSegment[]): Map<string, string
   const speakersInOrder = [...new Set(segments.map((segment) => segment.speaker).filter(hasSpeaker))];
   const mapping = new Map<string, string>();
 
-  if (speakersInOrder.length === 2) {
-    mapping.set(speakersInOrder[0]!, "SPEAKER_A");
-    mapping.set(speakersInOrder[1]!, "SPEAKER_B");
-    return mapping;
-  }
-
-  for (const speaker of speakersInOrder) {
-    mapping.set(speaker, speaker);
+  for (let i = 0; i < speakersInOrder.length; i++) {
+    const label = i < SPEAKER_ALPHABET.length
+      ? `SPEAKER_${SPEAKER_ALPHABET[i]}`
+      : `SPEAKER_${i + 1}`;
+    mapping.set(speakersInOrder[i]!, label);
   }
 
   return mapping;
@@ -339,10 +340,11 @@ async function applySpeakerNameMap(segments: TranscriptSegment[]): Promise<Trans
 
 export async function postProcessDiarization(
   segments: TranscriptSegment[],
-  rawSpeakerSlices: SpeakerSlice[]
+  rawSpeakerSlices: SpeakerSlice[],
+  maxSpeakers: number = config.diarizationMaxSpeakers
 ): Promise<TranscriptSegment[]> {
   const normalizedSlices = normalizeSpeakerSlices(rawSpeakerSlices);
-  const collapsedSlices = collapseToTwoSpeakers(normalizedSlices);
+  const collapsedSlices = collapseToMaxSpeakers(normalizedSlices, maxSpeakers);
   const assigned = segments.map((segment) => ({
     ...segment,
     speaker: pickSpeaker(segment, collapsedSlices)
@@ -373,7 +375,9 @@ export async function applyOptionalDiarization(
   const args = parseArgs(config.diarizationArgs, {
     input: audioPath,
     outputFile,
-    projectRoot: config.projectRoot
+    projectRoot: config.projectRoot,
+    minSpeakers: String(config.diarizationMinSpeakers),
+    maxSpeakers: String(config.diarizationMaxSpeakers)
   });
 
   try {
