@@ -1,6 +1,6 @@
 export type JobStatus = "queued" | "processing" | "completed" | "failed";
 
-export type SourceOrigin = "upload" | "recording";
+export type SourceOrigin = "upload" | "recording" | "note";
 
 export type SummaryPreset = "meeting" | "whatsappVoiceNote" | "genericMedia" | "contentCreation" | "analysisEssay";
 
@@ -180,7 +180,16 @@ export type ReadinessReport = {
   processing: JobProcessingProfile;
 };
 
+export type NoteConversionConfig = {
+  vaultPath: string;
+  notePath: string;
+  voice?: string;
+  provider?: string;
+  model?: string;
+};
+
 export type JobPayload = {
+  noteConversionConfig?: NoteConversionConfig;
   id: string;
   status: JobStatus;
   stage: string;
@@ -435,6 +444,30 @@ export async function getProviderModels(providerId: string): Promise<string[]> {
   } catch {
     return [];
   }
+}
+
+// Fetch a plain-text excerpt for a note so the UI can preview content before
+// converting. Returns null on any failure (the preview is non-critical).
+export async function getNoteExcerpt(
+  vaultPath: string,
+  notePath: string,
+  signal?: AbortSignal
+): Promise<{ excerpt: string; wordCount?: number } | null> {
+  try {
+    const response = await fetch(
+      `${API_BASE}/vault/note?vaultPath=${encodeURIComponent(vaultPath)}&path=${encodeURIComponent(notePath)}`,
+      { signal }
+    );
+    if (!response.ok) return null;
+    return await response.json();
+  } catch {
+    return null;
+  }
+}
+
+// URL for a short spoken sample of a voice (audio/mpeg), used by the voice picker.
+export function getVoicePreviewUrl(voice: string): string {
+  return `${API_BASE}/tts/preview?voice=${encodeURIComponent(voice)}`;
 }
 
 export async function convertNotesToAudio(

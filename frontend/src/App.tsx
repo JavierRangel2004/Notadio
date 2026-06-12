@@ -269,10 +269,35 @@ function useFadeIn<T extends HTMLElement>(): React.RefCallback<T> {
 }
 
 const HERO_SIGNAL_ITEMS = [
-  { label: "CUDA Whisper", value: "Local GPU transcription" },
-  { label: "Speaker ID", value: "Private diarization" },
-  { label: "Export Stack", value: "TXT, SRT, JSON" }
+  { label: "GPU-accelerated", value: "Whisper runs on your card" },
+  { label: "Speaker labels", value: "Who-said-what diarization" },
+  { label: "Open exports", value: "TXT · SRT · JSON" }
 ];
+
+// Per-mode header copy so the studio clearly signals which of the two workflows
+// (transcription vs. podcast-from-notes) the user is in.
+const INTAKE_COPY: Record<string, { kicker: string; title: string; hint: string }> = {
+  upload: {
+    kicker: "Session intake",
+    title: "Upload a file or capture a fresh recording",
+    hint: "Drop an audio or video file and Notadio transcribes it locally."
+  },
+  record: {
+    kicker: "Session intake",
+    title: "Record straight from your microphone",
+    hint: "Capture a voice note now, then transcribe and summarize it."
+  },
+  live: {
+    kicker: "Live session",
+    title: "Stream a meeting and watch it transcribe live",
+    hint: "Real-time captions, mention detection, and a saved transcript when you stop."
+  },
+  notes: {
+    kicker: "Vault studio",
+    title: "Turn Obsidian notes into narrated audio",
+    hint: "Pick notes from your vault; an LLM rewrites them and a neural voice narrates."
+  }
+};
 
 const HERO_PROOF_ITEMS = [
   "Built for private meetings, interviews, and dense voice notes",
@@ -562,8 +587,8 @@ function WorkspaceView({ onSelectJob }: { onSelectJob: (job: JobPayload) => void
   );
 }
 
-const AudioPlayer = forwardRef<{ seek: (t: number) => void }, { jobId: string; duration?: number }>(
-  ({ jobId, duration }, ref) => {
+const AudioPlayer = forwardRef<{ seek: (t: number) => void }, { jobId: string; duration?: number; downloadName?: string }>(
+  ({ jobId, duration, downloadName }, ref) => {
     const audioRef = useRef<HTMLAudioElement>(null);
     const [playing, setPlaying] = useState(false);
     const [time, setTime] = useState(0);
@@ -640,6 +665,36 @@ const AudioPlayer = forwardRef<{ seek: (t: number) => void }, { jobId: string; d
             <strong>Session audio</strong>
             <span>Use transcript timestamps to jump to the recording.</span>
           </div>
+          <a
+            href={getAudioUrl(jobId)}
+            download={downloadName || 'audio.mp3'}
+            title="Download Audio"
+            className="audio-control-button"
+            style={{
+              marginLeft: "auto",
+              alignSelf: "center",
+              display: "inline-flex",
+              alignItems: "center",
+              justifyContent: "center",
+              textDecoration: "none",
+              color: "inherit",
+              transition: "transform 0.15s ease, border-color 0.15s ease",
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.borderColor = "var(--accent-primary)";
+              e.currentTarget.style.transform = "scale(1.05)";
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.borderColor = "rgba(var(--accent-primary-rgb), 0.35)";
+              e.currentTarget.style.transform = "scale(1)";
+            }}
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+              <polyline points="7 10 12 15 17 10" />
+              <line x1="12" y1="15" x2="12" y2="3" />
+            </svg>
+          </a>
         </div>
         <div className="audio-timeline">
           <span className="audio-time">{formatTime(time)}</span>
@@ -987,6 +1042,44 @@ export function App() {
     return () => controller.abort();
   }, []);
 
+  // Live local timer for running/queued jobs to prevent visual freezing
+  useEffect(() => {
+    if (!job || (job.status !== "processing" && job.status !== "queued")) return;
+
+    const interval = window.setInterval(() => {
+      setJob((currentJob) => {
+        if (!currentJob || (currentJob.status !== "processing" && currentJob.status !== "queued")) {
+          return currentJob;
+        }
+
+        const elapsedSeconds = (currentJob.progress?.elapsedSeconds ?? 0) + 1;
+        const overallPct = currentJob.progress?.overallPct ?? 0;
+        let etaSeconds = currentJob.progress?.etaSeconds;
+
+        if (overallPct > 0) {
+          etaSeconds = Math.max(
+            0,
+            Math.round((elapsedSeconds * (100 - overallPct)) / overallPct)
+          );
+        }
+
+        return {
+          ...currentJob,
+          progress: {
+            stageKey: currentJob.progress?.stageKey ?? "queued",
+            overallPct,
+            stagePct: currentJob.progress?.stagePct ?? 0,
+            startedAt: currentJob.progress?.startedAt,
+            elapsedSeconds,
+            etaSeconds
+          }
+        };
+      });
+    }, 1000);
+
+    return () => window.clearInterval(interval);
+  }, [job?.id, job?.status]);
+
   useEffect(() => {
     if (!job) return;
     const shouldSubscribe =
@@ -1308,8 +1401,9 @@ export function App() {
                 <div className="upload-studio-shell">
                   <div className="upload-studio-topline">
                     <div>
-                      <span className="upload-studio-kicker">Session intake</span>
-                      <h3>Upload a file or capture a fresh recording</h3>
+                      <span className="upload-studio-kicker">{(INTAKE_COPY[sourceMode] ?? INTAKE_COPY.upload).kicker}</span>
+                      <h3>{(INTAKE_COPY[sourceMode] ?? INTAKE_COPY.upload).title}</h3>
+                      <p className="upload-studio-hint">{(INTAKE_COPY[sourceMode] ?? INTAKE_COPY.upload).hint}</p>
                     </div>
                     <div className="control-strip" role="tablist" aria-label="Source mode">
                       <button
@@ -1470,8 +1564,14 @@ export function App() {
                 </div>
 
                 <div style={{ color: "var(--text-muted)", fontSize: "0.9rem", marginTop: "0.75rem" }}>
-                  {processing.deviceSummary}
-                  {processing.runtimeSummary ? ` | ${processing.runtimeSummary}` : ""}
+                  {job.sourceOrigin === "note" ? (
+                    <span>Note adaptation and speech synthesis pipeline</span>
+                  ) : (
+                    <>
+                      {processing.deviceSummary}
+                      {processing.runtimeSummary ? ` | ${processing.runtimeSummary}` : ""}
+                    </>
+                  )}
                 </div>
 
                 {job.enhancementStages && (
@@ -1490,30 +1590,49 @@ export function App() {
                 )}
 
                 <div className="stats-row" style={{ marginTop: '2rem' }}>
-                  <div className="stat-block">
-                    <span>Source</span>
-                    <strong>{job.durationSeconds ? formatTime(job.durationSeconds) : "--:--"}</strong>
-                  </div>
-                  <div className="stat-block">
-                    <span>Elapsed</span>
-                    <strong>{formatTime(progress.elapsedSeconds)}</strong>
-                  </div>
-                  <div className="stat-block">
-                    <span>ETA</span>
-                    <strong>{progress.etaSeconds !== undefined ? formatTime(progress.etaSeconds) : "Calculating"}</strong>
-                  </div>
-                  <div className="stat-block">
-                    <span>Threads</span>
-                    <strong>{processing.threads}</strong>
-                  </div>
-                  <div className="stat-block">
-                    <span>Profile</span>
-                    <strong>{processing.profile}</strong>
-                  </div>
-                  <div className="stat-block">
-                    <span>Translation</span>
-                    <strong>{processing.translationPath ?? "pending"}</strong>
-                  </div>
+                  {job.sourceOrigin === "note" ? (
+                    <>
+                      <div className="stat-block">
+                        <span>Type</span>
+                        <strong>Obsidian Note</strong>
+                      </div>
+                      <div className="stat-block">
+                        <span>Elapsed</span>
+                        <strong>{formatTime(progress.elapsedSeconds)}</strong>
+                      </div>
+                      <div className="stat-block">
+                        <span>Voice</span>
+                        <strong>{job.noteConversionConfig?.voice || "Dalia (Neural)"}</strong>
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <div className="stat-block">
+                        <span>Source</span>
+                        <strong>{job.durationSeconds ? formatTime(job.durationSeconds) : "--:--"}</strong>
+                      </div>
+                      <div className="stat-block">
+                        <span>Elapsed</span>
+                        <strong>{formatTime(progress.elapsedSeconds)}</strong>
+                      </div>
+                      <div className="stat-block">
+                        <span>ETA</span>
+                        <strong>{progress.etaSeconds !== undefined ? formatTime(progress.etaSeconds) : "Calculating"}</strong>
+                      </div>
+                      <div className="stat-block">
+                        <span>Threads</span>
+                        <strong>{processing.threads}</strong>
+                      </div>
+                      <div className="stat-block">
+                        <span>Profile</span>
+                        <strong>{processing.profile}</strong>
+                      </div>
+                      <div className="stat-block">
+                        <span>Translation</span>
+                        <strong>{processing.translationPath ?? "pending"}</strong>
+                      </div>
+                    </>
+                  )}
                 </div>
               </div>
 
@@ -1557,7 +1676,7 @@ export function App() {
                   </div>
                 </div>
 
-                <AudioPlayer ref={audioPlayerRef} jobId={job.id} duration={job.durationSeconds} />
+                <AudioPlayer ref={audioPlayerRef} jobId={job.id} duration={job.durationSeconds} downloadName={job.sourceMedia?.originalName} />
                 <InlineProgressPanel job={job} stageKey={activePostStage} />
 
                 <div className="transcript-body">
@@ -1923,7 +2042,7 @@ export function App() {
                     </div>
                   </div>
 
-                  <AudioPlayer ref={audioPlayerRef} jobId={job.id} duration={job.durationSeconds} />
+                  <AudioPlayer ref={audioPlayerRef} jobId={job.id} duration={job.durationSeconds} downloadName={job.sourceMedia?.originalName} />
                   <InlineProgressPanel job={job} stageKey={activePostStage} />
 
                   <div className="transcript-body">

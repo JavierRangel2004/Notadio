@@ -279,7 +279,7 @@ a {
   display: flex;
   align-items: center;
   gap: 0.75rem;                    /* was 0.8rem */
-  color: var(--text-soft);
+  color: rgba(255, 255, 255, 0.82);
   font-size: 1rem;                 /* was 0.96rem */
 }
 
@@ -345,14 +345,23 @@ a {
   margin-bottom: 1.25rem;
 }
 
-/* Intake tabs: equal-width cells so 4 modes wrap as a clean 2x2, never 3+1 */
+/* Intake tabs: exactly two columns so 4 modes always form a clean 2x2 grid,
+   never the misaligned 3+1 wrap. */
 .upload-studio-topline .control-strip {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(7.5rem, 1fr));
+  grid-template-columns: repeat(2, 1fr);
 }
 
 .upload-studio-topline .control-btn {
   justify-content: center;
+  min-width: 0;
+}
+
+.upload-studio-hint {
+  margin: 0.5rem 0 0;
+  color: var(--text-muted);
+  font-size: 0.875rem;
+  line-height: 1.5;
 }
 
 .upload-studio-kicker {
@@ -2029,9 +2038,13 @@ a {
   padding: 0.25rem 0.5rem 0.5rem;
 }
 
+.vault-note-wrap {
+  display: block;
+}
+
 .vault-note {
   display: flex;
-  align-items: baseline;
+  align-items: center;
   gap: 0.625rem;
   padding: 0.4375rem 0.5rem 0.4375rem 1.75rem;
   border-radius: var(--radius-sm);
@@ -2052,24 +2065,13 @@ a {
 }
 
 .vault-note-title {
+  flex: 1 1 auto;
   min-width: 0;
   font-size: 0.875rem;
   color: var(--text-primary);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-}
-
-.vault-note-file {
-  flex: 1;
-  min-width: 0;
-  font-family: var(--font-mono);
-  font-size: 0.6875rem;
-  color: rgba(160, 157, 176, 0.55);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  text-align: right;
 }
 
 .vault-note-tag {
@@ -2080,6 +2082,48 @@ a {
   border-radius: var(--radius-full);
   padding: 0.0625rem 0.5rem;
   align-self: center;
+  max-width: 8rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.vault-note-preview {
+  margin: 0.125rem 0.5rem 0.375rem 1.75rem;
+  padding: 0.625rem 0.75rem;
+  border-radius: var(--radius-sm);
+  border: 1px solid rgba(var(--accent-secondary-rgb), 0.22);
+  background: rgba(123, 63, 160, 0.08);
+  animation: vault-preview-in 0.16s ease;
+}
+
+@keyframes vault-preview-in {
+  from { opacity: 0; transform: translateY(-2px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.vault-note-preview-path {
+  display: block;
+  font-family: var(--font-mono);
+  font-size: 0.625rem;
+  color: rgba(160, 157, 176, 0.7);
+  margin-bottom: 0.25rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.vault-note-preview p {
+  margin: 0;
+  font-size: 0.8125rem;
+  line-height: 1.5;
+  color: rgba(255, 255, 255, 0.78);
+}
+
+.vault-note-preview-loading {
+  font-size: 0.8125rem;
+  color: var(--text-muted);
+  font-style: italic;
 }
 
 .vault-check {
@@ -2099,14 +2143,16 @@ a {
 
 .voice-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(7rem, 1fr));
   gap: 0.5rem;
 }
 
 .voice-chip {
-  display: grid;
-  gap: 0.125rem;
-  padding: 0.625rem 0.875rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-width: 0;
+  padding: 0.5rem 0.5rem 0.5rem 0.75rem;
   text-align: left;
   border-radius: var(--radius-sm);
   border: 1px solid var(--border-light);
@@ -2116,23 +2162,69 @@ a {
   transition: border-color 0.15s, background 0.15s;
 }
 
-.voice-chip strong {
-  font-size: 0.875rem;
-  font-weight: 600;
+.voice-chip-text {
+  display: grid;
+  gap: 0.125rem;
+  min-width: 0;
+  flex: 1 1 auto;
 }
 
-.voice-chip span {
+.voice-chip-text strong {
+  font-size: 0.875rem;
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.voice-chip-text span {
   font-size: 0.6875rem;
   color: var(--text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .voice-chip:hover {
   border-color: rgba(160, 157, 176, 0.3);
 }
 
-.voice-chip.selected {
+.voice-chip:focus-visible {
+  outline: none;
   border-color: rgba(var(--accent-primary-rgb), 0.55);
-  background: rgba(var(--accent-primary-rgb), 0.12);
+  box-shadow: 0 0 0 2px rgba(var(--accent-primary-rgb), 0.25);
+}
+
+.voice-chip.selected {
+  border-color: rgba(var(--accent-primary-rgb), 0.65);
+  background: rgba(var(--accent-primary-rgb), 0.16);
+}
+
+.voice-play {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border-radius: var(--radius-full);
+  border: 1px solid var(--border-light);
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--text-soft);
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+
+.voice-play:hover {
+  background: rgba(var(--accent-primary-rgb), 0.18);
+  border-color: rgba(var(--accent-primary-rgb), 0.4);
+  color: #fff;
+}
+
+.voice-play.playing {
+  background: rgba(var(--accent-primary-rgb), 0.85);
+  border-color: transparent;
+  color: #fff;
 }
 
 .vault-llm-row {
@@ -2142,10 +2234,20 @@ a {
   align-items: stretch;
 }
 
+.vault-llm-row > * {
+  box-sizing: border-box;
+}
+
+.vault-llm-row .control-strip {
+  flex: 1 1 12rem;
+  min-width: 0;
+}
+
 .vault-llm-row .vault-select,
 .vault-llm-row .vault-input {
-  flex: 1;
-  min-width: 180px;
+  flex: 1 1 11rem;
+  min-width: 0;
+  box-sizing: border-box;
 }
 
 .vault-provider-single {
@@ -2164,6 +2266,60 @@ a {
   margin-top: 0.5rem;
   font-size: 0.75rem;
   color: var(--text-muted);
+}
+
+/* Sticky action footer: the Convert CTA stays pinned to the bottom of the panel
+   so it is never clipped below the viewport, with its selection summary above. */
+.vault-footer {
+  position: sticky;
+  bottom: 0;
+  z-index: 2;
+  display: grid;
+  gap: 0.625rem;
+  margin: 0 -0.25rem -0.25rem;
+  padding: 0.875rem 0.25rem 0.25rem;
+  background: linear-gradient(
+    to top,
+    var(--bg-glass, rgba(18, 9, 32, 0.96)) 65%,
+    transparent
+  );
+}
+
+.vault-summary-strip {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.4375rem;
+  font-size: 0.8125rem;
+  color: var(--text-soft);
+}
+
+.vault-summary-empty {
+  color: var(--text-muted);
+}
+
+.vault-summary-pill {
+  font-weight: 600;
+  color: #fff;
+  background: rgba(var(--accent-primary-rgb), 0.85);
+  border-radius: var(--radius-full);
+  padding: 0.0625rem 0.5rem;
+  font-size: 0.75rem;
+}
+
+.vault-summary-sep {
+  color: rgba(160, 157, 176, 0.4);
+}
+
+.vault-convert-btn {
+  width: 100%;
+  min-height: 3rem;
+  font-size: 1rem;
+}
+
+.vault-convert-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 /* ==========================================================================

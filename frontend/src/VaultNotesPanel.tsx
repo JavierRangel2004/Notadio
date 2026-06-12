@@ -2,8 +2,10 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import {
   convertNotesToAudio,
   getJob,
+  getNoteExcerpt,
   getProviderModels,
   getProviders,
+  getVoicePreviewUrl,
   JobPayload,
   scanVault,
   type NoteInfo,
@@ -20,6 +22,32 @@ const VOICES = [
   { id: "en-US-AvaNeural", name: "Ava", detail: "Inglés · Femenina" },
   { id: "en-US-AndrewNeural", name: "Andrew", detail: "Inglés · Masculina" }
 ] as const;
+
+// Friendly one-liners shown next to the raw model id so non-technical users can
+// pick without knowing what "deepseek-v4-flash" means. Unknown ids fall back to
+// the bare id with no descriptor.
+const MODEL_ALIASES: Record<string, string> = {
+  "deepseek-v4-flash": "rápido y económico",
+  "deepseek-v4-flash-free": "rápido · gratis",
+  "deepseek-v4-pro": "máxima calidad",
+  "glm-5.1": "equilibrado",
+  "glm-5": "equilibrado",
+  "kimi-k2.6": "contexto largo",
+  "kimi-k2.5": "contexto largo",
+  "minimax-m2.7": "creativo",
+  "minimax-m2.5": "creativo",
+  "minimax-m3": "creativo",
+  "qwen3.7-plus": "buen español",
+  "qwen3.6-plus": "buen español",
+  "llama3.1:8b": "local · equilibrado",
+  "llama3.2": "local · ligero",
+  "mistral:latest": "local · rápido"
+};
+
+function modelLabel(id: string): string {
+  const alias = MODEL_ALIASES[id];
+  return alias ? `${id} · ${alias}` : id;
+}
 
 type FolderGroup = {
   folder: string;
@@ -86,6 +114,25 @@ export function VaultNotesPanel({
   const [selectedModel, setSelectedModel] = useState("");
   const [availableModels, setAvailableModels] = useState<string[]>([]);
   const [modelsLoading, setModelsLoading] = useState(false);
+
+  // Voice audition
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const [playingVoice, setPlayingVoice] = useState<string | null>(null);
+
+  // Note preview on hover/focus
+  const [previewPath, setPreviewPath] = useState<string | null>(null);
+  const [previewExcerpt, setPreviewExcerpt] = useState<string>("");
+  const [previewLoading, setPreviewLoading] = useState(false);
+  const hoverTimer = useRef<number | null>(null);
+  const previewAbort = useRef<AbortController | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (hoverTimer.current) window.clearTimeout(hoverTimer.current);
+      previewAbort.current?.abort();
+      audioRef.current?.pause();
+    };
+  }, []);
 
   const allTags = useMemo(() => {
     const tagsSet = new Set<string>();
@@ -155,6 +202,51 @@ export function VaultNotesPanel({
     loadModels(providerId);
   }
 
+  function previewVoice(voiceId: string) {
+    // Toggle off if the same voice is already playing.
+    if (playingVoice === voiceId && audioRef.current) {
+      audioRef.current.pause();
+      setPlayingVoice(null);
+      return;
+    }
+    audioRef.current?.pause();
+    const audio = new Audio(getVoicePreviewUrl(voiceId));
+    audioRef.current = audio;
+    setPlayingVoice(voiceId);
+    audio.onended = () => setPlayingVoice(null);
+    audio.onerror = () => {
+      setPlayingVoice(null);
+      onError("No se pudo reproducir la muestra de voz (¿backend activo?).");
+    };
+    void audio.play().catch(() => setPlayingVoice(null));
+  }
+
+  function handleNoteHover(note: NoteInfo) {
+    if (hoverTimer.current) window.clearTimeout(hoverTimer.current);
+    hoverTimer.current = window.setTimeout(() => {
+      previewAbort.current?.abort();
+      const ctrl = new AbortController();
+      previewAbort.current = ctrl;
+      setPreviewPath(note.relativePath);
+      setPreviewExcerpt("");
+      setPreviewLoading(true);
+      getNoteExcerpt(vaultPath, note.relativePath, ctrl.signal)
+        .then((data) => {
+          setPreviewExcerpt(data?.excerpt || "Sin contenido de texto.");
+        })
+        .catch(() => setPreviewExcerpt(""))
+        .finally(() => setPreviewLoading(false));
+    }, 350);
+  }
+
+  function clearPreview() {
+    if (hoverTimer.current) window.clearTimeout(hoverTimer.current);
+    previewAbort.current?.abort();
+    setPreviewPath(null);
+    setPreviewExcerpt("");
+    setPreviewLoading(false);
+  }
+
   async function handleScanVault() {
     if (!vaultPath.trim()) return;
     setIsScanning(true);
@@ -166,6 +258,7 @@ export function VaultNotesPanel({
       setExpandedFolders(new Set());
       setSearchQuery("");
       setSelectedTag("");
+      clearPreview();
     } catch (err) {
       onError(err instanceof Error ? err.message : "No se pudo escanear el vault");
     } finally {
@@ -227,6 +320,9 @@ export function VaultNotesPanel({
   }
 
   const selectedCount = selectedNotes.size;
+  const voiceName = VOICES.find((v) => v.id === selectedVoice)?.name ?? selectedVoice;
+  const providerLabel =
+    providers.find((p) => p.id === selectedProvider)?.label ?? "LLM";
 
   return (
     <div className="vault-panel">
@@ -385,23 +481,40 @@ export function VaultNotesPanel({
                     <div className="vault-group-body">
                       {group.notes.map((note) => {
                         const isSelected = selectedNotes.has(note.relativePath);
+                        const isPreviewing = previewPath === note.relativePath;
                         return (
-                          <label
-                            key={note.relativePath}
-                            className={`vault-note ${isSelected ? "selected" : ""}`}
-                          >
-                            <input
-                              type="checkbox"
-                              className="vault-check"
-                              checked={isSelected}
-                              onChange={() => toggleNote(note.relativePath)}
-                            />
-                            <span className="vault-note-title">{note.title}</span>
-                            <span className="vault-note-file">{fileNameOf(note.relativePath)}</span>
-                            {note.tags.slice(0, 2).map((tag) => (
-                              <span key={tag} className="vault-note-tag">#{tag}</span>
-                            ))}
-                          </label>
+                          <div key={note.relativePath} className="vault-note-wrap">
+                            <label
+                              className={`vault-note ${isSelected ? "selected" : ""}`}
+                              onMouseEnter={() => handleNoteHover(note)}
+                              onMouseLeave={clearPreview}
+                              onFocus={() => handleNoteHover(note)}
+                              onBlur={clearPreview}
+                            >
+                              <input
+                                type="checkbox"
+                                className="vault-check"
+                                checked={isSelected}
+                                onChange={() => toggleNote(note.relativePath)}
+                              />
+                              <span className="vault-note-title">{note.title}</span>
+                              {note.tags.slice(0, 2).map((tag) => (
+                                <span key={tag} className="vault-note-tag">#{tag}</span>
+                              ))}
+                            </label>
+                            {isPreviewing && (
+                              <div className="vault-note-preview" role="status">
+                                {previewLoading ? (
+                                  <span className="vault-note-preview-loading">Cargando vista previa…</span>
+                                ) : (
+                                  <>
+                                    <span className="vault-note-preview-path">{fileNameOf(note.relativePath)}</span>
+                                    <p>{previewExcerpt}</p>
+                                  </>
+                                )}
+                              </div>
+                            )}
+                          </div>
                         );
                       })}
                     </div>
@@ -414,19 +527,51 @@ export function VaultNotesPanel({
           <fieldset className="vault-config">
             <legend className="vault-label">Voz para la narración</legend>
             <div className="voice-grid" role="radiogroup" aria-label="Voz para la narración">
-              {VOICES.map((voice) => (
-                <button
-                  key={voice.id}
-                  type="button"
-                  role="radio"
-                  aria-checked={selectedVoice === voice.id}
-                  className={`voice-chip ${selectedVoice === voice.id ? "selected" : ""}`}
-                  onClick={() => setSelectedVoice(voice.id)}
-                >
-                  <strong>{voice.name}</strong>
-                  <span>{voice.detail}</span>
-                </button>
-              ))}
+              {VOICES.map((voice) => {
+                const isSelected = selectedVoice === voice.id;
+                const isPlaying = playingVoice === voice.id;
+                return (
+                  <div
+                    key={voice.id}
+                    className={`voice-chip ${isSelected ? "selected" : ""}`}
+                    role="radio"
+                    aria-checked={isSelected}
+                    tabIndex={0}
+                    onClick={() => setSelectedVoice(voice.id)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" || e.key === " ") {
+                        e.preventDefault();
+                        setSelectedVoice(voice.id);
+                      }
+                    }}
+                  >
+                    <span className="voice-chip-text">
+                      <strong>{voice.name}</strong>
+                      <span>{voice.detail}</span>
+                    </span>
+                    <button
+                      type="button"
+                      className={`voice-play ${isPlaying ? "playing" : ""}`}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        previewVoice(voice.id);
+                      }}
+                      aria-label={isPlaying ? `Detener muestra de ${voice.name}` : `Escuchar muestra de ${voice.name}`}
+                    >
+                      {isPlaying ? (
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                          <rect x="6" y="5" width="4" height="14" rx="1" />
+                          <rect x="14" y="5" width="4" height="14" rx="1" />
+                        </svg>
+                      ) : (
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                          <path d="M8 5v14l11-7z" />
+                        </svg>
+                      )}
+                    </button>
+                  </div>
+                );
+              })}
             </div>
           </fieldset>
 
@@ -459,10 +604,10 @@ export function VaultNotesPanel({
                   aria-label="Modelo"
                 >
                   {!availableModels.includes(selectedModel) && selectedModel && (
-                    <option value={selectedModel}>{selectedModel}</option>
+                    <option value={selectedModel}>{modelLabel(selectedModel)}</option>
                   )}
                   {availableModels.map((m) => (
-                    <option key={m} value={m}>{m}</option>
+                    <option key={m} value={m}>{modelLabel(m)}</option>
                   ))}
                 </select>
               ) : (
@@ -485,8 +630,23 @@ export function VaultNotesPanel({
           </div>
 
           <div className="vault-footer">
+            <div className="vault-summary-strip" aria-live="polite">
+              {selectedCount === 0 ? (
+                <span className="vault-summary-empty">Aún no seleccionas notas</span>
+              ) : (
+                <>
+                  <span className="vault-summary-pill">
+                    {selectedCount} {selectedCount === 1 ? "nota" : "notas"}
+                  </span>
+                  <span className="vault-summary-sep">·</span>
+                  <span>{voiceName}</span>
+                  <span className="vault-summary-sep">·</span>
+                  <span>{providerLabel}</span>
+                </>
+              )}
+            </div>
             <button
-              className="btn-primary premium-cta"
+              className="btn-primary premium-cta vault-convert-btn"
               onClick={() => void handleConvert()}
               disabled={selectedCount === 0 || isConverting}
               type="button"
