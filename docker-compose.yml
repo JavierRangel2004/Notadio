@@ -1,0 +1,35 @@
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    ports:
+      - "8787:8787"
+    environment:
+      - PORT=8787
+      - WEB_ORIGIN=${WEB_ORIGIN:-http://localhost:8080}
+      - STORAGE_ROOT=/app/data
+      - WHISPER_MODEL_PATH=/app/.local/models/ggml-base.bin
+      - FFMPEG_PATH=ffmpeg
+      - WHISPER_COMMAND=whisper-cli
+      - OLLAMA_BASE_URL=${OLLAMA_BASE_URL:-http://host.docker.internal:11434}
+      - ENABLE_SUMMARY=${ENABLE_SUMMARY:-true}
+      - LIVE_TRANSCRIPTION_ENABLED=${LIVE_TRANSCRIPTION_ENABLED:-true}
+    volumes:
+      - ./data:/app/data
+      - ./.local/models:/app/.local/models
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: .
+      dockerfile: frontend/Dockerfile
+      args:
+        - VITE_API_BASE=${VITE_API_BASE:-http://localhost:8787/api}
+    ports:
+      - "8080:80"
+    restart: unless-stopped
+    depends_on:
+      - backend
