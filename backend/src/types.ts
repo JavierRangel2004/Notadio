@@ -13,10 +13,17 @@ export type EnhancementStageState = {
   error?: string;
 };
 
+export type LlmSelection = {
+  provider?: string;
+  model?: string;
+};
+
 export type EnhancementConfig = {
   stages: EnhancementStageKey[];
   summaryPreset?: SummaryPreset;
   translationLanguage?: string;
+  provider?: string;
+  model?: string;
 };
 
 export type EnhancementStatus = "awaiting_selection" | "running" | "completed" | "skipped";

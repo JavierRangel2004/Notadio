@@ -14,7 +14,7 @@ import { normalizeMediaToWav } from "./services/mediaService.js";
 import { writeArtifacts } from "./services/exportService.js";
 import { applyOptionalDiarization } from "./services/diarizationService.js";
 import { generateEnglishTranslation, transcribeAudio } from "./services/transcriptionService.js";
-import { generateSummary } from "./services/summaryService.js";
+import { generateSummary, stripSummaryRuntimeWarnings } from "./services/summaryService.js";
 import { getReadinessReport } from "./services/readinessService.js";
 import { jobStore } from "./store/jobStore.js";
 import { ensureDir, readJsonFile, writeJsonFile } from "./utils/fs.js";
@@ -25,12 +25,18 @@ import {
   JobManifest,
   JobProcessingProfile,
   JobProgress,
+  LlmSelection,
   NoteConversionConfig,
   SourceOrigin,
   StageTiming,
   TranscriptRecord
 } from "./types.js";
 import { JobQueue } from "./utils/jobQueue.js";
+import {
+  abortPostProcessing,
+  clearPostProcessingAbort,
+  registerPostProcessingAbort
+} from "./utils/postProcessingControl.js";
 import {
   assertDiskSpaceForJob,
   formatBytes,
@@ -42,6 +48,12 @@ import { getSession } from "./sessions/liveSessionOrchestrator.js";
 import { resolveServiceLlm, getAvailableProviders, buildProviderFromRequest, listModelsForProvider } from "./services/llm/index.js";
 import { synthesizeSpeech } from "./services/ttsService.js";
 
+function enhancementLlmSelection(config: EnhancementConfig): LlmSelection | undefined {
+  if (!config.provider?.trim() && !config.model?.trim()) {
+    return undefined;
+  }
+  return { provider: config.provider, model: config.model };
+}
 
 const app = express();
 const upload = multer({
@@ -618,6 +630,78 @@ function ensureNoRunningPostAction(job: JobManifest): string | undefined {
   return `Another post-processing action is already running: ${runningStage}.`;
 }
 
+function postCompletionActionForStage(stageKey: EnhancementStageKey): PostCompletionAction {
+  switch (stageKey) {
+    case "summarize":
+      return { stageKey, stageLabel: "Regenerating AI summary" };
+    case "diarize":
+      return {
+        stageKey,
+        stageLabel: "Re-running speaker identification",
+        exportLabel: "Writing enhanced artifacts"
+      };
+    case "translate":
+      return {
+        stageKey,
+        stageLabel: "Regenerating English translation",
+        exportLabel: "Writing enhanced artifacts"
+      };
+  }
+}
+
+async function clearRunningPostCompletionAction(
+  jobId: string,
+  stageKey: EnhancementStageKey,
+  message: string
+): Promise<void> {
+  abortPostProcessing(jobId, message);
+  await failPostCompletionAction(jobId, postCompletionActionForStage(stageKey), message);
+}
+
+async function reconcileOrphanedPostProcessingOnStartup(): Promise<void> {
+  for (const job of jobStore.getAll()) {
+    if (job.status !== "completed") {
+      continue;
+    }
+
+    const runningStage = getRunningEnhancementStage(job);
+    if (!runningStage) {
+      continue;
+    }
+
+    await clearRunningPostCompletionAction(
+      job.id,
+      runningStage,
+      "Post-processing was interrupted. Select a model and regenerate."
+    );
+  }
+}
+
+async function failTimedOutPostProcessingJobs(): Promise<void> {
+  for (const job of jobStore.getAll()) {
+    if (job.status !== "completed") {
+      continue;
+    }
+
+    const runningStage = getRunningEnhancementStage(job);
+    if (!runningStage || !job.progress?.startedAt) {
+      continue;
+    }
+
+    const ageMs = Date.now() - new Date(job.progress.startedAt).getTime();
+    if (ageMs < config.postProcessingStaleMs) {
+      continue;
+    }
+
+    const minutes = Math.max(1, Math.round(ageMs / 60_000));
+    await clearRunningPostCompletionAction(
+      job.id,
+      runningStage,
+      `Post-processing stopped after ${minutes} minutes without completing. Select a model and regenerate.`
+    );
+  }
+}
+
 async function startPostCompletionAction(jobId: string, action: PostCompletionAction): Promise<JobManifest> {
   return updateJobImmediate(jobId, (current) => {
     const runningError = ensureNoRunningPostAction(current);
@@ -655,13 +739,26 @@ async function failPostCompletionAction(
 ): Promise<void> {
   await updateJobImmediate(jobId, (current) => {
     completeStageTiming(current, current.progress?.stageKey);
-    current.stage = `${action.stageLabel} failed`;
+    current.stage = "Processing complete";
     current.error = message;
     current.enhancementStages = {
       ...(current.enhancementStages ?? {}),
       [action.stageKey]: { status: "failed", error: message }
     };
     appendLog(current, `[${action.stageKey}-retry] ${message}`);
+    current.progress = {
+      ...(current.progress ?? buildDefaultProgress(current.createdAt)),
+      stageKey: "export",
+      stagePct: 100,
+      overallPct: 100,
+      elapsedSeconds: Math.max(
+        0,
+        Math.round(
+          (Date.now() - new Date((current.progress ?? buildDefaultProgress(current.createdAt)).startedAt ?? current.createdAt).getTime()) / 1000
+        )
+      ),
+      etaSeconds: 0
+    };
   });
 }
 
@@ -1004,6 +1101,7 @@ async function processEnhancements(jobId: string): Promise<void> {
 
   const enhancementConfig = job.enhancementConfig;
   const stages = enhancementConfig.stages;
+  const llmSelection = enhancementLlmSelection(enhancementConfig);
   const processingProfile = job.processing ?? buildDefaultProcessing();
   const telemetry = buildEnhancementTelemetryContext(stages, processingProfile, job.durationSeconds);
 
@@ -1017,6 +1115,12 @@ async function processEnhancements(jobId: string): Promise<void> {
     current.enhancementStages = enhancementStageStates;
     current.stage = "Running enhancements";
     appendLog(current, `Starting enhancements: ${stages.join(", ")}`);
+    if (llmSelection) {
+      appendLog(
+        current,
+        `LLM selection: provider=${llmSelection.provider ?? "default"}, model=${llmSelection.model ?? "default"}`
+      );
+    }
     current.progress = {
       ...(current.progress ?? buildDefaultProgress(current.createdAt)),
       stageKey: (stages[0] ?? "export") as string,
@@ -1050,6 +1154,8 @@ async function processEnhancements(jobId: string): Promise<void> {
           {
             durationSeconds: job.durationSeconds,
             processingProfile,
+            llm: llmSelection,
+            forceLlm: !!llmSelection,
             onLog: (line) => applyTelemetryUpdate(jobId, telemetry, {
               stage: "Generating English translation",
               stageKey: "translate",
@@ -1100,6 +1206,7 @@ async function processEnhancements(jobId: string): Promise<void> {
         transcriptRecord.source.segments,
         {
           durationSeconds: job.durationSeconds,
+          llm: llmSelection,
           onLog: (line) => applyTelemetryUpdate(jobId, telemetry, {
             stage: "Applying speaker diarization",
             stageKey: "diarize",
@@ -1148,7 +1255,7 @@ async function processEnhancements(jobId: string): Promise<void> {
             stagePct
           })
         },
-        { preset: enhancementConfig.summaryPreset, force: true }
+        { preset: enhancementConfig.summaryPreset, force: true, llm: llmSelection }
       );
       warnings.push(...summaryResult.warnings);
       if (summaryResult.summary) {
@@ -1234,6 +1341,8 @@ async function processSummaryRetry(jobId: string): Promise<void> {
     includeExport: false
   });
 
+  const abortSignal = registerPostProcessingAbort(jobId);
+
   try {
     const transcriptRecord = await readJsonFile<TranscriptRecord>(job.transcriptPath);
     const jobDir = jobStore.getJobDir(jobId);
@@ -1251,7 +1360,12 @@ async function processSummaryRetry(jobId: string): Promise<void> {
           stagePct
         })
       },
-      { preset: job.enhancementConfig?.summaryPreset, force: true }
+      {
+        preset: job.enhancementConfig?.summaryPreset,
+        force: true,
+        llm: enhancementLlmSelection(job.enhancementConfig ?? { stages: [] }),
+        abortSignal
+      }
     );
 
     if (!summaryResult.summary) {
@@ -1268,7 +1382,7 @@ async function processSummaryRetry(jobId: string): Promise<void> {
     await updateJobImmediate(jobId, (current) => {
       current.summaryPath = summaryPath;
       current.summaryDiagnostics = summaryResult.summaryDiagnostics;
-      current.warnings = current.warnings.filter((warning) => !warning.startsWith("AI summary skipped"));
+      current.warnings = stripSummaryRuntimeWarnings(current.warnings);
       current.warnings.push(...summaryResult.warnings);
     });
 
@@ -1279,6 +1393,8 @@ async function processSummaryRetry(jobId: string): Promise<void> {
       action,
       error instanceof Error ? error.message : "Summary regeneration failed."
     );
+  } finally {
+    clearPostProcessingAbort(jobId);
   }
 }
 
@@ -1294,6 +1410,7 @@ async function processDiarizationRetry(jobId: string): Promise<void> {
     exportLabel: "Writing enhanced artifacts"
   };
   const processingProfile = job.processing ?? buildDefaultProcessing();
+  const llmSelection = enhancementLlmSelection(job.enhancementConfig ?? { stages: [] });
   const telemetry = buildEnhancementTelemetryContext(["diarize"], processingProfile, job.durationSeconds);
 
   try {
@@ -1309,6 +1426,7 @@ async function processDiarizationRetry(jobId: string): Promise<void> {
       rawSegments,
       {
         durationSeconds: job.durationSeconds,
+        llm: llmSelection,
         onLog: (line) => applyTelemetryUpdate(jobId, telemetry, {
           stage: action.stageLabel,
           stageKey: "diarize",
@@ -1370,6 +1488,7 @@ async function processTranslationRetry(jobId: string): Promise<void> {
     ...(job.processing ?? buildDefaultProcessing()),
     translationEnabled: true
   };
+  const llmSelection = enhancementLlmSelection(job.enhancementConfig ?? { stages: [] });
   const telemetry = buildEnhancementTelemetryContext(["translate"], processingProfile, job.durationSeconds);
 
   try {
@@ -1385,6 +1504,8 @@ async function processTranslationRetry(jobId: string): Promise<void> {
       {
         durationSeconds: job.durationSeconds,
         processingProfile,
+        llm: llmSelection,
+        forceLlm: !!llmSelection,
         onLog: (line) => applyTelemetryUpdate(jobId, telemetry, {
           stage: action.stageLabel,
           stageKey: "translate",
@@ -1608,7 +1729,9 @@ app.post("/api/jobs/:jobId/enhancements", async (req, res) => {
   const enhancementConfig: EnhancementConfig = {
     stages,
     summaryPreset: body.summaryPreset,
-    translationLanguage: body.translationLanguage ?? "en"
+    translationLanguage: body.translationLanguage ?? "en",
+    provider: body.provider,
+    model: body.model
   };
 
   await updateJobImmediate(jobId, (current) => {
@@ -1765,6 +1888,34 @@ app.get("/api/jobs/:jobId/summary", async (req, res) => {
 
 // --- Retry endpoints (use cached transcript, skip re-transcription) ---
 
+app.post("/api/jobs/:jobId/retry/cancel", async (req, res) => {
+  const jobId = req.params.jobId;
+  const job = jobStore.get(jobId);
+
+  if (!job || job.status !== "completed") {
+    res.status(400).send("Job must be completed before cancelling post-processing.");
+    return;
+  }
+
+  const runningStage = getRunningEnhancementStage(job);
+  if (!runningStage) {
+    res.status(404).send("No post-processing action is running.");
+    return;
+  }
+
+  try {
+    await clearRunningPostCompletionAction(
+      jobId,
+      runningStage,
+      "Post-processing cancelled. Select a model and regenerate."
+    );
+    res.json(makeJobResponse(jobStore.get(jobId)!));
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Cancel failed.";
+    res.status(500).send(message);
+  }
+});
+
 app.post("/api/jobs/:jobId/retry/summarize", async (req, res) => {
   const jobId = req.params.jobId;
   const job = jobStore.get(jobId);
@@ -1777,6 +1928,39 @@ app.post("/api/jobs/:jobId/retry/summarize", async (req, res) => {
   if (!job.transcriptPath) {
     res.status(400).send("No cached transcript available.");
     return;
+  }
+
+  const body = (req.body ?? {}) as { provider?: string; model?: string; force?: boolean };
+  const runningStage = getRunningEnhancementStage(job);
+  if (runningStage) {
+    if (!body.force) {
+      res.status(409).send(
+        `Another post-processing action is already running: ${runningStage}. Cancel it first or retry with {"force": true}.`
+      );
+      return;
+    }
+
+    await clearRunningPostCompletionAction(
+      jobId,
+      runningStage,
+      "Stopped to start a new summary run."
+    );
+  }
+
+  if (body.provider?.trim() || body.model?.trim()) {
+    await updateJobImmediate(jobId, (current) => {
+      const previous = current.enhancementConfig ?? { stages: ["summarize"] as EnhancementStageKey[] };
+      current.enhancementConfig = {
+        ...previous,
+        stages: previous.stages.length > 0 ? previous.stages : ["summarize"],
+        provider: body.provider?.trim() || previous.provider,
+        model: body.model?.trim() || previous.model
+      };
+      appendLog(
+        current,
+        `Summary retry LLM selection: provider=${current.enhancementConfig.provider ?? "default"}, model=${current.enhancementConfig.model ?? "default"}`
+      );
+    });
   }
 
   try {
@@ -2160,7 +2344,12 @@ app.post("/api/vault/convert", async (req, res) => {
 
 async function main(): Promise<void> {
   await jobStore.init();
+  await reconcileOrphanedPostProcessingOnStartup();
   await ensureDir(path.join(config.storageRoot, ".tmp"));
+
+  setInterval(() => {
+    void failTimedOutPostProcessingJobs();
+  }, 60_000);
 
   const server = http.createServer(app);
   attachWebSocketHandler(server, (jobId) => {
