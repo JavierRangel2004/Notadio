@@ -1,10 +1,12 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 import { config } from "../config.js";
-import { resolveServiceLlm } from "./llm/index.js";
+import { resolveLlmFromSelection } from "./llm/index.js";
+import type { LlmProvider } from "./llm/types.js";
 import { detectProcessingProfile } from "./deviceProfileService.js";
 import {
   JobProcessingProfile,
+  LlmSelection,
   TranscriptSegment,
   TranscriptVariant,
   TranslationPath
@@ -464,9 +466,12 @@ Segments:
 ${serializedBatch}`;
 }
 
-async function requestStructuredTranslation(batch: TranscriptSegment[]): Promise<string[]> {
+async function requestStructuredTranslation(
+  batch: TranscriptSegment[],
+  llm: { provider: LlmProvider; model: string }
+): Promise<string[]> {
   const prompt = buildTranslationPrompt(batch);
-  const { provider, model } = resolveServiceLlm("TRANSLATION");
+  const { provider, model } = llm;
 
   const result = await provider.generate({
     model,
@@ -612,6 +617,7 @@ export async function translateAudio(
 export async function translateTranscript(
   source: TranscriptVariant,
   options: {
+    llm?: LlmSelection;
     onLog?: (line: string) => void;
     onProgress?: (stagePct: number) => void;
   } = {}
@@ -620,6 +626,9 @@ export async function translateTranscript(
     throw new Error("Source transcript has no segments to translate.");
   }
 
+  const llm = resolveLlmFromSelection(options.llm, "TRANSLATION");
+  options.onLog?.(`Using LLM provider: ${llm.provider.name} (model: ${llm.model}) for text translation.`);
+
   const batches = chunkSegments(source.segments);
   const translatedSegments: TranscriptSegment[] = [];
   options.onLog?.(`Translating transcript text to English in ${batches.length} batch${batches.length === 1 ? "" : "es"}.`);
@@ -627,7 +636,7 @@ export async function translateTranscript(
 
   for (const [batchIndex, batch] of batches.entries()) {
     options.onLog?.(`Translating transcript batch ${batchIndex + 1}/${batches.length} (${batch.length} segments).`);
-    const translatedTexts = await requestStructuredTranslation(batch);
+    const translatedTexts = await requestStructuredTranslation(batch, llm);
     translatedSegments.push(
       ...batch.map((segment, index) => ({
         ...segment,
@@ -653,6 +662,8 @@ export async function generateEnglishTranslation(
   options: {
     durationSeconds?: number;
     processingProfile?: JobProcessingProfile;
+    llm?: LlmSelection;
+    forceLlm?: boolean;
     onLog?: (line: string) => void;
     onProgress?: (stagePct: number) => void;
   } = {}
@@ -660,12 +671,13 @@ export async function generateEnglishTranslation(
   const processing = options.processingProfile ?? detectProcessingProfile();
   const preferredPath = getPreferredTranslationPath(processing);
   const warnings: string[] = [];
+  const hasExplicitLlm = !!options.llm?.provider?.trim() || !!options.llm?.model?.trim() || options.forceLlm;
 
   if (preferredPath === "disabled") {
     throw new Error("English translation is disabled.");
   }
 
-  if (preferredPath === "whisper") {
+  if (!hasExplicitLlm && preferredPath === "whisper") {
     try {
       const whisperTranslation = await runWhisperTask(inputPath, path.join(workDir, "english"), "translate", {
           durationSeconds: options.durationSeconds,
@@ -683,12 +695,15 @@ export async function generateEnglishTranslation(
       return { variant, path: "whisper", warnings };
     } catch (error) {
       const message = error instanceof Error ? error.message : "Whisper translation failed.";
-      warnings.push(`Whisper translation failed and fell back to Ollama: ${message}`);
-      options.onLog?.(`Whisper translation failed. Falling back to Ollama text translation. ${message}`);
+      warnings.push(`Whisper translation failed and fell back to LLM text translation: ${message}`);
+      options.onLog?.(`Whisper translation failed. Falling back to LLM text translation. ${message}`);
     }
+  } else if (hasExplicitLlm) {
+    options.onLog?.("Using selected LLM for English translation.");
   }
 
   const variant = await translateTranscript(source, {
+    llm: options.llm,
     onLog: options.onLog,
     onProgress: options.onProgress
   });

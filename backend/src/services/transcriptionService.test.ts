@@ -333,7 +333,7 @@ test("generateEnglishTranslation falls back to Ollama when Whisper translation f
 
     assert.equal(result.path, "ollama");
     assert.equal(result.warnings.length > 0, true);
-    assert.match(result.warnings[0] ?? "", /fell back to Ollama/i);
+    assert.match(result.warnings[0] ?? "", /fell back to LLM/i);
   } finally {
     config.whisperModelPath = originalModelPath;
     restore();

@@ -1,8 +1,8 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 import { config } from "../config.js";
-import { resolveServiceLlm } from "./llm/index.js";
-import { TranscriptSegment } from "../types.js";
+import { resolveLlmFromSelection } from "./llm/index.js";
+import { LlmSelection, TranscriptSegment } from "../types.js";
 import { ensureDir, readJsonFile } from "../utils/fs.js";
 import { parseArgs, runCommand } from "../utils/process.js";
 
@@ -258,7 +258,10 @@ function hasSpeaker(value: string | undefined): value is string {
   return typeof value === "string" && value.length > 0;
 }
 
-async function inferSpeakerNameMap(segments: TranscriptSegment[]): Promise<Map<string, string> | null> {
+async function inferSpeakerNameMap(
+  segments: TranscriptSegment[],
+  llm?: LlmSelection
+): Promise<Map<string, string> | null> {
   const speakers = [...new Set(segments.map((segment) => segment.speaker).filter(hasSpeaker))];
   if (speakers.length < 2) {
     return null;
@@ -280,7 +283,7 @@ Transcripción:
 ${transcriptText}`;
 
   try {
-    const { provider, model } = resolveServiceLlm("DIARIZATION");
+    const { provider, model } = resolveLlmFromSelection(llm, "DIARIZATION");
     const llmResult = await provider.generate({
       model,
       prompt,
@@ -321,8 +324,11 @@ function fallbackSpeakerNames(segments: TranscriptSegment[]): Map<string, string
   return mapping;
 }
 
-async function applySpeakerNameMap(segments: TranscriptSegment[]): Promise<TranscriptSegment[]> {
-  const inferred = await inferSpeakerNameMap(segments);
+async function applySpeakerNameMap(
+  segments: TranscriptSegment[],
+  llm?: LlmSelection
+): Promise<TranscriptSegment[]> {
+  const inferred = await inferSpeakerNameMap(segments, llm);
   const fallback = fallbackSpeakerNames(segments);
   const mapping = inferred ?? fallback;
 
@@ -341,7 +347,8 @@ async function applySpeakerNameMap(segments: TranscriptSegment[]): Promise<Trans
 export async function postProcessDiarization(
   segments: TranscriptSegment[],
   rawSpeakerSlices: SpeakerSlice[],
-  maxSpeakers: number = config.diarizationMaxSpeakers
+  maxSpeakers: number = config.diarizationMaxSpeakers,
+  llm?: LlmSelection
 ): Promise<TranscriptSegment[]> {
   const normalizedSlices = normalizeSpeakerSlices(rawSpeakerSlices);
   const collapsedSlices = collapseToMaxSpeakers(normalizedSlices, maxSpeakers);
@@ -350,7 +357,7 @@ export async function postProcessDiarization(
     speaker: pickSpeaker(segment, collapsedSlices)
   }));
   const smoothed = smoothTranscriptSpeakers(assigned);
-  return applySpeakerNameMap(smoothed);
+  return applySpeakerNameMap(smoothed, llm);
 }
 
 export async function applyOptionalDiarization(
@@ -359,6 +366,7 @@ export async function applyOptionalDiarization(
   segments: TranscriptSegment[],
   callbacks: {
     durationSeconds?: number;
+    llm?: LlmSelection;
     onLog?: (line: string) => void;
     onProgress?: (stagePct: number) => void;
   } = {}
@@ -407,7 +415,7 @@ export async function applyOptionalDiarization(
     callbacks.onLog?.(`Diarization complete. Found ${speakerSlices.length} segments.`);
     callbacks.onProgress?.(100);
 
-    const segmentResults = await postProcessDiarization(segments, speakerSlices);
+    const segmentResults = await postProcessDiarization(segments, speakerSlices, config.diarizationMaxSpeakers, callbacks.llm);
 
     return {
       warnings: [],
