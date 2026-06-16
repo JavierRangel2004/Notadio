@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { generateSummary } from "./summaryService.js";
+import { generateSummary, stripSummaryRuntimeWarnings } from "./summaryService.js";
 import { config } from "../config.js";
 import { SummaryPreset, TranscriptRecord } from "../types.js";
 
@@ -14,6 +14,10 @@ type FetchCall = {
   url: string;
   body: Record<string, unknown>;
 };
+
+function requestBodyText(body: Record<string, unknown>): string {
+  return `${String(body.system ?? "")}\n${String(body.prompt ?? "")}`;
+}
 
 function createTranscriptRecord(segmentTexts: string[]): TranscriptRecord {
   return {
@@ -222,7 +226,7 @@ test("generateSummary samples transcript input to configured max chars", async (
 
       try {
         const result = await generateSummary(transcript);
-        const prompt = String(requestBodies()[0]?.body.prompt ?? "");
+        const prompt = requestBodyText(requestBodies()[0]?.body ?? {});
 
         assert.equal(result.summaryDiagnostics?.mode, "direct");
         assert.equal(result.summaryDiagnostics?.sampled, true);
@@ -387,7 +391,7 @@ test("generateSummary falls back to merged chunk summaries when final reduce fai
     assert.equal(result.summaryDiagnostics?.mode, "chunked");
     assert.equal(result.summaryDiagnostics?.usedReduce, false);
     assert.equal(result.summaryDiagnostics?.usedMergedPartials, true);
-    assert.equal(result.summaryDiagnostics?.requestCount, 4);
+    assert.equal(result.summaryDiagnostics?.requestCount, 3);
     assert.equal((result.summaryDiagnostics?.mergeDurationMs ?? -1) >= 0, true);
     assert.equal(Boolean(result.summary?.brief), true);
   } finally {
@@ -413,7 +417,7 @@ test("generateSummary uses whatsappVoiceNote preset in prompt", async () => {
 
   try {
     const result = await generateSummary(transcript, {}, { preset: "whatsappVoiceNote" });
-    const prompt = String(requestBodies()[0]?.body.prompt ?? "");
+    const prompt = requestBodyText(requestBodies()[0]?.body ?? {});
 
     assert.equal(prompt.includes("notas de voz"), true);
     assert.equal(prompt.includes("solo hay un hablante"), true);
@@ -441,7 +445,7 @@ test("generateSummary uses genericMedia preset in prompt", async () => {
 
   try {
     const result = await generateSummary(transcript, {}, { preset: "genericMedia" });
-    const prompt = String(requestBodies()[0]?.body.prompt ?? "");
+    const prompt = requestBodyText(requestBodies()[0]?.body ?? {});
 
     assert.equal(prompt.includes("audio y video"), true);
     assert.equal(prompt.includes("neutral"), true);
@@ -472,7 +476,7 @@ test("generateSummary uses analysisEssay preset in prompt and preserves thesis f
 
   try {
     const result = await generateSummary(transcript, {}, { preset: "analysisEssay" });
-    const prompt = String(requestBodies()[0]?.body.prompt ?? "");
+    const prompt = requestBodyText(requestBodies()[0]?.body ?? {});
 
     assert.equal(prompt.includes("ensayos, editoriales y contenido argumentativo"), true);
     assert.equal(result.summary?.contentType, "analysisEssay");
@@ -502,7 +506,7 @@ test("generateSummary meeting preset uses executive meeting context", async () =
 
   try {
     await generateSummary(transcript, {}, { preset: "meeting" });
-    const prompt = String(requestBodies()[0]?.body.prompt ?? "");
+    const prompt = requestBodyText(requestBodies()[0]?.body ?? {});
 
     assert.equal(prompt.includes("reuniones ejecutivas"), true);
     assert.equal(prompt.includes("tono ejecutivo y narrativo"), true);
@@ -534,7 +538,7 @@ test("generateSummary auto-detects analysisEssay preset when none is provided", 
 
   try {
     const result = await generateSummary(transcript);
-    const prompt = String(requestBodies()[0]?.body.prompt ?? "");
+    const prompt = requestBodyText(requestBodies()[0]?.body ?? {});
 
     assert.equal(prompt.includes("contenido argumentativo"), true);
     assert.equal(result.summary?.contentType, "analysisEssay");
@@ -599,6 +603,35 @@ test("generateSummary fallback for analysisEssay does not derive action items or
   }
 });
 
+test("generateSummary retries once when the first LLM response is invalid JSON", async () => {
+  const transcript = createTranscriptRecord([
+    "Se revisaron acuerdos, riesgos, tareas y responsables para el siguiente entregable del sprint."
+  ]);
+  const validPayload = JSON.stringify({
+    headline: "Sprint review",
+    brief: "Se revisaron acuerdos, riesgos, tareas y responsables para el siguiente entregable del sprint.",
+    overview: "El equipo repasó avances, bloqueos y próximos pasos con suficiente detalle operativo.",
+    keyDecisions: ["Priorizar feedback de onboarding"],
+    actionItems: [{ task: "Investigar ads con WhatsApp", assignee: "Javier" }],
+    sections: [{ title: "Avances", summary: "Voice calls y Meta ads avanzaron", bullets: ["Composio limitado"] }]
+  });
+  const { restore, calls } = installFetchSteps([
+    { payload: "Aquí está el resumen:\n```json\n{ broken" },
+    { payload: validPayload }
+  ]);
+
+  try {
+    const result = await generateSummary(transcript);
+
+    assert.equal(calls(), 2);
+    assert.equal(result.summaryDiagnostics?.requestCount, 2);
+    assert.equal(result.summaryDiagnostics?.usedFallback, false);
+    assert.equal(Boolean(result.summary?.brief), true);
+  } finally {
+    restore();
+  }
+});
+
 test("generateSummary with force flag bypasses enableSummary config", async () => {
   const transcript = createTranscriptRecord(["Contenido de prueba para forzar resumen."]);
   const originalEnableSummary = config.enableSummary;
@@ -633,4 +666,16 @@ test("generateSummary with force flag bypasses enableSummary config", async () =
   } finally {
     (config as Record<string, unknown>).enableSummary = originalEnableSummary;
   }
+});
+
+test("stripSummaryRuntimeWarnings removes prior summary failure warnings", () => {
+  const warnings = [
+    "Diarization took longer than expected.",
+    "AI summary skipped: the LLM provider returned an empty response.",
+    "A fallback summary was generated directly from the transcript."
+  ];
+
+  assert.deepEqual(stripSummaryRuntimeWarnings(warnings), [
+    "Diarization took longer than expected."
+  ]);
 });

@@ -66,7 +66,8 @@ Summary runtime tuning:
 - `SUMMARY_CHUNK_CHAR_LIMIT`
 - `SUMMARY_MAX_INPUT_CHARS`
 - `SUMMARY_BLOCK_MAX_CHARS`
-- `SUMMARY_OLLAMA_NUM_PREDICT` (optional)
+- `SUMMARY_MAX_OUTPUT_TOKENS` (OpenCode / OpenAI-compatible; default `8192`)
+- `SUMMARY_OLLAMA_NUM_PREDICT` (optional; local Ollama output cap)
 - `SUMMARY_OLLAMA_NUM_CTX` (optional)
 - `SUMMARY_OLLAMA_KEEP_ALIVE` (optional)
 

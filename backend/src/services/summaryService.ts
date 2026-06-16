@@ -1,6 +1,9 @@
 import { config } from "../config.js";
-import { resolveServiceLlm } from "./llm/index.js";
+import { resolveLlmFromSelection } from "./llm/index.js";
+import type { LlmProvider } from "./llm/types.js";
+import { createLlmRequestSignal } from "../utils/llmRequestSignal.js";
 import {
+  LlmSelection,
   MeetingActionItem,
   SummaryContentType,
   MeetingSummary,
@@ -14,6 +17,8 @@ import {
 export type SummaryOptions = {
   preset?: SummaryPreset;
   force?: boolean;
+  llm?: LlmSelection;
+  abortSignal?: AbortSignal;
 };
 
 type PresetContext = {
@@ -112,6 +117,21 @@ function getPresetContext(preset?: SummaryPreset): PresetContext {
 
 const SUMMARY_PLACEHOLDER_BRIEF = "No brief generated.";
 const SUMMARY_FALLBACK_WARNING = "AI summary lacked usable content; generated a transcript-based fallback summary.";
+export const SUMMARY_FALLBACK_TRANSCRIPT_WARNING =
+  "A fallback summary was generated directly from the transcript.";
+
+export function isSummaryRuntimeWarning(warning: string): boolean {
+  return (
+    warning.startsWith("AI summary skipped") ||
+    warning.startsWith("AI summary lacked usable content") ||
+    warning === SUMMARY_FALLBACK_TRANSCRIPT_WARNING ||
+    warning.startsWith("Skipped summarization:")
+  );
+}
+
+export function stripSummaryRuntimeWarnings(warnings: string[]): string[] {
+  return warnings.filter((warning) => !isSummaryRuntimeWarning(warning));
+}
 const SUMMARY_STOPWORDS = new Set([
   "a",
   "al",
@@ -191,11 +211,13 @@ type SummaryRequestResult = {
   durationMs: number;
   startedAt: string;
   completedAt: string;
+  requestAttempts: number;
 };
 
 type SummaryChunkResult = {
   partial?: MeetingSummary;
   diagnostic: SummaryChunkDiagnostic;
+  requestAttempts?: number;
 };
 
 type SummaryGenerationResult = {
@@ -514,7 +536,9 @@ function repairJson(jsonString: string): string {
     .replace(/^\uFEFF/, "")
     .replace(/[“”]/g, "\"")
     .replace(/[‘’]/g, "'")
-    .replace(/,\s*([}\]])/g, "$1");
+    .replace(/,\s*([}\]])/g, "$1")
+    .replace(/\/\/.*$/gm, "")
+    .replace(/\/\*[\s\S]*?\*\//g, "");
 }
 
 function parseJsonFromLlmResponse(response: string): Record<string, unknown> {
@@ -721,19 +745,27 @@ function deriveFallbackSections(summary: {
 
 function buildSummaryWarning(errorMessage: string): string {
   if (errorMessage.includes("fetch failed") || errorMessage.includes("ECONNREFUSED")) {
-    return `AI summary skipped: Could not reach local Ollama (${errorMessage}). Ensure Ollama is installed, running, and reachable at ${config.ollamaBaseUrl}.`;
+    return `AI summary skipped: Could not reach the configured LLM (${errorMessage}). Check provider URL, API key, or that Ollama is running at ${config.ollamaBaseUrl}.`;
   }
 
-  if (errorMessage.includes("Ollama HTTP")) {
-    return `AI summary skipped: Ollama returned an error (${errorMessage}). Check that model ${config.ollamaModel} is installed and the request fits the model context window.`;
+  if (errorMessage.includes("OpenAI-compatible HTTP") || errorMessage.includes("Ollama HTTP")) {
+    return `AI summary skipped: the LLM provider returned an error (${errorMessage}). Verify the model id and provider credentials.`;
+  }
+
+  if (errorMessage.includes("empty response")) {
+    if (errorMessage.includes("finish_reason=length")) {
+      return "AI summary skipped: the model hit its output token limit before returning JSON (often reasoning tokens on DeepSeek-style models). Increase SUMMARY_MAX_OUTPUT_TOKENS (e.g. 8192) or retry with deepseek-v4-flash.";
+    }
+
+    return "AI summary skipped: the LLM provider returned an empty response. Try another model (e.g. deepseek-v4-pro) or retry without structured JSON mode.";
   }
 
   if (errorMessage.includes("parse LLM response as JSON")) {
-    return "AI summary skipped: Ollama responded, but the model output was not valid JSON. Try the request again or use a more instruction-following Ollama model.";
+    return "AI summary skipped: the model output was not valid JSON. Try again or switch to a model with stronger structured output (e.g. deepseek-v4-pro).";
   }
 
   if (errorMessage.includes("empty structured summary")) {
-    return "AI summary skipped: Ollama returned JSON without a usable brief, overview, sections, decisions, or action items. Try again or switch to a larger local model.";
+    return "AI summary skipped: the model returned JSON without a usable brief, overview, sections, decisions, or action items. Try again or use a larger model.";
   }
 
   return `AI summary skipped: Summary generation failed (${errorMessage}).`;
@@ -1261,28 +1293,88 @@ function buildSchemaInstructions(preset?: SummaryPreset): string {
 }`;
 }
 
-function buildChunkPrompt(transcriptText: string, chunkIndex: number, totalChunks: number, preset?: SummaryPreset): string {
+function buildChunkSchemaInstructions(preset?: SummaryPreset): string {
+  const keyDecisionHint = isOperationalPreset(preset)
+    ? "SOLO decisiones explícitas. Si no hay, []"
+    : "Solo decisiones literales; si no, []";
+
+  return `Esquema JSON mínimo (sin markdown):
+{
+  "brief": "2-3 oraciones sobre este fragmento",
+  "topics": ["tema 1"],
+  "keyDecisions": ["${keyDecisionHint}"],
+  "actionItems": [{ "task": "acción explícita", "assignee": "opcional" }],
+  "openQuestions": ["preguntas sin respuesta; si no hay, []"]
+}`;
+}
+
+type SummaryPromptParts = {
+  system: string;
+  prompt: string;
+};
+
+const JSON_OUTPUT_RULES =
+  "Responde con exactamente un objeto JSON válido. Prohibido: markdown, texto fuera del JSON, cadenas de razonamiento o etiquetas de pensamiento. Prioriza JSON compacto; usa arrays vacíos [] cuando falte información.";
+
+function resolveSummaryMaxTokens(providerName?: string): number {
+  if (providerName === "openai-compatible") {
+    return config.summaryMaxOutputTokens;
+  }
+
+  return config.summaryOllamaNumPredict ?? Math.min(config.summaryMaxOutputTokens, 4096);
+}
+
+function shouldUseSummaryJsonMode(provider: LlmProvider): boolean {
+  return provider.name === "ollama";
+}
+
+function buildJsonRepairPrompt(
+  originalPrompt: string,
+  invalidResponse: string,
+  schemaKind: "chunk" | "full",
+  preset?: SummaryPreset
+): string {
+  const schema =
+    schemaKind === "chunk" ? buildChunkSchemaInstructions(preset) : buildSchemaInstructions(preset);
+
+  return `La salida anterior no era JSON válido. Corrígela y devuelve SOLO un objeto JSON que cumpla el esquema.
+
+Esquema requerido:
+${schema}
+
+Salida inválida previa (puede estar truncada):
+${compactText(invalidResponse, 900)}
+
+Tarea original:
+${compactText(originalPrompt, 1500)}`;
+}
+
+function buildChunkPromptParts(
+  transcriptText: string,
+  chunkIndex: number,
+  totalChunks: number,
+  preset?: SummaryPreset
+): SummaryPromptParts {
   const ctx = getPresetContext(preset);
-  return `${ctx.systemRole} Analiza SOLO este fragmento ${chunkIndex} de ${totalChunks} de una transcripción más larga y devuelve SOLO un objeto JSON válido.
+  return {
+    system: ctx.systemRole,
+    prompt: `Analiza SOLO este fragmento ${chunkIndex} de ${totalChunks} de una transcripción más larga.
 
 Objetivo:
-- Resume únicamente la información presente en este fragmento.
-- Conserva tesis, evidencia, decisiones, tareas, riesgos, avisos y preguntas aunque todavía estén incompletos.
+- Extrae decisiones, tareas, riesgos y preguntas presentes en este fragmento.
 - Si un hallazgo parece tentativo o parcial, exprésalo como tal.
-- Prioriza la estructura real del contenido. Si es argumentativo, preserva tesis, evidencia y conclusión; si es operativo, preserva decisiones, próximos pasos y dudas abiertas.
 
-${buildSchemaInstructions(preset)}
+${buildChunkSchemaInstructions(preset)}
 
 Reglas:
 1. No inventes datos de otros fragmentos.
-2. No escribas markdown ni texto fuera del JSON.
+2. Responde directamente con JSON; no escribas razonamiento intermedio.
 3. Usa arrays vacíos cuando falte información. NUNCA inventes actionItems, keyDecisions ni openQuestions si no existen explícitamente en el texto.
 4. Mantén nombres propios, roles y citas clave lo más específicos posible.
-5. Si hay fechas o ventanas de tiempo, conviértelas en actionItems/followUps.
-6. Si "narrative" sería igual a "overview", devuelve null o cadena vacía para "narrative".
 
 Fragmento ${chunkIndex}/${totalChunks}:
-${transcriptText}`;
+${transcriptText}`
+  };
 }
 
 function compactSectionForReduce(section: MeetingSummarySection): MeetingSummarySection {
@@ -1320,13 +1412,15 @@ function compactSummaryForReduce(summary: MeetingSummary): Record<string, unknow
   };
 }
 
-function buildReducePrompt(partials: MeetingSummary[], preset?: SummaryPreset): string {
+function buildReducePromptParts(partials: MeetingSummary[], preset?: SummaryPreset): SummaryPromptParts {
   const ctx = getPresetContext(preset);
   const serializedPartials = partials
     .map((summary, index) => `Fragmento ${index + 1}:\n${JSON.stringify(compactSummaryForReduce(summary), null, 2)}`)
     .join("\n\n");
 
-  return `${ctx.systemRole} Combina estos resúmenes parciales en un SOLO resumen ejecutivo consolidado y devuelve SOLO un objeto JSON válido.
+  return {
+    system: ctx.systemRole,
+    prompt: `Combina estos resúmenes parciales en un SOLO resumen ejecutivo consolidado.
 
 Objetivo:
 - ${ctx.reduceContext}
@@ -1342,37 +1436,117 @@ Reglas:
 4. Asegura cobertura explícita de keyDecisions/actionItems para contenido operativo y de coreClaims/evidenceMoments para contenido argumentativo o narrativo.
 
 Resúmenes parciales:
-${serializedPartials}`;
+${serializedPartials}`
+  };
 }
 
-async function requestStructuredSummary(prompt: string): Promise<Record<string, unknown>> {
-  const { provider, model } = resolveServiceLlm("SUMMARY");
-
+async function callSummaryLlm(
+  llm: { provider: LlmProvider; model: string },
+  parts: SummaryPromptParts,
+  signal?: AbortSignal
+): Promise<string> {
+  const { provider, model } = llm;
   const result = await provider.generate({
     model,
-    prompt,
+    system: `${parts.system}\n\n${JSON_OUTPUT_RULES}`,
+    prompt: parts.prompt,
     temperature: 0.15,
-    maxTokens: config.summaryOllamaNumPredict,
+    maxTokens: resolveSummaryMaxTokens(provider.name),
     contextSize: config.summaryOllamaNumCtx,
-    json: true,
-    keepAlive: config.summaryOllamaKeepAlive
+    json: shouldUseSummaryJsonMode(provider),
+    keepAlive: config.summaryOllamaKeepAlive,
+    signal
   });
 
-  return parseJsonFromLlmResponse(result.text);
+  return result.text;
 }
 
-async function requestStructuredSummaryTimed(prompt: string): Promise<SummaryRequestResult> {
+async function requestStructuredSummary(
+  parts: SummaryPromptParts,
+  llm: { provider: LlmProvider; model: string },
+  signal: AbortSignal | undefined,
+  options: {
+    schemaKind: "chunk" | "full";
+    preset?: SummaryPreset;
+    onLog?: (line: string) => void;
+  }
+): Promise<{ payload: Record<string, unknown>; requestAttempts: number }> {
+  let requestAttempts = 0;
+  requestAttempts += 1;
+  const firstResponse = await callSummaryLlm(llm, parts, signal);
+
+  try {
+    return { payload: parseJsonFromLlmResponse(firstResponse), requestAttempts };
+  } catch {
+    options.onLog?.(
+      `JSON parse failed (${compactText(firstResponse, 140)}). Retrying once with a repair prompt.`
+    );
+
+    requestAttempts += 1;
+    const repairParts: SummaryPromptParts = {
+      system: parts.system,
+      prompt: buildJsonRepairPrompt(parts.prompt, firstResponse, options.schemaKind, options.preset)
+    };
+    const retryResponse = await callSummaryLlm(llm, repairParts, signal);
+
+    try {
+      return { payload: parseJsonFromLlmResponse(retryResponse), requestAttempts };
+    } catch {
+      throw new Error(
+        `Failed to parse LLM response as JSON after retry. Preview: ${compactText(firstResponse, 160)}`
+      );
+    }
+  }
+}
+
+type SummaryRequestCallbacks = {
+  onWaiting?: (elapsedSeconds: number) => void;
+  onLog?: (line: string) => void;
+  schemaKind?: "chunk" | "full";
+  preset?: SummaryPreset;
+  abortSignal?: AbortSignal;
+};
+
+async function requestStructuredSummaryTimed(
+  parts: SummaryPromptParts,
+  llm: { provider: LlmProvider; model: string },
+  callbacks?: SummaryRequestCallbacks
+): Promise<SummaryRequestResult> {
   const startedAt = Date.now();
   const startedAtIso = new Date(startedAt).toISOString();
-  const payload = await requestStructuredSummary(prompt);
-  const completedAt = Date.now();
+  let waitSeconds = 0;
+  let heartbeat: ReturnType<typeof setInterval> | undefined;
 
-  return {
-    payload,
-    durationMs: completedAt - startedAt,
-    startedAt: startedAtIso,
-    completedAt: new Date(completedAt).toISOString()
-  };
+  if (callbacks?.onWaiting) {
+    heartbeat = setInterval(() => {
+      waitSeconds += 5;
+      callbacks.onWaiting?.(waitSeconds);
+    }, 5000);
+  }
+
+  const { signal, dispose } = createLlmRequestSignal(config.llmRequestTimeoutMs, callbacks?.abortSignal);
+
+  try {
+    const { payload, requestAttempts } = await requestStructuredSummary(parts, llm, signal, {
+      schemaKind: callbacks?.schemaKind ?? "full",
+      preset: callbacks?.preset,
+      onLog: callbacks?.onLog
+    });
+    const completedAt = Date.now();
+
+    return {
+      payload,
+      durationMs: completedAt - startedAt,
+      startedAt: startedAtIso,
+      completedAt: new Date(completedAt).toISOString(),
+      requestAttempts
+    };
+  } finally {
+    dispose();
+    if (heartbeat) {
+      clearInterval(heartbeat);
+    }
+  }
 }
 
 async function mapWithConcurrency<T, TResult>(
@@ -1400,11 +1574,13 @@ async function mapWithConcurrency<T, TResult>(
   return results;
 }
 
-function buildPrompt(transcriptText: string, preset?: SummaryPreset): string {
+function buildPromptParts(transcriptText: string, preset?: SummaryPreset): SummaryPromptParts {
   const ctx = getPresetContext(preset);
   const extraRules = ctx.extraRules.map((rule, i) => `${i + 6}. ${rule}`).join("\n");
 
-  return `${ctx.systemRole} Analiza la transcripción y devuelve SOLO un objeto JSON válido.
+  return {
+    system: ctx.systemRole,
+    prompt: `Analiza la transcripción y devuelve SOLO un objeto JSON válido.
 
 Objetivo:
 - ${ctx.objectivePrefix}
@@ -1423,7 +1599,17 @@ Reglas:
 ${extraRules}
 
 Transcripción:
-${transcriptText}`;
+${transcriptText}`
+  };
+}
+
+function isSummaryAbortError(error: unknown, abortSignal?: AbortSignal): boolean {
+  if (abortSignal?.aborted) {
+    return true;
+  }
+
+  const message = error instanceof Error ? error.message.toLowerCase() : String(error).toLowerCase();
+  return message.includes("cancel") || message.includes("aborted") || message.includes("abort");
 }
 
 export async function generateSummary(
@@ -1438,6 +1624,7 @@ export async function generateSummary(
     return { warnings: [] };
   }
 
+  const llm = resolveLlmFromSelection(options?.llm, "SUMMARY");
   const runtimeConfig = getSummaryRuntimeConfig();
   const variantToSummarize = record.source;
   const resolvedPreset = detectSummaryPreset(record, options?.preset);
@@ -1450,7 +1637,7 @@ export async function generateSummary(
 
   const startedAt = Date.now();
   const diagnostics: SummaryDiagnostics = {
-    model: config.ollamaModel,
+    model: llm.model,
     mode: "direct",
     inputChars: transcriptText.length,
     transcriptBlocks: summaryInput.blockCount,
@@ -1484,7 +1671,7 @@ export async function generateSummary(
   }
 
   try {
-    callbacks.onLog?.(`Calling local Ollama LLM (${config.ollamaModel}) at ${config.ollamaBaseUrl}...`);
+    callbacks.onLog?.(`Using LLM provider: ${llm.provider.name} (model: ${llm.model})`);
     callbacks.onLog?.(`Summary preset resolved to ${resolvedPreset}.`);
     callbacks.onLog?.(
       `Summarizing ${variantToSummarize.segments.length} transcript segments across ${summaryInput.blockCount} transcript blocks${summaryInput.sampled ? " (sampled)" : ""}.`
@@ -1507,8 +1694,20 @@ export async function generateSummary(
     let summary: MeetingSummary;
     if (transcriptChunks.length <= 1) {
       callbacks.onProgress?.(80);
-      const directRequest = await requestStructuredSummaryTimed(buildPrompt(transcriptText, resolvedPreset));
-      diagnostics.requestCount = 1;
+      const directRequest = await requestStructuredSummaryTimed(buildPromptParts(transcriptText, resolvedPreset), llm, {
+        schemaKind: "full",
+        preset: resolvedPreset,
+        onLog: callbacks.onLog,
+        abortSignal: options?.abortSignal,
+        onWaiting: (elapsedSeconds) => {
+          const creep = Math.min(0.9, elapsedSeconds / Math.max(30, config.llmRequestTimeoutMs / 1000));
+          callbacks.onProgress?.(80 + Math.round(10 * creep));
+          if (elapsedSeconds === 15 || elapsedSeconds === 30 || elapsedSeconds === 60) {
+            callbacks.onLog?.(`Still waiting for LLM response (${elapsedSeconds}s)…`);
+          }
+        }
+      });
+      diagnostics.requestCount = directRequest.requestAttempts;
       diagnostics.directDurationMs = directRequest.durationMs;
       callbacks.onLog?.(`[summary-metrics] direct summary request completed in ${formatDurationMs(directRequest.durationMs)}.`);
       summary = buildSummary(directRequest.payload, resolvedPreset);
@@ -1535,12 +1734,32 @@ export async function generateSummary(
       );
 
       let completedChunks = 0;
+      const chunkSpan = Math.max(1, Math.round(60 / transcriptChunks.length));
       const chunkResults = await mapWithConcurrency(transcriptChunks, diagnostics.chunkConcurrency, async (chunk, index) => {
         callbacks.onLog?.(`Summarizing chunk ${index + 1}/${transcriptChunks.length}...`);
         const chunkStartedAt = Date.now();
+        const chunkBasePct = 15 + Math.round((index / transcriptChunks.length) * 60);
 
         try {
-          const request = await requestStructuredSummaryTimed(buildChunkPrompt(chunk, index + 1, transcriptChunks.length, resolvedPreset));
+          const request = await requestStructuredSummaryTimed(
+            buildChunkPromptParts(chunk, index + 1, transcriptChunks.length, resolvedPreset),
+            llm,
+            {
+              schemaKind: "chunk",
+              preset: resolvedPreset,
+              onLog: callbacks.onLog,
+              abortSignal: options?.abortSignal,
+              onWaiting: (elapsedSeconds) => {
+                const creep = Math.min(0.9, elapsedSeconds / Math.max(30, config.llmRequestTimeoutMs / 1000));
+                callbacks.onProgress?.(Math.min(74, chunkBasePct + Math.round(chunkSpan * creep)));
+                if (elapsedSeconds === 15 || elapsedSeconds === 30 || elapsedSeconds === 60 || elapsedSeconds === 90) {
+                  callbacks.onLog?.(
+                    `Still waiting for LLM on chunk ${index + 1}/${transcriptChunks.length} (${elapsedSeconds}s)…`
+                  );
+                }
+              }
+            }
+          );
           const partial = buildSummary(request.payload, resolvedPreset);
           const diagnostic: SummaryChunkDiagnostic = {
             chunkIndex: index + 1,
@@ -1563,9 +1782,13 @@ export async function generateSummary(
 
           return {
             partial: diagnostic.status === "completed" ? partial : undefined,
-            diagnostic
+            diagnostic,
+            requestAttempts: request.requestAttempts
           } satisfies SummaryChunkResult;
         } catch (error) {
+          if (isSummaryAbortError(error, options?.abortSignal)) {
+            throw error;
+          }
           const errorMessage = error instanceof Error ? error.message : String(error);
           callbacks.onLog?.(`Chunk ${index + 1}/${transcriptChunks.length} summary failed: ${errorMessage}`);
           const completedAt = Date.now();
@@ -1591,7 +1814,7 @@ export async function generateSummary(
         }
       });
 
-      diagnostics.requestCount = chunkResults.length;
+      diagnostics.requestCount = chunkResults.reduce((sum, result) => sum + (result.requestAttempts ?? 1), 0);
       diagnostics.chunks = chunkResults.map((result) => result.diagnostic);
       diagnostics.partialCount = chunkResults.filter((result) => Boolean(result.partial)).length;
       diagnostics.skippedChunkCount = chunkResults.filter((result) => result.diagnostic.status === "skipped").length;
@@ -1625,9 +1848,21 @@ export async function generateSummary(
       } else {
         callbacks.onLog?.(`Combining ${partials.length} chunk summaries into one final recap...`);
         callbacks.onProgress?.(82);
-        diagnostics.requestCount += 1;
         try {
-          const reduceRequest = await requestStructuredSummaryTimed(buildReducePrompt(partials, resolvedPreset));
+          const reduceRequest = await requestStructuredSummaryTimed(buildReducePromptParts(partials, resolvedPreset), llm, {
+            schemaKind: "full",
+            preset: resolvedPreset,
+            onLog: callbacks.onLog,
+            abortSignal: options?.abortSignal,
+            onWaiting: (elapsedSeconds) => {
+              const creep = Math.min(0.9, elapsedSeconds / Math.max(30, config.llmRequestTimeoutMs / 1000));
+              callbacks.onProgress?.(82 + Math.round(8 * creep));
+              if (elapsedSeconds === 15 || elapsedSeconds === 30 || elapsedSeconds === 60) {
+                callbacks.onLog?.(`Still waiting for LLM on final reduce (${elapsedSeconds}s)…`);
+              }
+            }
+          });
+          diagnostics.requestCount += reduceRequest.requestAttempts;
           diagnostics.usedReduce = true;
           diagnostics.reduceDurationMs = reduceRequest.durationMs;
           callbacks.onLog?.(
@@ -1680,6 +1915,9 @@ export async function generateSummary(
     callbacks.onLog?.(`[summary-metrics] total summary stage completed in ${formatDurationMs(completedDiagnostics.totalDurationMs)}.`);
     return { warnings: [], summary, summaryDiagnostics: completedDiagnostics };
   } catch (error) {
+    if (isSummaryAbortError(error, options?.abortSignal)) {
+      throw error;
+    }
     const errorMessage = error instanceof Error ? error.message : String(error);
     callbacks.onLog?.(`Summarization failed: ${errorMessage}`);
     callbacks.onLog?.("Falling back to an extractive summary built from the transcript.");
@@ -1692,7 +1930,7 @@ export async function generateSummary(
     callbacks.onLog?.(`[summary-metrics] total summary stage completed in ${formatDurationMs(completedDiagnostics.totalDurationMs)}.`);
 
     return {
-      warnings: [buildSummaryWarning(errorMessage), "A fallback summary was generated directly from the transcript."],
+      warnings: [buildSummaryWarning(errorMessage), SUMMARY_FALLBACK_TRANSCRIPT_WARNING],
       summary: fallbackSummary,
       summaryDiagnostics: completedDiagnostics
     };
