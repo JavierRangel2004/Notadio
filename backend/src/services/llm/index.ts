@@ -3,6 +3,7 @@ export { OllamaProvider } from "./ollamaProvider.js"
 export { OpenAICompatibleProvider } from "./openaiCompatibleProvider.js"
 
 import { config } from "../../config.js"
+import type { LlmSelection } from "../../types.js"
 import type { LlmProvider } from "./types.js"
 import { OllamaProvider } from "./ollamaProvider.js"
 import { OpenAICompatibleProvider } from "./openaiCompatibleProvider.js"
@@ -184,17 +185,29 @@ export async function listModelsForProvider(providerId: string): Promise<string[
   return models
 }
 
+export type { LlmSelection } from "../../types.js";
+
 /**
- * Build a provider+model pair from explicit request parameters.
- * Used when the UI sends a specific provider/model selection instead of
- * relying on environment-based resolution.
+ * Resolve provider/model from an explicit UI selection, falling back to
+ * per-service env configuration when the selection is empty.
  */
+export function resolveLlmFromSelection(
+  selection: LlmSelection | undefined,
+  fallbackService: LlmServiceKey
+): { provider: LlmProvider; model: string } {
+  const hasSelection = !!selection?.provider?.trim() || !!selection?.model?.trim();
+  if (!hasSelection) {
+    return resolveServiceLlm(fallbackService);
+  }
+  return buildProviderFromRequest(selection?.provider, selection?.model);
+}
+
 export function buildProviderFromRequest(
   providerId?: string,
   model?: string
 ): { provider: LlmProvider; model: string } {
   // Fall back to default env-based resolution when no explicit provider given
-  if (!providerId) {
+  if (!providerId?.trim() && !model?.trim()) {
     return resolveServiceLlm("SUMMARY")
   }
 

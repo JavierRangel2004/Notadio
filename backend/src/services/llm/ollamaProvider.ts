@@ -1,4 +1,6 @@
 import type { LlmProvider, LlmGenerateOptions, LlmGenerateResult } from "./types.js"
+import { config } from "../../config.js"
+import { fetchWithTimeout } from "../../utils/fetchWithTimeout.js"
 
 /**
  * Provider that calls the native Ollama /api/generate endpoint.
@@ -29,12 +31,12 @@ export class OllamaProvider implements LlmProvider {
     if (options.json) payload.format = "json"
     if (options.keepAlive) payload.keep_alive = options.keepAlive
 
-    const response = await fetch(`${this.baseUrl}/api/generate`, {
+    const response = await fetchWithTimeout(`${this.baseUrl}/api/generate`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),
       signal: options.signal
-    })
+    }, config.llmRequestTimeoutMs)
 
     if (!response.ok) {
       const body = await response.text().catch(() => "")
@@ -61,7 +63,7 @@ export class OllamaProvider implements LlmProvider {
 
   /** Locally installed models, mirroring `ollama list` (GET /api/tags). */
   async listModels(signal?: AbortSignal): Promise<string[]> {
-    const response = await fetch(`${this.baseUrl}/api/tags`, { signal })
+    const response = await fetchWithTimeout(`${this.baseUrl}/api/tags`, { signal }, config.llmRequestTimeoutMs)
     if (!response.ok) {
       throw new Error(`Ollama HTTP ${response.status}`)
     }
