@@ -17,6 +17,8 @@ export type EnhancementConfig = {
   stages: EnhancementStageKey[];
   summaryPreset?: SummaryPreset;
   translationLanguage?: string;
+  provider?: string;
+  model?: string;
 };
 
 export type EnhancementStatus = "awaiting_selection" | "running" | "completed" | "skipped";
@@ -321,12 +323,30 @@ export async function getSystemReadiness(signal?: AbortSignal): Promise<Readines
 }
 
 export async function retrySummarize(
-  jobId: string
+  jobId: string,
+  options?: { provider?: string; model?: string; force?: boolean }
 ): Promise<JobPayload> {
-  const response = await fetch(`${API_BASE}/jobs/${jobId}/retry/summarize`, { method: "POST" });
+  const response = await fetch(`${API_BASE}/jobs/${jobId}/retry/summarize`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      provider: options?.provider,
+      model: options?.model,
+      force: options?.force
+    })
+  });
   if (!response.ok) {
     const text = await response.text();
     throw new Error(text || "Retry failed");
+  }
+  return response.json();
+}
+
+export async function cancelPostProcessing(jobId: string): Promise<JobPayload> {
+  const response = await fetch(`${API_BASE}/jobs/${jobId}/retry/cancel`, { method: "POST" });
+  if (!response.ok) {
+    const text = await response.text();
+    throw new Error(text || "Cancel failed");
   }
   return response.json();
 }

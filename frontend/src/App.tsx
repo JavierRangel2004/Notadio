@@ -20,6 +20,7 @@ import {
   reprocessJob,
   retryDiarize,
   retrySummarize,
+  cancelPostProcessing,
   retryTranslate,
   SourceOrigin,
   StageTiming,
@@ -31,9 +32,12 @@ import {
   TranscriptPayload,
   TranscriptSegment,
   TranscriptVariant,
-  uploadMedia
+  uploadMedia,
+  type ProviderInfo
 } from "./api";
 import { VaultNotesPanel } from "./VaultNotesPanel";
+import { AppSelect } from "./AppSelect";
+import { LlmProviderPicker, readStoredLlmSelection, resolveInitialLlmSelection } from "./LlmProviderPicker";
 
 const ACCEPTED_TYPES = "audio/*,video/*,.mkv";
 const mojibakePattern = /[ÃÂÐÑÌÒÙ]/;
@@ -97,6 +101,21 @@ function describeSummaryStrategy(summaryDiagnostics?: SummaryDiagnostics): strin
   }
 
   return `Chunked summary (${summaryDiagnostics.chunkCount} chunks, concurrency ${summaryDiagnostics.chunkConcurrency})`;
+}
+
+function shouldHideStaleSummaryWarning(
+  warning: string,
+  summaryDiagnostics?: SummaryDiagnostics
+): boolean {
+  if (!summaryDiagnostics || summaryDiagnostics.usedFallback) {
+    return false;
+  }
+
+  return (
+    warning.startsWith("AI summary skipped") ||
+    warning.startsWith("AI summary lacked usable content") ||
+    warning.includes("fallback summary was generated directly from the transcript")
+  );
 }
 
 const STAGE_ORDER = ["queued", "normalize", "transcribe", "translate", "diarize", "summarize", "export"];
@@ -305,6 +324,19 @@ const HERO_PROOF_ITEMS = [
   "Local summaries and speaker labeling without cloud transcription"
 ];
 
+function isPostProcessingStale(job: JobPayload, maxMs = 15 * 60 * 1000): boolean {
+  if (!getRunningEnhancementStage(job)) {
+    return false;
+  }
+
+  const startedAt = job.progress?.startedAt;
+  if (!startedAt) {
+    return true;
+  }
+
+  return Date.now() - new Date(startedAt).getTime() > maxMs;
+}
+
 function getRunningEnhancementStage(job?: JobPayload | null): EnhancementStageKey | null {
   if (!job?.enhancementStages) {
     return null;
@@ -342,10 +374,32 @@ function getStageProgress(job: JobPayload | null, stageKey: EnhancementStageKey)
   }
 
   if (job.progress?.stageKey === stageKey || job.progress?.stageKey === "export") {
-    return Math.round(job.progress.overallPct);
+    return Math.round(job.progress.stagePct ?? job.progress.overallPct);
   }
 
   return 0;
+}
+
+function findLatestSummaryActivity(logs: string[]): string | null {
+  for (let index = logs.length - 1; index >= 0; index -= 1) {
+    const line = logs[index]?.trim();
+    if (!line) {
+      continue;
+    }
+
+    const normalized = line.replace(/^\[summary-retry\]\s*/, "");
+    if (
+      normalized.includes("Summarizing chunk") ||
+      normalized.includes("Still waiting for LLM") ||
+      normalized.includes("Combining ") ||
+      normalized.includes("Merging chunk summaries") ||
+      normalized.includes("Running final reduce")
+    ) {
+      return normalized;
+    }
+  }
+
+  return null;
 }
 
 function LogsPanel({
@@ -448,6 +502,10 @@ function InlineProgressPanel({
     return null;
   }
 
+  const progressPct = Math.round(job.progress.stagePct ?? job.progress.overallPct);
+  const activityHint = stageKey === "summarize" ? findLatestSummaryActivity(job.logs ?? []) : null;
+  const showLongSessionHint = stageKey === "summarize" && progressPct > 0 && progressPct < 100;
+
   return (
     <div className="inline-progress-panel">
       <div className="section-header" style={{ marginBottom: "0.75rem" }}>
@@ -456,16 +514,26 @@ function InlineProgressPanel({
           <div style={{ color: "var(--text-muted)", fontSize: "0.8rem" }}>{job.stage}</div>
         </div>
         <div style={{ color: "var(--text-muted)", fontFamily: "var(--font-mono)" }}>
-          {Math.round(job.progress.overallPct)}%
+          {progressPct}%
         </div>
       </div>
       <div className="progress-track">
-        <div className="progress-fill" style={{ width: `${job.progress.overallPct}%` }} />
+        <div className="progress-fill" style={{ width: `${progressPct}%` }} />
       </div>
       <div className="progress-meta">
         <span>{formatStageLabel(job.progress.stageKey)}</span>
         <span>{job.progress.etaSeconds !== undefined ? `ETA ${formatTime(job.progress.etaSeconds)}` : "Working"}</span>
       </div>
+      {activityHint && (
+        <div style={{ color: "var(--text-muted)", fontSize: "0.82rem", marginTop: "0.65rem", lineHeight: 1.45 }}>
+          {activityHint}
+        </div>
+      )}
+      {showLongSessionHint && (
+        <div style={{ color: "var(--text-muted)", fontSize: "0.78rem", marginTop: "0.45rem", lineHeight: 1.4 }}>
+          Long sessions summarize in several LLM chunks. Progress may pause for 30–90s while each chunk completes.
+        </div>
+      )}
     </div>
   );
 }
@@ -909,12 +977,28 @@ function EnhancementPrompt({ job, onSubmit, onSkip }: {
   onSubmit: (config: EnhancementConfig) => void;
   onSkip: () => void;
 }) {
+  const storedLlm = readStoredLlmSelection();
   const defaultPreset: SummaryPreset = job.sourceOrigin === "recording" ? "meeting" : "genericMedia";
   const [summarizeEnabled, setSummarizeEnabled] = useState(true);
   const [diarizeEnabled, setDiarizeEnabled] = useState(PRESET_DESCRIPTIONS[defaultPreset].defaultDiarize);
   const [translateEnabled, setTranslateEnabled] = useState(false);
   const [summaryPreset, setSummaryPreset] = useState<SummaryPreset>(defaultPreset);
   const [submitting, setSubmitting] = useState(false);
+  const [selectedProvider, setSelectedProvider] = useState(storedLlm.provider ?? "");
+  const [selectedModel, setSelectedModel] = useState(storedLlm.model ?? "");
+  const [providerCatalog, setProviderCatalog] = useState<ProviderInfo[]>([]);
+
+  const usesLlm = summarizeEnabled || diarizeEnabled || translateEnabled;
+  const providerLabel = providerCatalog.find((p) => p.id === selectedProvider)?.label ?? selectedProvider;
+  const selectedEnhancementCount = [summarizeEnabled, diarizeEnabled, translateEnabled].filter(Boolean).length;
+
+  const handleProvidersLoaded = useCallback((list: ProviderInfo[]) => {
+    setProviderCatalog(list);
+    if (!storedLlm.provider && list[0]) {
+      setSelectedProvider(list[0].id);
+      setSelectedModel((current) => current || list[0].defaultModel);
+    }
+  }, [storedLlm.provider]);
 
   function handlePresetChange(preset: SummaryPreset) {
     setSummaryPreset(preset);
@@ -930,9 +1014,13 @@ function EnhancementPrompt({ job, onSubmit, onSkip }: {
     onSubmit({
       stages,
       summaryPreset: summarizeEnabled ? summaryPreset : undefined,
-      translationLanguage: translateEnabled ? "en" : undefined
+      translationLanguage: translateEnabled ? "en" : undefined,
+      provider: usesLlm ? selectedProvider : undefined,
+      model: usesLlm ? selectedModel : undefined
     });
   }
+
+  const llmHint = "Summary, speaker naming, and English translation all use this model.";
 
   return (
     <div className="enhancement-prompt">
@@ -940,6 +1028,18 @@ function EnhancementPrompt({ job, onSubmit, onSkip }: {
         <h4>Enhance Your Transcript</h4>
         <p>Base transcription is ready. Choose optional enhancements to run.</p>
       </div>
+
+      {usesLlm && (
+        <LlmProviderPicker
+          className="enhancement-llm"
+          selectedProvider={selectedProvider}
+          selectedModel={selectedModel}
+          onProviderChange={setSelectedProvider}
+          onModelChange={setSelectedModel}
+          onProvidersLoaded={handleProvidersLoaded}
+          hint={llmHint}
+        />
+      )}
 
       <div className="enhancement-options">
         <label className={`enh-option ${summarizeEnabled ? "active" : ""}`}>
@@ -953,17 +1053,16 @@ function EnhancementPrompt({ job, onSubmit, onSkip }: {
             <p>Choose a summary style that matches the real content instead of forcing a meeting recap</p>
             {summarizeEnabled && (
               <div className="enh-preset-wrap">
-                <label>Summary type</label>
-                <select
+                <AppSelect
+                  label="Summary type"
                   value={summaryPreset}
-                  onChange={(e) => handlePresetChange(e.target.value as SummaryPreset)}
-                  className="enhancement-select"
-                >
-                  {Object.entries(PRESET_DESCRIPTIONS).map(([key, info]) => (
-                    <option key={key} value={key}>{info.label}</option>
-                  ))}
-                </select>
-                <span className="enh-preset-desc">{PRESET_DESCRIPTIONS[summaryPreset].description}</span>
+                  options={Object.entries(PRESET_DESCRIPTIONS).map(([key, info]) => ({
+                    value: key,
+                    label: info.label,
+                    description: info.description
+                  }))}
+                  onChange={(value) => handlePresetChange(value as SummaryPreset)}
+                />
               </div>
             )}
           </div>
@@ -995,10 +1094,25 @@ function EnhancementPrompt({ job, onSubmit, onSkip }: {
       </div>
 
       <div className="enhancement-actions">
-        <button className="btn-secondary" onClick={onSkip} disabled={submitting}>Skip</button>
-        <button className="btn-primary" onClick={handleSubmit} disabled={submitting}>
-          {submitting ? "Starting..." : "Run Selected"}
-        </button>
+        {usesLlm && selectedProvider && selectedModel && (
+          <p className="enhancement-run-summary" aria-live="polite">
+            {selectedEnhancementCount} enhancement{selectedEnhancementCount === 1 ? "" : "s"} selected
+            {" · "}
+            {providerLabel}
+            {" · "}
+            {selectedModel}
+          </p>
+        )}
+        <div className="enhancement-action-buttons">
+          <button className="btn-secondary" onClick={onSkip} disabled={submitting}>Skip</button>
+          <button
+            className="btn-primary"
+            onClick={handleSubmit}
+            disabled={submitting || (usesLlm && (!selectedProvider || !selectedModel))}
+          >
+            {submitting ? "Starting..." : "Run Selected"}
+          </button>
+        </div>
       </div>
     </div>
   );
@@ -1023,6 +1137,8 @@ export function App() {
 
   const [showTranslateConfirm, setShowTranslateConfirm] = useState(false);
   const [autoSwitchToEnglish, setAutoSwitchToEnglish] = useState(false);
+  const [summaryLlmProvider, setSummaryLlmProvider] = useState("");
+  const [summaryLlmModel, setSummaryLlmModel] = useState("");
   const audioPlayerRef = useRef<{ seek: (t: number) => void }>(null);
   const autoSwitchToEnglishRef = useRef(false);
   const activePostStage = getRunningEnhancementStage(job);
@@ -1033,6 +1149,22 @@ export function App() {
   useEffect(() => {
     autoSwitchToEnglishRef.current = autoSwitchToEnglish;
   }, [autoSwitchToEnglish]);
+
+  useEffect(() => {
+    if (!job) return;
+    const initial = resolveInitialLlmSelection(
+      job.enhancementConfig?.provider,
+      job.enhancementConfig?.model
+    );
+    setSummaryLlmProvider(initial.provider ?? "");
+    setSummaryLlmModel(initial.model ?? "");
+  }, [job?.id, job?.enhancementConfig?.provider, job?.enhancementConfig?.model]);
+
+  const handleSummaryProvidersLoaded = useCallback((list: ProviderInfo[]) => {
+    if (list.length === 0) return;
+    setSummaryLlmProvider((current) => current || list[0].id);
+    setSummaryLlmModel((current) => current || list[0].defaultModel);
+  }, []);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -1209,13 +1341,31 @@ export function App() {
     }
   }
 
-  async function handleRetrySummarize() {
+  async function handleRetrySummarize(force = false) {
     if (!job) return;
+    if (!summaryLlmProvider || !summaryLlmModel) {
+      setError("Choose a provider and model before regenerating the summary.");
+      return;
+    }
     try {
-      const updatedJob = await retrySummarize(job.id);
+      const updatedJob = await retrySummarize(job.id, {
+        provider: summaryLlmProvider,
+        model: summaryLlmModel,
+        force
+      });
       setJob(updatedJob);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Retry failed");
+    }
+  }
+
+  async function handleCancelPostProcessing() {
+    if (!job) return;
+    try {
+      const updatedJob = await cancelPostProcessing(job.id);
+      setJob(updatedJob);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Cancel failed");
     }
   }
 
@@ -1300,8 +1450,9 @@ export function App() {
     readinessStatus: readiness?.status
   };
   const logs = job?.logs ?? [];
-  const processingWarnings = Array.from(new Set([...(job?.warnings ?? []), ...(processing.capabilityWarnings ?? [])]));
   const summaryDiagnostics = transcript?.summaryDiagnostics ?? job?.summaryDiagnostics;
+  const processingWarnings = Array.from(new Set([...(job?.warnings ?? []), ...(processing.capabilityWarnings ?? [])]))
+    .filter((warning) => !shouldHideStaleSummaryWarning(warning, summaryDiagnostics));
   const stageTimings = getOrderedStageTimings(job?.stageTimings);
   const visibleSegments = visibleTranscript?.segments ?? [];
   const groupedSegments = groupSegments(visibleSegments);
@@ -1314,6 +1465,8 @@ export function App() {
   const isAwaitingEnhancements = job?.enhancementStatus === "awaiting_selection";
   const postProcessingActive = isPostProcessingActive(job);
   const controlsDisabled = Boolean(activePostStage);
+  const summarizeRunning = activePostStage === "summarize";
+  const postProcessingStale = Boolean(job && isPostProcessingStale(job));
 
   function handleSelectEnglish() {
     if (transcript?.english) {
@@ -1750,6 +1903,17 @@ export function App() {
                   New Session
                 </button>
 
+                <LlmProviderPicker
+                  className="summary-llm-panel"
+                  compact
+                  selectedProvider={summaryLlmProvider}
+                  selectedModel={summaryLlmModel}
+                  onProviderChange={setSummaryLlmProvider}
+                  onModelChange={setSummaryLlmModel}
+                  onProvidersLoaded={handleSummaryProvidersLoaded}
+                  hint="Used when you regenerate the summary. For long sessions, prefer deepseek-v4-pro or deepseek-v4-flash."
+                />
+
                 {displaySummary ? (
                   <>
                     <div className="summary-lede-card">
@@ -1852,6 +2016,12 @@ export function App() {
                           <div style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>Strategy</div>
                           <strong>{describeSummaryStrategy(summaryDiagnostics)}</strong>
                         </div>
+                        {summaryDiagnostics?.model && (
+                          <div>
+                            <div style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>Model</div>
+                            <strong>{summaryDiagnostics.model}</strong>
+                          </div>
+                        )}
                         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: '0.75rem' }}>
                           <div>
                             <div style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>Total</div>
@@ -1939,11 +2109,35 @@ export function App() {
                           copyText(JSON.stringify(displaySummary, null, 2));
                           setCopiedState("summary");
                         }}>{copiedState === "summary" ? "Copied!" : "Copy Summary JSON"}</button>
-                        <button className="btn-secondary" onClick={handleRetrySummarize} disabled={controlsDisabled}>
-                          {getStageProgress(job, "summarize") !== null
-                            ? `Regenerating... ${getStageProgress(job, "summarize")}%`
-                            : "Regenerate Summary"}
-                        </button>
+                        {summarizeRunning ? (
+                          <>
+                            {postProcessingStale && (
+                              <div style={{ color: "var(--warning)", fontSize: "0.82rem", lineHeight: 1.45 }}>
+                                Summary regeneration looks stuck. Cancel it, pick another model, then regenerate.
+                              </div>
+                            )}
+                            <button className="btn-secondary" type="button" onClick={handleCancelPostProcessing}>
+                              Cancel Summary Run
+                            </button>
+                            <button
+                              className="btn-primary"
+                              type="button"
+                              onClick={() => void handleRetrySummarize(true)}
+                              disabled={!summaryLlmProvider || !summaryLlmModel}
+                            >
+                              Stop & Regenerate with Selected Model
+                            </button>
+                          </>
+                        ) : (
+                          <button
+                            className="btn-secondary"
+                            type="button"
+                            onClick={() => void handleRetrySummarize(false)}
+                            disabled={!summaryLlmProvider || !summaryLlmModel}
+                          >
+                            Regenerate Summary
+                          </button>
+                        )}
                         <button className="btn-secondary" onClick={handleRetryDiarize} disabled={controlsDisabled}>
                           {getStageProgress(job, "diarize") !== null
                             ? `Running ID... ${getStageProgress(job, "diarize")}%`
@@ -1955,11 +2149,36 @@ export function App() {
                 ) : (
                   <div className="glass-panel">
                     <p style={{ color: 'var(--text-muted)' }}>No summary available.</p>
-                    <button className="btn-secondary" onClick={handleRetrySummarize} disabled={controlsDisabled} style={{ marginTop: '1rem', width: '100%' }}>
-                      {getStageProgress(job, "summarize") !== null
-                        ? `Generating Summary... ${getStageProgress(job, "summarize")}%`
-                        : "Generate Summary"}
-                    </button>
+                    {summarizeRunning ? (
+                      <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem", marginTop: "1rem" }}>
+                        {postProcessingStale && (
+                          <div style={{ color: "var(--warning)", fontSize: "0.82rem", lineHeight: 1.45 }}>
+                            Summary regeneration looks stuck. Cancel it, pick another model, then regenerate.
+                          </div>
+                        )}
+                        <button className="btn-secondary" type="button" onClick={handleCancelPostProcessing}>
+                          Cancel Summary Run
+                        </button>
+                        <button
+                          className="btn-primary"
+                          type="button"
+                          onClick={() => void handleRetrySummarize(true)}
+                          disabled={!summaryLlmProvider || !summaryLlmModel}
+                        >
+                          Stop & Regenerate with Selected Model
+                        </button>
+                      </div>
+                    ) : (
+                      <button
+                        className="btn-secondary"
+                        type="button"
+                        onClick={() => void handleRetrySummarize(false)}
+                        disabled={!summaryLlmProvider || !summaryLlmModel}
+                        style={{ marginTop: "1rem", width: "100%" }}
+                      >
+                        Generate Summary
+                      </button>
+                    )}
                   </div>
                 )}
 
@@ -1971,6 +2190,12 @@ export function App() {
                         <div style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>Strategy</div>
                         <strong>{describeSummaryStrategy(summaryDiagnostics)}</strong>
                       </div>
+                      {summaryDiagnostics?.model && (
+                        <div>
+                          <div style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>Model</div>
+                          <strong>{summaryDiagnostics.model}</strong>
+                        </div>
+                      )}
                       <div style={{ color: 'var(--text-muted)', fontSize: '0.85rem', lineHeight: 1.5 }}>
                         {summaryDiagnostics.usedFallback ? "Fallback summary was used. " : "Primary structured summary succeeded. "}
                         {summaryDiagnostics.usedMergedPartials ? "Local merge path used. " : ""}

@@ -3,14 +3,13 @@ import {
   convertNotesToAudio,
   getJob,
   getNoteExcerpt,
-  getProviderModels,
-  getProviders,
   getVoicePreviewUrl,
   JobPayload,
   scanVault,
   type NoteInfo,
   type ProviderInfo
 } from "./api";
+import { LlmProviderPicker, readStoredLlmSelection } from "./LlmProviderPicker";
 
 const VOICES = [
   { id: "es-MX-DaliaNeural", name: "Dalia", detail: "México · Femenina" },
@@ -22,32 +21,6 @@ const VOICES = [
   { id: "en-US-AvaNeural", name: "Ava", detail: "Inglés · Femenina" },
   { id: "en-US-AndrewNeural", name: "Andrew", detail: "Inglés · Masculina" }
 ] as const;
-
-// Friendly one-liners shown next to the raw model id so non-technical users can
-// pick without knowing what "deepseek-v4-flash" means. Unknown ids fall back to
-// the bare id with no descriptor.
-const MODEL_ALIASES: Record<string, string> = {
-  "deepseek-v4-flash": "rápido y económico",
-  "deepseek-v4-flash-free": "rápido · gratis",
-  "deepseek-v4-pro": "máxima calidad",
-  "glm-5.1": "equilibrado",
-  "glm-5": "equilibrado",
-  "kimi-k2.6": "contexto largo",
-  "kimi-k2.5": "contexto largo",
-  "minimax-m2.7": "creativo",
-  "minimax-m2.5": "creativo",
-  "minimax-m3": "creativo",
-  "qwen3.7-plus": "buen español",
-  "qwen3.6-plus": "buen español",
-  "llama3.1:8b": "local · equilibrado",
-  "llama3.2": "local · ligero",
-  "mistral:latest": "local · rápido"
-};
-
-function modelLabel(id: string): string {
-  const alias = MODEL_ALIASES[id];
-  return alias ? `${id} · ${alias}` : id;
-}
 
 type FolderGroup = {
   folder: string;
@@ -110,10 +83,16 @@ export function VaultNotesPanel({
   const [selectedVoice, setSelectedVoice] = useState("es-MX-DaliaNeural");
   const [isConverting, setIsConverting] = useState(false);
   const [providers, setProviders] = useState<ProviderInfo[]>([]);
-  const [selectedProvider, setSelectedProvider] = useState("");
-  const [selectedModel, setSelectedModel] = useState("");
-  const [availableModels, setAvailableModels] = useState<string[]>([]);
-  const [modelsLoading, setModelsLoading] = useState(false);
+  const [selectedProvider, setSelectedProvider] = useState(readStoredLlmSelection().provider ?? "");
+  const [selectedModel, setSelectedModel] = useState(readStoredLlmSelection().model ?? "");
+
+  function handleProvidersLoaded(list: ProviderInfo[]) {
+    setProviders(list);
+    if (!selectedProvider && list[0]) {
+      setSelectedProvider(list[0].id);
+      setSelectedModel((current) => current || list[0].defaultModel);
+    }
+  }
 
   // Voice audition
   const audioRef = useRef<HTMLAudioElement | null>(null);
@@ -169,38 +148,6 @@ export function VaultNotesPanel({
         notes: folderNotes.sort((a, b) => a.title.localeCompare(b.title, "es", { numeric: true }))
       }));
   }, [filteredNotes]);
-
-  function loadModels(providerId: string) {
-    if (!providerId) {
-      setAvailableModels([]);
-      return;
-    }
-    setModelsLoading(true);
-    getProviderModels(providerId)
-      .then((list) => setAvailableModels(list))
-      .catch(() => setAvailableModels([]))
-      .finally(() => setModelsLoading(false));
-  }
-
-  useEffect(() => {
-    getProviders()
-      .then((list) => {
-        setProviders(list);
-        if (list.length > 0) {
-          setSelectedProvider((current) => current || list[0].id);
-          setSelectedModel((current) => current || list[0].defaultModel);
-          loadModels(list[0].id);
-        }
-      })
-      .catch(() => {});
-  }, []);
-
-  function handleProviderChange(providerId: string) {
-    setSelectedProvider(providerId);
-    const info = providers.find((p) => p.id === providerId);
-    if (info) setSelectedModel(info.defaultModel);
-    loadModels(providerId);
-  }
 
   function previewVoice(voiceId: string) {
     // Toggle off if the same voice is already playing.
@@ -575,59 +522,15 @@ export function VaultNotesPanel({
             </div>
           </fieldset>
 
-          <div className="vault-config">
-            <span className="vault-label">Motor de guion (LLM)</span>
-            <div className="vault-llm-row">
-              {providers.length > 1 ? (
-                <div className="control-strip" role="tablist" aria-label="Proveedor LLM">
-                  {providers.map((p) => (
-                    <button
-                      key={p.id}
-                      type="button"
-                      className={`control-btn ${selectedProvider === p.id ? "active" : ""}`}
-                      onClick={() => handleProviderChange(p.id)}
-                    >
-                      {p.label}
-                    </button>
-                  ))}
-                </div>
-              ) : (
-                <span className="vault-provider-single">
-                  {providers[0]?.label ?? "Cargando proveedores…"}
-                </span>
-              )}
-              {availableModels.length > 0 ? (
-                <select
-                  className="vault-select"
-                  value={selectedModel}
-                  onChange={(e) => setSelectedModel(e.target.value)}
-                  aria-label="Modelo"
-                >
-                  {!availableModels.includes(selectedModel) && selectedModel && (
-                    <option value={selectedModel}>{modelLabel(selectedModel)}</option>
-                  )}
-                  {availableModels.map((m) => (
-                    <option key={m} value={m}>{modelLabel(m)}</option>
-                  ))}
-                </select>
-              ) : (
-                <input
-                  type="text"
-                  className="vault-input"
-                  placeholder={modelsLoading ? "Cargando modelos…" : "Modelo (ej. llama3.2)"}
-                  value={selectedModel}
-                  onChange={(e) => setSelectedModel(e.target.value)}
-                  aria-label="Modelo"
-                />
-              )}
-            </div>
-            {selectedProvider && !modelsLoading && availableModels.length === 0 && (
-              <span className="vault-hint">
-                No se pudo listar el catálogo (¿provider apagado o sin API key?).
-                Escribe el id del modelo manualmente.
-              </span>
-            )}
-          </div>
+          <LlmProviderPicker
+            className="vault-llm-panel"
+            compact
+            selectedProvider={selectedProvider}
+            selectedModel={selectedModel}
+            onProviderChange={setSelectedProvider}
+            onModelChange={setSelectedModel}
+            onProvidersLoaded={handleProvidersLoaded}
+          />
 
           <div className="vault-footer">
             <div className="vault-summary-strip" aria-live="polite">
